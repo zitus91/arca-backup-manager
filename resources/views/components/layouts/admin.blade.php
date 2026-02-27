@@ -89,6 +89,15 @@
                     {{ __('backup-log.title') }}
                 </a>
 
+                <a href="{{ route('admin.backup.restore') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                          {{ request()->routeIs('admin.backup.restore') ? 'bg-primary/10 text-primary shadow-sm' : 'text-base-content/70 hover:bg-base-content/5 hover:text-base-content' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 {{ request()->routeIs('admin.backup.restore') ? 'text-primary' : 'text-base-content/40' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+                    </svg>
+                    {{ __('restore.title') }}
+                </a>
+
                 <a href="{{ route('admin.backup.audit') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                           {{ request()->routeIs('admin.backup.audit') ? 'bg-primary/10 text-primary shadow-sm' : 'text-base-content/70 hover:bg-base-content/5 hover:text-base-content' }}">
@@ -179,6 +188,16 @@
                             showToast('success', '✅ ' + e.job_name, '{{ __("backup-dashboard.toast_success") }}');
                         } else {
                             showToast('error', '❌ ' + e.job_name, '{{ __("backup-dashboard.toast_failed") }}');
+                        }
+                    })
+                    .listen('.restore.started', (e) => {
+                        showToast('info', '🔄 ' + e.job_name, '{{ __("restore.toast_started") }}');
+                    })
+                    .listen('.restore.completed', (e) => {
+                        if (e.status === 'success') {
+                            showToast('success', '✅ ' + e.job_name, '{{ __("restore.toast_success") }}');
+                        } else {
+                            showToast('error', '❌ ' + e.job_name, '{{ __("restore.toast_failed") }}');
                         }
                     });
             }

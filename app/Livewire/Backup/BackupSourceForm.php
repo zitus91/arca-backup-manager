@@ -40,7 +40,7 @@ class BackupSourceForm extends Component
 
     // Filesystem fields
     public array $fs_paths = [''];
-    public string $fs_exclude_patterns = '*.log, *.tmp, node_modules';
+    public string $fs_exclude_patterns = '*.log, *.tmp, node_modules, vendor';
     public array $fs_path_statuses = [];
     public array $fs_path_messages = [];
 
