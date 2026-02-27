@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@backup.local'],
             [
                 'name' => 'Admin',
-                'password' => bcrypt('password'),
+                'password' => 'password', // Il cast 'hashed' nel model User lo cripta automaticamente
             ]
         );
     }
