@@ -27,6 +27,10 @@ class RestoreIndex extends Component
     public string $restoreType = 'full'; // full, db_only, files_only
     public array $selectedBackupInfo = [];
 
+    // Granular selection
+    public array $selectedDatabases = [];
+    public array $selectedPaths = [];
+
     // Detail modal
     public bool $showDetail = false;
     public ?int $detailRestoreLogId = null;
@@ -101,6 +105,13 @@ class RestoreIndex extends Component
             $this->restoreType = 'files_only';
         }
 
+        // Pre-select all databases and paths
+        $this->selectedDatabases = array_merge(
+            $this->selectedBackupInfo['mysql_databases'] ?? [],
+            $this->selectedBackupInfo['mongodb_databases'] ?? [],
+        );
+        $this->selectedPaths = $this->selectedBackupInfo['filesystem_paths'] ?? [];
+
         $this->showRestoreModal = true;
         $this->showConfirmation = false;
     }
@@ -113,6 +124,8 @@ class RestoreIndex extends Component
         $this->showRestoreModal = false;
         $this->selectedBackupLogId = null;
         $this->selectedBackupInfo = [];
+        $this->selectedDatabases = [];
+        $this->selectedPaths = [];
         $this->showConfirmation = false;
     }
 
@@ -121,6 +134,16 @@ class RestoreIndex extends Component
      */
     public function confirmRestore(): void
     {
+        // Validate at least one item is selected
+        $hasSelectedDb = ! empty($this->selectedDatabases) && in_array($this->restoreType, ['full', 'db_only']);
+        $hasSelectedFs = ! empty($this->selectedPaths) && in_array($this->restoreType, ['full', 'files_only']);
+
+        if (! $hasSelectedDb && ! $hasSelectedFs) {
+            $this->dispatch('notify', type: 'error', message: __('restore.no_items_selected'));
+
+            return;
+        }
+
         $this->showConfirmation = true;
     }
 
@@ -135,10 +158,27 @@ class RestoreIndex extends Component
 
         $this->isRestoring = true;
 
+        // Build selected_items based on restore type
+        $selectedItems = [];
+
+        if (in_array($this->restoreType, ['full', 'db_only'])) {
+            // Separate mysql and mongodb databases
+            $allMysql = $this->selectedBackupInfo['mysql_databases'] ?? [];
+            $allMongo = $this->selectedBackupInfo['mongodb_databases'] ?? [];
+
+            $selectedItems['mysql_databases'] = array_values(array_intersect($this->selectedDatabases, $allMysql));
+            $selectedItems['mongodb_databases'] = array_values(array_intersect($this->selectedDatabases, $allMongo));
+        }
+
+        if (in_array($this->restoreType, ['full', 'files_only'])) {
+            $selectedItems['filesystem_paths'] = array_values($this->selectedPaths);
+        }
+
         $restoreLog = RestoreLog::create([
             'backup_log_id' => $this->selectedBackupLogId,
             'user_id' => auth()->id(),
             'restore_type' => $this->restoreType,
+            'selected_items' => $selectedItems,
             'status' => 'pending',
             'started_at' => now(),
         ]);
