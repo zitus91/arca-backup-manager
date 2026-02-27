@@ -108,7 +108,7 @@ class Login extends Component
 
             Log::info('[Login] Login riuscito', ['email' => $this->email]);
 
-            $this->redirectIntended(route('admin.backup.dashboard'), navigate: true);
+            $this->redirectIntended(route('admin.backup.dashboard'), navigate: false);
         } catch (\Throwable $e) {
             Log::error('[Login] Eccezione durante il login', [
                 'email' => $this->email,

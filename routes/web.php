@@ -15,6 +15,30 @@ use App\Models\AuditLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+// === DEBUG: rotta diagnostica (rimuovere dopo fix) ===
+Route::get('/debug-login', function () {
+    return response()->json([
+        'app_env' => config('app.env'),
+        'app_url' => config('app.url'),
+        'session_driver' => config('session.driver'),
+        'session_domain' => config('session.domain'),
+        'session_secure' => config('session.secure'),
+        'session_same_site' => config('session.same_site'),
+        'session_cookie' => config('session.cookie'),
+        'request_url' => request()->url(),
+        'request_secure' => request()->isSecure(),
+        'request_ip' => request()->ip(),
+        'request_scheme' => request()->getScheme(),
+        'trusted_proxies' => request()->getTrustedProxies(),
+        'x_forwarded_proto' => request()->header('X-Forwarded-Proto'),
+        'x_forwarded_for' => request()->header('X-Forwarded-For'),
+        'user_count' => \App\Models\User::count(),
+        'sessions_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('sessions'),
+        'auth_check' => auth()->check(),
+        'php_version' => PHP_VERSION,
+    ]);
+});
+
 Route::get('/', function () {
     return redirect()->route('admin.backup.dashboard');
 });
