@@ -1,0 +1,8 @@
+/* Backup Source styles */
+.source-type-badge {
+    @apply font-semibold uppercase text-xs;
+}
+
+.source-config-panel {
+    @apply transition-all duration-200 ease-in-out;
+}

@@ -1,0 +1,8 @@
+/* Dashboard styles */
+.dashboard-card {
+    @apply transition-shadow duration-200 hover:shadow-lg;
+}
+
+.chart-bar {
+    @apply transition-all duration-300 ease-in-out rounded;
+}

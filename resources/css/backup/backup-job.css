@@ -1,0 +1,8 @@
+/* Backup Job styles */
+.job-status-running {
+    @apply animate-pulse;
+}
+
+.schedule-fields-transition {
+    @apply transition-all duration-200 ease-in-out;
+}

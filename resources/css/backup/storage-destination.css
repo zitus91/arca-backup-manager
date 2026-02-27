@@ -1,0 +1,8 @@
+/* Storage Destination styles */
+.destination-type-badge {
+    @apply font-semibold uppercase text-xs;
+}
+
+.destination-test-result {
+    @apply transition-opacity duration-300;
+}

@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Services\Backup;
+
+use Illuminate\Support\Facades\Storage;
+
+class S3StorageService
+{
+    /**
+     * Upload a file to an S3 destination.
+     */
+    public function upload(array $config, string $localPath, string $remotePath): string
+    {
+        $disk = $this->createDisk($config);
+        $content = file_get_contents($localPath);
+
+        if ($content === false) {
+            throw new \RuntimeException("Cannot read local file: {$localPath}");
+        }
+
+        $disk->put($remotePath, $content);
+
+        return $remotePath;
+    }
+
+    /**
+     * Delete a remote file from S3.
+     */
+    public function delete(array $config, string $remotePath): bool
+    {
+        $disk = $this->createDisk($config);
+
+        return $disk->delete($remotePath);
+    }
+
+    /**
+     * Check if the connection to S3 works.
+     */
+    public function testConnection(array $config): bool
+    {
+        try {
+            $disk = $this->createDisk($config);
+            $disk->directories('/');
+
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * List files in a remote directory.
+     */
+    public function listFiles(array $config, string $directory = '/'): array
+    {
+        $disk = $this->createDisk($config);
+
+        return $disk->files($directory);
+    }
+
+    /**
+     * Download a file from S3 and stream it as a response.
+     */
+    public function download(array $config, string $remotePath, string $fileName): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $disk = $this->createDisk($config);
+
+        if (! $disk->exists($remotePath)) {
+            abort(404, "File not found: {$remotePath}");
+        }
+
+        $stream = $disk->readStream($remotePath);
+
+        if (! $stream) {
+            abort(500, "Cannot read file: {$remotePath}");
+        }
+
+        $size = $disk->size($remotePath);
+
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Length' => $size,
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        ]);
+    }
+
+    /**
+     * Create a temporary filesystem disk for the S3 config.
+     */
+    protected function createDisk(array $config): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        $diskConfig = [
+            'driver' => 's3',
+            'key' => $config['access_key'],
+            'secret' => $config['secret_key'],
+            'region' => $config['region'],
+            'bucket' => $config['bucket'],
+        ];
+
+        if (! empty($config['endpoint'])) {
+            $diskConfig['endpoint'] = $config['endpoint'];
+            $diskConfig['use_path_style_endpoint'] = true;
+        }
+
+        config(['filesystems.disks.backup_s3_temp' => $diskConfig]);
+
+        return Storage::disk('backup_s3_temp');
+    }
+}

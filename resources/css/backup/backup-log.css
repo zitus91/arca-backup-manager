@@ -1,0 +1,8 @@
+/* Backup Log styles */
+.log-status-running .badge {
+    @apply animate-pulse;
+}
+
+.log-detail-meta {
+    @apply font-mono text-xs;
+}
