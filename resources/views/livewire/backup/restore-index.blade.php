@@ -242,29 +242,59 @@
                             </div>
                         </div>
 
-                        {{-- Backup Contents --}}
+                        {{-- Backup Contents with selectable items --}}
                         <div>
                             <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-2">{{ __('restore.backup_contains') }}</p>
                             <div class="space-y-2">
                                 @if ($selectedBackupInfo['has_mysql'] ?? false)
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-400">MySQL</span>
-                                        <span class="text-base-content/70">{{ implode(', ', $selectedBackupInfo['mysql_databases'] ?? []) }}</span>
-                                        <span class="text-base-content/40 text-xs ml-auto">→ {{ implode(', ', array_map(fn($db) => $db . '_restored_' . now()->format('Ymd_His'), $selectedBackupInfo['mysql_databases'] ?? [])) }}</span>
+                                    <div class="rounded-lg border border-base-content/5 bg-base-200/30 p-3 space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-400">MySQL</span>
+                                            <span class="text-xs text-base-content/40">{{ __('restore.select_items_hint') }}</span>
+                                        </div>
+                                        @foreach ($selectedBackupInfo['mysql_databases'] ?? [] as $db)
+                                            <label class="flex items-center gap-3 cursor-pointer group px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                <input type="checkbox" wire:model="selectedDatabases" value="{{ $db }}"
+                                                    class="checkbox checkbox-sm checkbox-primary rounded"
+                                                    {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                <span class="text-sm text-base-content/70 font-mono">{{ $db }}</span>
+                                                <span class="text-base-content/30 text-xs ml-auto">→ {{ $db }}_restored_{{ now()->format('Ymd_His') }}</span>
+                                            </label>
+                                        @endforeach
                                     </div>
                                 @endif
                                 @if ($selectedBackupInfo['has_mongodb'] ?? false)
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-green-500/10 text-green-400">MongoDB</span>
-                                        <span class="text-base-content/70">{{ implode(', ', $selectedBackupInfo['mongodb_databases'] ?? []) }}</span>
-                                        <span class="text-base-content/40 text-xs ml-auto">→ {{ implode(', ', array_map(fn($db) => $db . '_restored_' . now()->format('Ymd_His'), $selectedBackupInfo['mongodb_databases'] ?? [])) }}</span>
+                                    <div class="rounded-lg border border-base-content/5 bg-base-200/30 p-3 space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-green-500/10 text-green-400">MongoDB</span>
+                                            <span class="text-xs text-base-content/40">{{ __('restore.select_items_hint') }}</span>
+                                        </div>
+                                        @foreach ($selectedBackupInfo['mongodb_databases'] ?? [] as $db)
+                                            <label class="flex items-center gap-3 cursor-pointer group px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                <input type="checkbox" wire:model="selectedDatabases" value="{{ $db }}"
+                                                    class="checkbox checkbox-sm checkbox-primary rounded"
+                                                    {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                <span class="text-sm text-base-content/70 font-mono">{{ $db }}</span>
+                                                <span class="text-base-content/30 text-xs ml-auto">→ {{ $db }}_restored_{{ now()->format('Ymd_His') }}</span>
+                                            </label>
+                                        @endforeach
                                     </div>
                                 @endif
                                 @if ($selectedBackupInfo['has_filesystem'] ?? false)
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-orange-500/10 text-orange-400">Files</span>
-                                        <span class="text-base-content/70 font-mono text-xs">{{ implode(', ', $selectedBackupInfo['filesystem_paths'] ?? []) }}</span>
-                                        <span class="text-base-content/40 text-xs ml-auto">→ {{ implode(', ', array_map(fn($p) => rtrim($p, '/') . '_restored_' . now()->format('Ymd_His'), $selectedBackupInfo['filesystem_paths'] ?? [])) }}</span>
+                                    <div class="rounded-lg border border-base-content/5 bg-base-200/30 p-3 space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-orange-500/10 text-orange-400">Files</span>
+                                            <span class="text-xs text-base-content/40">{{ __('restore.select_items_hint') }}</span>
+                                        </div>
+                                        @foreach ($selectedBackupInfo['filesystem_paths'] ?? [] as $path)
+                                            <label class="flex items-center gap-3 cursor-pointer group px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['db_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                <input type="checkbox" wire:model="selectedPaths" value="{{ $path }}"
+                                                    class="checkbox checkbox-sm checkbox-primary rounded"
+                                                    {{ in_array($restoreType, ['db_only']) ? 'disabled' : '' }} />
+                                                <span class="text-sm text-base-content/70 font-mono text-xs">{{ $path }}</span>
+                                                <span class="text-base-content/30 text-xs ml-auto">→ {{ rtrim($path, '/') }}_restored_{{ now()->format('Ymd_His') }}</span>
+                                            </label>
+                                        @endforeach
                                     </div>
                                 @endif
                             </div>
@@ -357,6 +387,36 @@
                                 <span class="text-base-content/50">{{ __('restore.info_date') }}</span>
                                 <span class="font-medium tabular-nums">{{ $selectedBackupInfo['backup_date'] ?? '-' }}</span>
                             </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-base-content/50">{{ __('restore.info_source') }}</span>
+                                <span class="font-medium">{{ $selectedBackupInfo['source_name'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-base-content/50">{{ __('restore.col_destination') }}</span>
+                                <span class="font-medium">{{ $selectedBackupInfo['destination_name'] ?? '-' }}</span>
+                            </div>
+
+                            @if (! empty($selectedDatabases) && in_array($restoreType, ['full', 'db_only']))
+                                <div class="pt-2 border-t border-base-content/5">
+                                    <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5">{{ __('restore.confirm_databases') }}</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($selectedDatabases as $db)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-info/10 text-info">{{ $db }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if (! empty($selectedPaths) && in_array($restoreType, ['full', 'files_only']))
+                                <div class="pt-2 border-t border-base-content/5">
+                                    <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5">{{ __('restore.confirm_paths') }}</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($selectedPaths as $path)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-accent/10 text-accent">{{ $path }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </div>
 

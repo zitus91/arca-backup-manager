@@ -74,6 +74,7 @@ class ProcessRestoreJob implements ShouldQueue
             // 3. Determine what types were backed up
             $sourceConfig = $source->config;
             $restoreType = $restoreLog->restore_type;
+            $selectedItems = $restoreLog->selected_items;
             $results = [];
             $restoredDbNames = [];
             $restoredPaths = [];
@@ -92,6 +93,11 @@ class ProcessRestoreJob implements ShouldQueue
                 $mysqlConf = $sourceConfig['mysql'];
                 $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
 
+                // Filter by selected items if specified
+                if (! empty($selectedItems['mysql_databases'])) {
+                    $databases = array_intersect($databases, $selectedItems['mysql_databases']);
+                }
+
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mysqlConf, ['database' => $db]);
                     $dumpFile = $this->findMysqlDump($isPackage ? $extractedDir : $tmpDir, $db, $isPackage);
@@ -109,6 +115,11 @@ class ProcessRestoreJob implements ShouldQueue
                 $mongoConf = $sourceConfig['mongodb'];
                 $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
 
+                // Filter by selected items if specified
+                if (! empty($selectedItems['mongodb_databases'])) {
+                    $databases = array_intersect($databases, $selectedItems['mongodb_databases']);
+                }
+
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mongoConf, ['database' => $db]);
                     $archiveFile = $this->findMongoArchive($isPackage ? $extractedDir : $tmpDir, $db, $isPackage);
@@ -125,6 +136,11 @@ class ProcessRestoreJob implements ShouldQueue
             if (in_array($restoreType, ['files_only', 'full']) && isset($sourceConfig['filesystem'])) {
                 $fsConf = $sourceConfig['filesystem'];
                 $paths = $fsConf['paths'] ?? (isset($fsConf['path']) ? [$fsConf['path']] : []);
+
+                // Filter by selected items if specified
+                if (! empty($selectedItems['filesystem_paths'])) {
+                    $paths = array_intersect($paths, $selectedItems['filesystem_paths']);
+                }
 
                 foreach ($paths as $path) {
                     $singleConf = ['path' => $path, 'exclude_patterns' => $fsConf['exclude_patterns'] ?? []];

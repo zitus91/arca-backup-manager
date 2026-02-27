@@ -15,6 +15,7 @@ class RestoreLog extends Model
         'backup_log_id',
         'user_id',
         'restore_type',
+        'selected_items',
         'status',
         'started_at',
         'finished_at',
@@ -32,6 +33,7 @@ class RestoreLog extends Model
             'finished_at' => 'datetime',
             'duration_seconds' => 'integer',
             'meta' => 'array',
+            'selected_items' => 'array',
         ];
     }
 

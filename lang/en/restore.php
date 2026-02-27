@@ -63,6 +63,12 @@ return [
     'backup_contains' => 'Backup Contents',
     'select_type' => 'What do you want to restore?',
 
+    // Granular selection
+    'select_items_hint' => 'Select the items to restore',
+    'no_items_selected' => 'Select at least one database or path to restore.',
+    'confirm_databases' => 'Databases to restore',
+    'confirm_paths' => 'Paths to restore',
+
     // Warnings
     'warning_title' => 'Important',
     'warning_desc' => 'Databases will be restored with "_restored_TIMESTAMP" suffix (e.g. mydb → mydb_restored_20260227_143000). Files will be restored to the original path with the same suffix (e.g. /data/app → /data/app_restored_20260227_143000).',

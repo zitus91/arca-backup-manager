@@ -4,6 +4,7 @@ namespace App\Livewire\Auth;
 
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -19,21 +20,54 @@ class Login extends Component
 
     public bool $remember = false;
 
+    public string $errorMessage = '';
+
     public function login(): void
     {
-        $this->validate();
+        $this->errorMessage = '';
 
-        if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
-            $this->addError('email', __('auth.failed'));
-
-            return;
+        try {
+            $this->validate();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('[Login] Validazione fallita', [
+                'email' => $this->email,
+                'errors' => $e->errors(),
+            ]);
+            throw $e;
         }
 
-        session()->regenerate();
+        try {
+            $userExists = \App\Models\User::where('email', $this->email)->exists();
 
-        AuditLog::record('login', 'User logged in: ' . $this->email);
+            if (! $userExists) {
+                Log::warning('[Login] Utente non trovato', ['email' => $this->email]);
+                $this->errorMessage = __('auth.failed');
+                $this->addError('email', __('auth.failed'));
+                return;
+            }
 
-        $this->redirectIntended(route('admin.backup.dashboard'), navigate: true);
+            if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
+                Log::warning('[Login] Password errata', ['email' => $this->email]);
+                $this->errorMessage = __('auth.failed');
+                $this->addError('email', __('auth.failed'));
+                return;
+            }
+
+            session()->regenerate();
+
+            AuditLog::record('login', 'User logged in: ' . $this->email);
+
+            Log::info('[Login] Login riuscito', ['email' => $this->email]);
+
+            $this->redirectIntended(route('admin.backup.dashboard'), navigate: true);
+        } catch (\Throwable $e) {
+            Log::error('[Login] Eccezione durante il login', [
+                'email' => $this->email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $this->errorMessage = 'Errore durante il login: ' . $e->getMessage();
+        }
     }
 
     public function render()

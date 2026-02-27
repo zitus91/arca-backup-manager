@@ -63,6 +63,12 @@ return [
     'backup_contains' => 'Contenuto del Backup',
     'select_type' => 'Cosa vuoi ripristinare?',
 
+    // Granular selection
+    'select_items_hint' => 'Seleziona gli elementi da ripristinare',
+    'no_items_selected' => 'Seleziona almeno un database o un percorso da ripristinare.',
+    'confirm_databases' => 'Database da ripristinare',
+    'confirm_paths' => 'Percorsi da ripristinare',
+
     // Warnings
     'warning_title' => 'Importante',
     'warning_desc' => 'I database verranno ripristinati con suffisso "_restored_TIMESTAMP" (es. mydb → mydb_restored_20260227_143000). I file verranno ripristinati nel percorso originale con lo stesso suffisso (es. /data/app → /data/app_restored_20260227_143000).',
