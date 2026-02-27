@@ -39,10 +39,10 @@ class BackupSourceForm extends Component
     public string $mongodb_connection_message = '';
 
     // Filesystem fields
-    public string $fs_path = '';
+    public array $fs_paths = [''];
     public string $fs_exclude_patterns = '*.log, *.tmp, node_modules';
-    public ?string $fs_path_status = null;
-    public string $fs_path_message = '';
+    public array $fs_path_statuses = [];
+    public array $fs_path_messages = [];
 
     public function mount(?int $sourceId = null): void
     {
@@ -113,7 +113,14 @@ class BackupSourceForm extends Component
 
     protected function fillFilesystem(array $config): void
     {
-        $this->fs_path = $config['path'] ?? '';
+        // Support both old single-path and new multi-path format
+        if (isset($config['paths']) && is_array($config['paths'])) {
+            $this->fs_paths = !empty($config['paths']) ? $config['paths'] : [''];
+        } elseif (isset($config['path']) && $config['path'] !== '') {
+            $this->fs_paths = [$config['path']];
+        } else {
+            $this->fs_paths = [''];
+        }
         $this->fs_exclude_patterns = is_array($config['exclude_patterns'] ?? null)
             ? implode(', ', $config['exclude_patterns'])
             : '';
@@ -151,7 +158,8 @@ class BackupSourceForm extends Component
 
         if ($this->enable_filesystem) {
             $rules = array_merge($rules, [
-                'fs_path' => 'required|string|max:500',
+                'fs_paths' => 'required|array|min:1',
+                'fs_paths.*' => 'required|string|max:500',
                 'fs_exclude_patterns' => 'nullable|string',
             ]);
         }
@@ -191,8 +199,10 @@ class BackupSourceForm extends Component
         }
 
         if ($this->enable_filesystem) {
+            $paths = array_values(array_filter(array_map('trim', $this->fs_paths), fn ($p) => $p !== ''));
             $config['filesystem'] = [
-                'path' => $this->fs_path,
+                'paths' => $paths,
+                'path' => $paths[0] ?? '',  // backward compat
                 'exclude_patterns' => $this->fs_exclude_patterns
                     ? array_map('trim', explode(',', $this->fs_exclude_patterns))
                     : [],
@@ -343,30 +353,49 @@ class BackupSourceForm extends Component
 
     // -- Filesystem --------------------------------------------------
 
-    public function checkFilesystemPath(): void
+    public function addFsPath(): void
     {
-        $this->fs_path_status = null;
-        $this->fs_path_message = '';
+        $this->fs_paths[] = '';
+    }
 
-        $path = trim($this->fs_path);
+    public function removeFsPath(int $index): void
+    {
+        unset($this->fs_paths[$index]);
+        $this->fs_paths = array_values($this->fs_paths);
+        unset($this->fs_path_statuses[$index]);
+        unset($this->fs_path_messages[$index]);
+        $this->fs_path_statuses = array_values($this->fs_path_statuses);
+        $this->fs_path_messages = array_values($this->fs_path_messages);
+    }
+
+    public function checkFilesystemPath(int $index): void
+    {
+        $path = trim($this->fs_paths[$index] ?? '');
 
         if (empty($path)) {
-            $this->fs_path_status = 'failed';
-            $this->fs_path_message = __('backup-source.fs_path_empty');
+            $this->fs_path_statuses[$index] = 'failed';
+            $this->fs_path_messages[$index] = __('backup-source.fs_path_empty');
             return;
         }
 
         if (is_dir($path) && is_readable($path)) {
             $items = @scandir($path);
             $count = $items ? count($items) - 2 : 0;
-            $this->fs_path_status = 'success';
-            $this->fs_path_message = __('backup-source.fs_path_exists', ['count' => $count]);
+            $this->fs_path_statuses[$index] = 'success';
+            $this->fs_path_messages[$index] = __('backup-source.fs_path_exists', ['count' => $count]);
         } elseif (is_file($path) && is_readable($path)) {
-            $this->fs_path_status = 'success';
-            $this->fs_path_message = __('backup-source.fs_path_is_file');
+            $this->fs_path_statuses[$index] = 'success';
+            $this->fs_path_messages[$index] = __('backup-source.fs_path_is_file');
         } else {
-            $this->fs_path_status = 'failed';
-            $this->fs_path_message = __('backup-source.fs_path_not_found');
+            $this->fs_path_statuses[$index] = 'failed';
+            $this->fs_path_messages[$index] = __('backup-source.fs_path_not_found');
+        }
+    }
+
+    public function checkAllFilesystemPaths(): void
+    {
+        foreach ($this->fs_paths as $index => $path) {
+            $this->checkFilesystemPath($index);
         }
     }
 
