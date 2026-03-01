@@ -15,6 +15,10 @@ class RestoreLog extends Model
         'backup_log_id',
         'user_id',
         'restore_type',
+        'restore_target',
+        'remote_host_config',
+        'custom_names',
+        'override_existing',
         'selected_items',
         'status',
         'started_at',
@@ -34,6 +38,9 @@ class RestoreLog extends Model
             'duration_seconds' => 'integer',
             'meta' => 'array',
             'selected_items' => 'array',
+            'remote_host_config' => 'encrypted:array',
+            'custom_names' => 'array',
+            'override_existing' => 'boolean',
         ];
     }
 

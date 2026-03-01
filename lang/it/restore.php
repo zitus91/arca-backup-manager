@@ -69,9 +69,66 @@ return [
     'confirm_databases' => 'Database da ripristinare',
     'confirm_paths' => 'Percorsi da ripristinare',
 
+    // Restore target
+    'restore_target' => 'Destinazione Restore',
+    'target_same_host' => 'Stesso Host',
+    'target_same_host_desc' => 'Ripristina sullo stesso server di origine',
+    'target_remote_host' => 'Host Remoto',
+    'target_remote_host_desc' => 'Ripristina su un server diverso',
+
+    // Remote config
+    'remote_config' => 'Configurazione Host Remoto',
+    'remote_mysql_config' => 'Connessione MySQL',
+    'remote_mongodb_config' => 'Connessione MongoDB',
+    'remote_filesystem_config' => 'Connessione SSH (Filesystem)',
+    'remote_host' => 'Host',
+    'remote_port' => 'Porta',
+    'remote_username' => 'Username',
+    'remote_password' => 'Password',
+    'remote_auth_database' => 'Database Auth',
+    'remote_ssh_host' => 'Host SSH',
+    'remote_ssh_port' => 'Porta SSH',
+    'remote_ssh_user' => 'Utente SSH',
+    'remote_ssh_key_path' => 'Percorso Chiave SSH',
+
+    // Custom names
+    'reset_names' => 'Ripristina nomi predefiniti',
+    'custom_name_empty' => 'Il nome destinazione non può essere vuoto per gli elementi selezionati.',
+
+    // Override
+    'override_existing' => 'Sovrascrivi dati esistenti',
+    'override_existing_desc' => 'Se un database o una directory con il nome destinazione esiste già, verrà completamente sostituito.',
+    'override_warning_title' => 'Pericolo - Operazione Irreversibile',
+    'override_warning_1' => 'I database esistenti con lo stesso nome verranno ELIMINATI e tutti i dati saranno persi permanentemente.',
+    'override_warning_2' => 'Le directory esistenti verranno completamente cancellate prima del ripristino.',
+    'override_warning_3' => 'Questa operazione NON PUÒ essere annullata. Assicurati di avere un backup dei dati attuali.',
+    'override_same_name_warning' => 'Il database originale verrà sovrascritto!',
+    'override_confirm_title' => 'AVVISO CRITICO',
+    'override_confirm_desc' => 'Hai abilitato la modalità sovrascrittura. I database e/o le directory esistenti con i nomi destinazione verranno ELIMINATI PERMANENTEMENTE prima del restore. Questa azione è IRREVERSIBILE.',
+
+    // Confirmation additions
+    'confirm_target' => 'Destinazione Restore',
+    'confirm_target_same' => 'Stesso Host (Server Originale)',
+    'confirm_target_remote' => 'Host Remoto',
+    'confirm_override' => 'Modalità Sovrascrittura',
+    'confirm_override_yes' => 'SÌ - I dati esistenti verranno sostituiti',
+    'confirm_override_no' => 'No - Restore sicuro',
+
+    // Validation
+    'remote_mysql_required' => 'Inserisci i dettagli di connessione MySQL dell\'host remoto.',
+    'remote_mongodb_required' => 'Inserisci i dettagli di connessione MongoDB dell\'host remoto.',
+    'remote_filesystem_required' => 'Inserisci i dettagli di connessione SSH per il restore del filesystem.',
+
     // Warnings
     'warning_title' => 'Importante',
-    'warning_desc' => 'I database verranno ripristinati con suffisso "_restored_TIMESTAMP" (es. mydb → mydb_restored_20260227_143000). I file verranno ripristinati nel percorso originale con lo stesso suffisso (es. /data/app → /data/app_restored_20260227_143000).',
+    'warning_db_header' => 'Database',
+    'warning_fs_header' => 'Filesystem',
+    'warning_override_tag' => 'Sovrascrittura!',
+    'warning_drop_if_exists_tag' => 'Drop se esiste',
+    'warning_rm_if_exists_tag' => 'Elimina se esiste',
+    'warning_remote_target' => 'Il restore verrà eseguito sull\'host remoto configurato.',
+    'warning_same_target' => 'Il restore verrà eseguito sullo stesso host di origine.',
+    'warning_override_active' => '⚠ Modalità sovrascrittura attiva: i dati esistenti con lo stesso nome destinazione verranno distrutti permanentemente prima del restore.',
 
     // Confirmation
     'confirm_title' => 'Conferma Restore',

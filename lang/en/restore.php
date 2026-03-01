@@ -69,9 +69,66 @@ return [
     'confirm_databases' => 'Databases to restore',
     'confirm_paths' => 'Paths to restore',
 
+    // Restore target
+    'restore_target' => 'Restore Target',
+    'target_same_host' => 'Same Host',
+    'target_same_host_desc' => 'Restore to the original server',
+    'target_remote_host' => 'Remote Host',
+    'target_remote_host_desc' => 'Restore to a different server',
+
+    // Remote config
+    'remote_config' => 'Remote Host Configuration',
+    'remote_mysql_config' => 'MySQL Connection',
+    'remote_mongodb_config' => 'MongoDB Connection',
+    'remote_filesystem_config' => 'SSH Connection (Filesystem)',
+    'remote_host' => 'Host',
+    'remote_port' => 'Port',
+    'remote_username' => 'Username',
+    'remote_password' => 'Password',
+    'remote_auth_database' => 'Auth Database',
+    'remote_ssh_host' => 'SSH Host',
+    'remote_ssh_port' => 'SSH Port',
+    'remote_ssh_user' => 'SSH User',
+    'remote_ssh_key_path' => 'SSH Key Path',
+
+    // Custom names
+    'reset_names' => 'Reset to defaults',
+    'custom_name_empty' => 'Target name cannot be empty for selected items.',
+
+    // Override
+    'override_existing' => 'Override existing data',
+    'override_existing_desc' => 'If a database or directory with the target name already exists, it will be completely replaced.',
+    'override_warning_title' => 'Danger - Irreversible Operation',
+    'override_warning_1' => 'Existing databases with the same name will be DROPPED and all data will be permanently lost.',
+    'override_warning_2' => 'Existing directories will be completely deleted before restoring.',
+    'override_warning_3' => 'This operation CANNOT be undone. Make sure you have a backup of the current data.',
+    'override_same_name_warning' => 'The original database will be overwritten!',
+    'override_confirm_title' => 'CRITICAL WARNING',
+    'override_confirm_desc' => 'You have enabled override mode. Existing databases and/or directories with the target names will be PERMANENTLY DELETED before restore. This action is IRREVERSIBLE.',
+
+    // Confirmation additions
+    'confirm_target' => 'Restore Target',
+    'confirm_target_same' => 'Same Host (Original Server)',
+    'confirm_target_remote' => 'Remote Host',
+    'confirm_override' => 'Override Mode',
+    'confirm_override_yes' => 'YES - Existing data will be replaced',
+    'confirm_override_no' => 'No - Safe restore',
+
+    // Validation
+    'remote_mysql_required' => 'Please provide MySQL remote host connection details.',
+    'remote_mongodb_required' => 'Please provide MongoDB remote host connection details.',
+    'remote_filesystem_required' => 'Please provide SSH connection details for filesystem restore.',
+
     // Warnings
     'warning_title' => 'Important',
-    'warning_desc' => 'Databases will be restored with "_restored_TIMESTAMP" suffix (e.g. mydb → mydb_restored_20260227_143000). Files will be restored to the original path with the same suffix (e.g. /data/app → /data/app_restored_20260227_143000).',
+    'warning_db_header' => 'Databases',
+    'warning_fs_header' => 'Filesystem',
+    'warning_override_tag' => 'Overwrite!',
+    'warning_drop_if_exists_tag' => 'Drop if exists',
+    'warning_rm_if_exists_tag' => 'Delete if exists',
+    'warning_remote_target' => 'The restore will be executed on the configured remote host.',
+    'warning_same_target' => 'The restore will be executed on the original source host.',
+    'warning_override_active' => '⚠ Override mode is active: existing data with the same target name will be permanently destroyed before restore.',
 
     // Confirmation
     'confirm_title' => 'Confirm Restore',

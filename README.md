@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/Livewire-4-purple" alt="Livewire">
   <img src="https://img.shields.io/badge/TailwindCSS-4-38bdf8?logo=tailwindcss" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/DaisyUI-5-green" alt="DaisyUI">
+  <img src="https://img.shields.io/badge/Version-1.1.0-brightgreen" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -37,6 +38,7 @@
 - [Immagini e Asset](#-immagini-e-asset)
 - [Testing](#-testing)
 - [Struttura del Progetto](#-struttura-del-progetto)
+- [Changelog](#-changelog)
 - [License](#-license)
 
 ---
@@ -68,6 +70,11 @@
 - Ripristino selettivo: solo database, solo file, o completo
 - Ripristino in database/directory con suffisso `_restored_<timestamp>` (non distruttivo)
 - Supporto formati compressi (`.gz`, `.zip`, `.tar.gz`)
+- **Ripristino su host remoto** — MySQL, MongoDB e filesystem via SSH/rsync
+- **Nomi target personalizzati** — Nome database o percorso di destinazione editabile per ogni elemento
+- **Override (sovrascrittura)** — Opzione per sovrascrivere database/directory esistenti con avvisi di sicurezza multipli
+- **Disclaimer interattivo** — Riepilogo in tempo reale delle operazioni con tag contestuali (OVERRIDE, DROP IF EXISTS)
+- **Conferma a doppio step** — Step di conferma aggiuntivo con dettagli completi prima dell'esecuzione
 
 ### Monitoraggio & UI
 - **Dashboard real-time** con statistiche, grafici successi/fallimenti, salute dei job
@@ -652,7 +659,13 @@ backup-manager/
 
 ---
 
-## 📄 License
+## � Changelog
+
+Consulta il file [CHANGELOG.md](CHANGELOG.md) per la lista completa delle modifiche per ogni versione.
+
+---
+
+## �📄 License
 
 Questo progetto è rilasciato sotto licenza [MIT](LICENSE).
 

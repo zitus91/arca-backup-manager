@@ -203,7 +203,7 @@
     {{-- Restore Modal --}}
     @if ($showRestoreModal && $selectedBackupLogId)
         <div class="modal modal-open">
-            <div class="modal-box max-w-2xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 {{-- Modal Header --}}
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <div class="flex items-center gap-3">
@@ -220,8 +220,8 @@
                 </div>
 
                 @if (! $showConfirmation)
-                    {{-- Step 1: Select restore type --}}
-                    <div class="px-6 py-5 space-y-5">
+                    {{-- Step 1: Select restore options --}}
+                    <div class="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
                         {{-- Backup Info --}}
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -242,9 +242,131 @@
                             </div>
                         </div>
 
-                        {{-- Backup Contents with selectable items --}}
+                        {{-- Restore Target Selection --}}
                         <div>
-                            <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-2">{{ __('restore.backup_contains') }}</p>
+                            <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-3">{{ __('restore.restore_target') }}</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="cursor-pointer">
+                                    <input type="radio" wire:model.live="restoreTarget" value="same_host" class="peer hidden" />
+                                    <div class="border-2 rounded-xl p-4 text-center transition-all
+                                        peer-checked:border-primary peer-checked:bg-primary/5
+                                        border-base-content/10 hover:border-base-content/20">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mx-auto mb-2 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" /></svg>
+                                        <p class="text-sm font-semibold">{{ __('restore.target_same_host') }}</p>
+                                        <p class="text-[10px] text-base-content/40 mt-1">{{ __('restore.target_same_host_desc') }}</p>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" wire:model.live="restoreTarget" value="remote_host" class="peer hidden" />
+                                    <div class="border-2 rounded-xl p-4 text-center transition-all
+                                        peer-checked:border-primary peer-checked:bg-primary/5
+                                        border-base-content/10 hover:border-base-content/20">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mx-auto mb-2 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" /></svg>
+                                        <p class="text-sm font-semibold">{{ __('restore.target_remote_host') }}</p>
+                                        <p class="text-[10px] text-base-content/40 mt-1">{{ __('restore.target_remote_host_desc') }}</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- Remote Host Configuration --}}
+                        @if ($restoreTarget === 'remote_host')
+                            <div class="rounded-xl border border-primary/20 bg-primary/[0.02] p-4 space-y-4">
+                                <p class="text-xs font-semibold text-primary uppercase tracking-wider">{{ __('restore.remote_config') }}</p>
+
+                                @if (($selectedBackupInfo['has_mysql'] ?? false) && in_array($restoreType, ['full', 'db_only']))
+                                    <div class="space-y-2">
+                                        <p class="text-xs font-medium text-base-content/60 flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-400">MySQL</span>
+                                            {{ __('restore.remote_mysql_config') }}
+                                        </p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.host" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="192.168.1.100" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.port" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="3306" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.username" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="root" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</span></label>
+                                                <input type="password" wire:model.live.debounce.500ms="remoteConfig.mysql.password" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if (($selectedBackupInfo['has_mongodb'] ?? false) && in_array($restoreType, ['full', 'db_only']))
+                                    <div class="space-y-2">
+                                        <p class="text-xs font-medium text-base-content/60 flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-green-500/10 text-green-400">MongoDB</span>
+                                            {{ __('restore.remote_mongodb_config') }}
+                                        </p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.host" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="192.168.1.100" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.port" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="27017" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.username" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</span></label>
+                                                <input type="password" wire:model.live.debounce.500ms="remoteConfig.mongodb.password" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" />
+                                            </div>
+                                            <div class="form-control col-span-2">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_auth_database') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.auth_database" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="admin" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if (($selectedBackupInfo['has_filesystem'] ?? false) && in_array($restoreType, ['full', 'files_only']))
+                                    <div class="space-y-2">
+                                        <p class="text-xs font-medium text-base-content/60 flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-orange-500/10 text-orange-400">SSH</span>
+                                            {{ __('restore.remote_filesystem_config') }}
+                                        </p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_host') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_host" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="192.168.1.100" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_port') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_port" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="22" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_user') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_user" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="root" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_key_path') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_key_path" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="/root/.ssh/id_rsa" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
+                        {{-- Backup Contents with editable target names --}}
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('restore.backup_contains') }}</p>
+                                <button type="button" wire:click="resetCustomNames" class="text-xs text-primary hover:underline">{{ __('restore.reset_names') }}</button>
+                            </div>
                             <div class="space-y-2">
                                 @if ($selectedBackupInfo['has_mysql'] ?? false)
                                     <div class="rounded-lg border border-base-content/5 bg-base-200/30 p-3 space-y-2">
@@ -252,14 +374,24 @@
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-400">MySQL</span>
                                             <span class="text-xs text-base-content/40">{{ __('restore.select_items_hint') }}</span>
                                         </div>
-                                        @foreach ($selectedBackupInfo['mysql_databases'] ?? [] as $db)
-                                            <label class="flex items-center gap-3 cursor-pointer group px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
-                                                <input type="checkbox" wire:model="selectedDatabases" value="{{ $db }}"
-                                                    class="checkbox checkbox-sm checkbox-primary rounded"
-                                                    {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
-                                                <span class="text-sm text-base-content/70 font-mono">{{ $db }}</span>
-                                                <span class="text-base-content/30 text-xs ml-auto">→ {{ $db }}_restored_{{ now()->format('Ymd_His') }}</span>
-                                            </label>
+                                        @foreach ($customDbNames as $index => $item)
+                                            @if ($item['type'] === 'mysql')
+                                                <div class="px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                    <label class="flex items-center gap-3 cursor-pointer">
+                                                        <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}"
+                                                            class="checkbox checkbox-sm checkbox-primary rounded"
+                                                            {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                        <span class="text-sm text-base-content/70 font-mono whitespace-nowrap">{{ $item['original'] }}</span>
+                                                        <span class="text-base-content/30 text-xs">→</span>
+                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target"
+                                                            class="input input-xs input-bordered rounded-lg font-mono flex-1 bg-base-100 border-base-content/10 focus:border-primary text-xs"
+                                                            {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                    </label>
+                                                    @if ($overrideExisting && $item['target'] === $item['original'])
+                                                        <p class="text-[10px] text-error font-semibold mt-1 ml-8">⚠ {{ __('restore.override_same_name_warning') }}</p>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         @endforeach
                                     </div>
                                 @endif
@@ -269,14 +401,24 @@
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-green-500/10 text-green-400">MongoDB</span>
                                             <span class="text-xs text-base-content/40">{{ __('restore.select_items_hint') }}</span>
                                         </div>
-                                        @foreach ($selectedBackupInfo['mongodb_databases'] ?? [] as $db)
-                                            <label class="flex items-center gap-3 cursor-pointer group px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
-                                                <input type="checkbox" wire:model="selectedDatabases" value="{{ $db }}"
-                                                    class="checkbox checkbox-sm checkbox-primary rounded"
-                                                    {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
-                                                <span class="text-sm text-base-content/70 font-mono">{{ $db }}</span>
-                                                <span class="text-base-content/30 text-xs ml-auto">→ {{ $db }}_restored_{{ now()->format('Ymd_His') }}</span>
-                                            </label>
+                                        @foreach ($customDbNames as $index => $item)
+                                            @if ($item['type'] === 'mongodb')
+                                                <div class="px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                    <label class="flex items-center gap-3 cursor-pointer">
+                                                        <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}"
+                                                            class="checkbox checkbox-sm checkbox-primary rounded"
+                                                            {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                        <span class="text-sm text-base-content/70 font-mono whitespace-nowrap">{{ $item['original'] }}</span>
+                                                        <span class="text-base-content/30 text-xs">→</span>
+                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target"
+                                                            class="input input-xs input-bordered rounded-lg font-mono flex-1 bg-base-100 border-base-content/10 focus:border-primary text-xs"
+                                                            {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                    </label>
+                                                    @if ($overrideExisting && $item['target'] === $item['original'])
+                                                        <p class="text-[10px] text-error font-semibold mt-1 ml-8">⚠ {{ __('restore.override_same_name_warning') }}</p>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         @endforeach
                                     </div>
                                 @endif
@@ -286,18 +428,50 @@
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-orange-500/10 text-orange-400">Files</span>
                                             <span class="text-xs text-base-content/40">{{ __('restore.select_items_hint') }}</span>
                                         </div>
-                                        @foreach ($selectedBackupInfo['filesystem_paths'] ?? [] as $path)
-                                            <label class="flex items-center gap-3 cursor-pointer group px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['db_only']) ? 'opacity-30 pointer-events-none' : '' }}">
-                                                <input type="checkbox" wire:model="selectedPaths" value="{{ $path }}"
-                                                    class="checkbox checkbox-sm checkbox-primary rounded"
-                                                    {{ in_array($restoreType, ['db_only']) ? 'disabled' : '' }} />
-                                                <span class="text-sm text-base-content/70 font-mono text-xs">{{ $path }}</span>
-                                                <span class="text-base-content/30 text-xs ml-auto">→ {{ rtrim($path, '/') }}_restored_{{ now()->format('Ymd_His') }}</span>
-                                            </label>
+                                        @foreach ($customPaths as $index => $item)
+                                            <div class="px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['db_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                <label class="flex items-center gap-3 cursor-pointer">
+                                                    <input type="checkbox" wire:model.live="selectedPaths" value="{{ $item['original'] }}"
+                                                        class="checkbox checkbox-sm checkbox-primary rounded"
+                                                        {{ in_array($restoreType, ['db_only']) ? 'disabled' : '' }} />
+                                                    <span class="text-sm text-base-content/70 font-mono text-xs whitespace-nowrap">{{ $item['original'] }}</span>
+                                                    <span class="text-base-content/30 text-xs">→</span>
+                                                    <input type="text" wire:model.live.debounce.300ms="customPaths.{{ $index }}.target"
+                                                        class="input input-xs input-bordered rounded-lg font-mono flex-1 bg-base-100 border-base-content/10 focus:border-primary text-xs"
+                                                        {{ in_array($restoreType, ['db_only']) ? 'disabled' : '' }} />
+                                                </label>
+                                                @if ($overrideExisting && $item['target'] === $item['original'])
+                                                    <p class="text-[10px] text-error font-semibold mt-1 ml-8">⚠ {{ __('restore.override_same_name_warning') }}</p>
+                                                @endif
+                                            </div>
                                         @endforeach
                                     </div>
                                 @endif
                             </div>
+                        </div>
+
+                        {{-- Override Existing --}}
+                        <div class="rounded-xl border border-error/20 bg-error/[0.02] p-4 space-y-3">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" wire:model.live="overrideExisting" class="toggle toggle-error toggle-sm" />
+                                <div>
+                                    <p class="text-sm font-semibold text-error">{{ __('restore.override_existing') }}</p>
+                                    <p class="text-xs text-error/60">{{ __('restore.override_existing_desc') }}</p>
+                                </div>
+                            </label>
+                            @if ($overrideExisting)
+                                <div class="rounded-lg border border-error/30 bg-error/10 p-3 space-y-2">
+                                    <div class="flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                        <p class="text-xs font-bold text-error uppercase">{{ __('restore.override_warning_title') }}</p>
+                                    </div>
+                                    <ul class="text-xs text-error/80 space-y-1 list-disc list-inside">
+                                        <li>{{ __('restore.override_warning_1') }}</li>
+                                        <li>{{ __('restore.override_warning_2') }}</li>
+                                        <li>{{ __('restore.override_warning_3') }}</li>
+                                    </ul>
+                                </div>
+                            @endif
                         </div>
 
                         {{-- Restore Type Selection --}}
@@ -312,7 +486,7 @@
                                 <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-3">{{ __('restore.select_type') }}</p>
                                 <div class="grid grid-cols-3 gap-3">
                                     <label class="cursor-pointer">
-                                        <input type="radio" wire:model="restoreType" value="full" class="peer hidden" />
+                                        <input type="radio" wire:model.live="restoreType" value="full" class="peer hidden" />
                                         <div class="border-2 rounded-xl p-4 text-center transition-all
                                             peer-checked:border-primary peer-checked:bg-primary/5
                                             border-base-content/10 hover:border-base-content/20">
@@ -322,7 +496,7 @@
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
-                                        <input type="radio" wire:model="restoreType" value="db_only" class="peer hidden" />
+                                        <input type="radio" wire:model.live="restoreType" value="db_only" class="peer hidden" />
                                         <div class="border-2 rounded-xl p-4 text-center transition-all
                                             peer-checked:border-primary peer-checked:bg-primary/5
                                             border-base-content/10 hover:border-base-content/20">
@@ -332,7 +506,7 @@
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
-                                        <input type="radio" wire:model="restoreType" value="files_only" class="peer hidden" />
+                                        <input type="radio" wire:model.live="restoreType" value="files_only" class="peer hidden" />
                                         <div class="border-2 rounded-xl p-4 text-center transition-all
                                             peer-checked:border-primary peer-checked:bg-primary/5
                                             border-base-content/10 hover:border-base-content/20">
@@ -345,13 +519,98 @@
                             </div>
                         @endif
 
-                        {{-- Warning --}}
-                        <div class="rounded-xl border border-warning/20 bg-warning/[0.03] p-4">
+                        {{-- Dynamic Warning --}}
+                        <div class="rounded-xl border {{ $overrideExisting ? 'border-error/30 bg-error/[0.03]' : 'border-warning/20 bg-warning/[0.03]' }} p-4">
                             <div class="flex gap-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                                <div>
-                                    <p class="text-sm font-medium text-warning">{{ __('restore.warning_title') }}</p>
-                                    <p class="text-xs text-warning/70 mt-1">{{ __('restore.warning_desc') }}</p>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 {{ $overrideExisting ? 'text-error' : 'text-warning' }} flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                <div class="space-y-2 flex-1">
+                                    <p class="text-sm font-medium {{ $overrideExisting ? 'text-error' : 'text-warning' }}">{{ __('restore.warning_title') }}</p>
+
+                                    {{-- Database summary --}}
+                                    @if (in_array($restoreType, ['full', 'db_only']) && ! empty($customDbNames))
+                                        @php
+                                            $activeDbNames = collect($customDbNames)->filter(fn ($item) => in_array($item['original'], $selectedDatabases));
+                                        @endphp
+                                        @if ($activeDbNames->isNotEmpty())
+                                            <div class="text-xs {{ $overrideExisting ? 'text-error/70' : 'text-warning/70' }}">
+                                                <p class="font-semibold mb-0.5">{{ __('restore.warning_db_header') }}:</p>
+                                                <ul class="space-y-0.5 ml-3">
+                                                    @foreach ($activeDbNames as $item)
+                                                        <li class="flex items-center gap-1.5 font-mono">
+                                                            <span>{{ $item['original'] }}</span>
+                                                            <span class="text-base-content/30">→</span>
+                                                            <span class="font-semibold">{{ $item['target'] }}</span>
+                                                            @if ($overrideExisting && $item['target'] === $item['original'])
+                                                                <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold uppercase bg-error/20 text-error">{{ __('restore.warning_override_tag') }}</span>
+                                                            @elseif ($overrideExisting)
+                                                                <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold uppercase bg-error/10 text-error/70">{{ __('restore.warning_drop_if_exists_tag') }}</span>
+                                                            @endif
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
+                                    @endif
+
+                                    {{-- Filesystem summary --}}
+                                    @if (in_array($restoreType, ['full', 'files_only']) && ! empty($customPaths))
+                                        @php
+                                            $activePaths = collect($customPaths)->filter(fn ($item) => in_array($item['original'], $selectedPaths));
+                                        @endphp
+                                        @if ($activePaths->isNotEmpty())
+                                            <div class="text-xs {{ $overrideExisting ? 'text-error/70' : 'text-warning/70' }}">
+                                                <p class="font-semibold mb-0.5">{{ __('restore.warning_fs_header') }}:</p>
+                                                <ul class="space-y-0.5 ml-3">
+                                                    @foreach ($activePaths as $item)
+                                                        <li class="flex items-center gap-1.5 font-mono text-[11px]">
+                                                            <span>{{ $item['original'] }}</span>
+                                                            <span class="text-base-content/30">→</span>
+                                                            <span class="font-semibold">{{ $item['target'] }}</span>
+                                                            @if ($overrideExisting && $item['target'] === $item['original'])
+                                                                <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold uppercase bg-error/20 text-error">{{ __('restore.warning_override_tag') }}</span>
+                                                            @elseif ($overrideExisting)
+                                                                <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold uppercase bg-error/10 text-error/70">{{ __('restore.warning_rm_if_exists_tag') }}</span>
+                                                            @endif
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
+                                    @endif
+
+                                    {{-- Target summary --}}
+                                    <div class="text-xs {{ $overrideExisting ? 'text-error/60' : 'text-warning/60' }}">
+                                        @if ($restoreTarget === 'remote_host')
+                                            <p>{{ __('restore.warning_remote_target') }}</p>
+                                            <ul class="mt-1 ml-3 space-y-0.5 font-mono text-[11px]">
+                                                @if (! empty($remoteConfig['mysql']['host']) && in_array($restoreType, ['full', 'db_only']))
+                                                    <li class="flex items-center gap-1.5">
+                                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold uppercase bg-blue-500/10 text-blue-400">MySQL</span>
+                                                        <span>{{ $remoteConfig['mysql']['username'] ?: '?' }}@{{ $remoteConfig['mysql']['host'] }}:{{ $remoteConfig['mysql']['port'] ?: '3306' }}</span>
+                                                    </li>
+                                                @endif
+                                                @if (! empty($remoteConfig['mongodb']['host']) && in_array($restoreType, ['full', 'db_only']))
+                                                    <li class="flex items-center gap-1.5">
+                                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold uppercase bg-green-500/10 text-green-400">MongoDB</span>
+                                                        <span>{{ $remoteConfig['mongodb']['username'] ?: '?' }}@{{ $remoteConfig['mongodb']['host'] }}:{{ $remoteConfig['mongodb']['port'] ?: '27017' }}</span>
+                                                    </li>
+                                                @endif
+                                                @if (! empty($remoteConfig['filesystem']['ssh_host']) && in_array($restoreType, ['full', 'files_only']))
+                                                    <li class="flex items-center gap-1.5">
+                                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold uppercase bg-orange-500/10 text-orange-400">SSH</span>
+                                                        <span>{{ $remoteConfig['filesystem']['ssh_user'] ?: '?' }}@{{ $remoteConfig['filesystem']['ssh_host'] }}:{{ $remoteConfig['filesystem']['ssh_port'] ?: '22' }}</span>
+                                                    </li>
+                                                @endif
+                                            </ul>
+                                        @else
+                                            <p>{{ __('restore.warning_same_target') }}</p>
+                                        @endif
+                                    </div>
+
+                                    {{-- Override final warning --}}
+                                    @if ($overrideExisting)
+                                        <p class="text-xs font-bold text-error mt-1">{{ __('restore.warning_override_active') }}</p>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -367,12 +626,21 @@
                     </div>
                 @else
                     {{-- Step 2: Confirmation --}}
-                    <div class="px-6 py-5 space-y-5">
-                        <div class="rounded-xl border border-error/20 bg-error/[0.03] p-5 text-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto text-error/60 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                            <h4 class="text-lg font-bold text-error mb-2">{{ __('restore.confirm_title') }}</h4>
-                            <p class="text-sm text-base-content/60">{{ __('restore.confirm_desc') }}</p>
-                        </div>
+                    <div class="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+                        {{-- Override critical warning --}}
+                        @if ($overrideExisting)
+                            <div class="rounded-xl border-2 border-error bg-error/10 p-5 text-center animate-pulse">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 mx-auto text-error mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                <h4 class="text-lg font-black text-error mb-2 uppercase">{{ __('restore.override_confirm_title') }}</h4>
+                                <p class="text-sm text-error/80">{{ __('restore.override_confirm_desc') }}</p>
+                            </div>
+                        @else
+                            <div class="rounded-xl border border-error/20 bg-error/[0.03] p-5 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto text-error/60 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                <h4 class="text-lg font-bold text-error mb-2">{{ __('restore.confirm_title') }}</h4>
+                                <p class="text-sm text-base-content/60">{{ __('restore.confirm_desc') }}</p>
+                            </div>
+                        @endif
 
                         <div class="bg-base-200/50 border border-base-content/5 rounded-xl p-4 space-y-2">
                             <div class="flex justify-between text-sm">
@@ -382,6 +650,18 @@
                             <div class="flex justify-between text-sm">
                                 <span class="text-base-content/50">{{ __('restore.col_type') }}</span>
                                 <span class="font-medium">{{ __('restore.type_' . $restoreType) }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-base-content/50">{{ __('restore.confirm_target') }}</span>
+                                <span class="font-medium {{ $restoreTarget === 'remote_host' ? 'text-warning' : '' }}">
+                                    {{ $restoreTarget === 'remote_host' ? __('restore.confirm_target_remote') : __('restore.confirm_target_same') }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-base-content/50">{{ __('restore.confirm_override') }}</span>
+                                <span class="font-medium {{ $overrideExisting ? 'text-error font-bold' : '' }}">
+                                    {{ $overrideExisting ? __('restore.confirm_override_yes') : __('restore.confirm_override_no') }}
+                                </span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-base-content/50">{{ __('restore.info_date') }}</span>
@@ -396,12 +676,38 @@
                                 <span class="font-medium">{{ $selectedBackupInfo['destination_name'] ?? '-' }}</span>
                             </div>
 
+                            @if ($restoreTarget === 'remote_host')
+                                <div class="pt-2 border-t border-base-content/5">
+                                    <p class="text-xs font-medium text-warning uppercase tracking-wider mb-1.5">{{ __('restore.confirm_target_remote') }}</p>
+                                    <div class="text-xs text-base-content/60 space-y-0.5">
+                                        @if (! empty($remoteConfig['mysql']['host']))
+                                            <p>MySQL: {{ $remoteConfig['mysql']['host'] }}:{{ $remoteConfig['mysql']['port'] ?? '3306' }}</p>
+                                        @endif
+                                        @if (! empty($remoteConfig['mongodb']['host']))
+                                            <p>MongoDB: {{ $remoteConfig['mongodb']['host'] }}:{{ $remoteConfig['mongodb']['port'] ?? '27017' }}</p>
+                                        @endif
+                                        @if (! empty($remoteConfig['filesystem']['ssh_host']))
+                                            <p>SSH: {{ $remoteConfig['filesystem']['ssh_user'] ?? '' }}@{{ $remoteConfig['filesystem']['ssh_host'] }}:{{ $remoteConfig['filesystem']['ssh_port'] ?? '22' }}</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+
                             @if (! empty($selectedDatabases) && in_array($restoreType, ['full', 'db_only']))
                                 <div class="pt-2 border-t border-base-content/5">
                                     <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5">{{ __('restore.confirm_databases') }}</p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach ($selectedDatabases as $db)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-info/10 text-info">{{ $db }}</span>
+                                    <div class="space-y-1">
+                                        @foreach ($customDbNames as $item)
+                                            @if (in_array($item['original'], $selectedDatabases))
+                                                <div class="flex items-center gap-2 text-xs">
+                                                    <span class="font-mono text-info">{{ $item['original'] }}</span>
+                                                    <span class="text-base-content/30">→</span>
+                                                    <span class="font-mono font-semibold {{ $overrideExisting && $item['target'] === $item['original'] ? 'text-error' : 'text-base-content/70' }}">{{ $item['target'] }}</span>
+                                                    @if ($overrideExisting && $item['target'] === $item['original'])
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-error/20 text-error">OVERRIDE</span>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         @endforeach
                                     </div>
                                 </div>
@@ -410,9 +716,18 @@
                             @if (! empty($selectedPaths) && in_array($restoreType, ['full', 'files_only']))
                                 <div class="pt-2 border-t border-base-content/5">
                                     <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5">{{ __('restore.confirm_paths') }}</p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach ($selectedPaths as $path)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-accent/10 text-accent">{{ $path }}</span>
+                                    <div class="space-y-1">
+                                        @foreach ($customPaths as $item)
+                                            @if (in_array($item['original'], $selectedPaths))
+                                                <div class="flex items-center gap-2 text-xs">
+                                                    <span class="font-mono text-accent">{{ $item['original'] }}</span>
+                                                    <span class="text-base-content/30">→</span>
+                                                    <span class="font-mono font-semibold {{ $overrideExisting && $item['target'] === $item['original'] ? 'text-error' : 'text-base-content/70' }}">{{ $item['target'] }}</span>
+                                                    @if ($overrideExisting && $item['target'] === $item['original'])
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-error/20 text-error">OVERRIDE</span>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         @endforeach
                                     </div>
                                 </div>
@@ -423,7 +738,7 @@
                     {{-- Footer Step 2 --}}
                     <div class="flex justify-end gap-2 px-6 py-4 border-t border-base-content/5">
                         <button wire:click="$set('showConfirmation', false)" class="btn btn-sm rounded-xl">{{ __('restore.back') }}</button>
-                        <button wire:click="executeRestore" class="btn btn-error btn-sm rounded-xl gap-2" wire:loading.attr="disabled">
+                        <button wire:click="executeRestore" class="btn {{ $overrideExisting ? 'btn-error' : 'btn-error' }} btn-sm rounded-xl gap-2" wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="executeRestore">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" /></svg>
                             </span>

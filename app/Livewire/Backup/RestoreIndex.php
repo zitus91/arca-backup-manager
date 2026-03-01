@@ -31,6 +31,17 @@ class RestoreIndex extends Component
     public array $selectedDatabases = [];
     public array $selectedPaths = [];
 
+    // Custom names (editable target names)
+    public array $customDbNames = [];  // [['original' => 'db', 'target' => 'db_restored_...', 'type' => 'mysql'], ...]
+    public array $customPaths = [];    // [['original' => '/path', 'target' => '/path_restored_...'], ...]
+
+    // Restore target
+    public string $restoreTarget = 'same_host';
+    public array $remoteConfig = [];
+
+    // Override existing
+    public bool $overrideExisting = false;
+
     // Detail modal
     public bool $showDetail = false;
     public ?int $detailRestoreLogId = null;
@@ -112,6 +123,43 @@ class RestoreIndex extends Component
         );
         $this->selectedPaths = $this->selectedBackupInfo['filesystem_paths'] ?? [];
 
+        // Initialize custom names with defaults
+        $timestamp = now()->format('Ymd_His');
+        $this->customDbNames = [];
+        $this->customPaths = [];
+
+        foreach ($this->selectedBackupInfo['mysql_databases'] ?? [] as $db) {
+            $this->customDbNames[] = [
+                'original' => $db,
+                'target' => $db . '_restored_' . $timestamp,
+                'type' => 'mysql',
+            ];
+        }
+
+        foreach ($this->selectedBackupInfo['mongodb_databases'] ?? [] as $db) {
+            $this->customDbNames[] = [
+                'original' => $db,
+                'target' => $db . '_restored_' . $timestamp,
+                'type' => 'mongodb',
+            ];
+        }
+
+        foreach ($this->selectedBackupInfo['filesystem_paths'] ?? [] as $path) {
+            $this->customPaths[] = [
+                'original' => $path,
+                'target' => rtrim($path, '/') . '_restored_' . $timestamp,
+            ];
+        }
+
+        // Initialize restore target and remote config
+        $this->restoreTarget = 'same_host';
+        $this->overrideExisting = false;
+        $this->remoteConfig = [
+            'mysql' => ['host' => '', 'port' => '3306', 'username' => '', 'password' => ''],
+            'mongodb' => ['host' => '', 'port' => '27017', 'username' => '', 'password' => '', 'auth_database' => 'admin'],
+            'filesystem' => ['ssh_host' => '', 'ssh_port' => '22', 'ssh_user' => '', 'ssh_key_path' => ''],
+        ];
+
         $this->showRestoreModal = true;
         $this->showConfirmation = false;
     }
@@ -126,6 +174,11 @@ class RestoreIndex extends Component
         $this->selectedBackupInfo = [];
         $this->selectedDatabases = [];
         $this->selectedPaths = [];
+        $this->customDbNames = [];
+        $this->customPaths = [];
+        $this->restoreTarget = 'same_host';
+        $this->remoteConfig = [];
+        $this->overrideExisting = false;
         $this->showConfirmation = false;
     }
 
@@ -144,7 +197,66 @@ class RestoreIndex extends Component
             return;
         }
 
+        // Validate remote config if remote host is selected
+        if ($this->restoreTarget === 'remote_host') {
+            if ($hasSelectedDb) {
+                $hasMysql = ($this->selectedBackupInfo['has_mysql'] ?? false);
+                $hasMongo = ($this->selectedBackupInfo['has_mongodb'] ?? false);
+
+                if ($hasMysql && empty($this->remoteConfig['mysql']['host'])) {
+                    $this->dispatch('notify', type: 'error', message: __('restore.remote_mysql_required'));
+
+                    return;
+                }
+
+                if ($hasMongo && empty($this->remoteConfig['mongodb']['host'])) {
+                    $this->dispatch('notify', type: 'error', message: __('restore.remote_mongodb_required'));
+
+                    return;
+                }
+            }
+
+            if ($hasSelectedFs && empty($this->remoteConfig['filesystem']['ssh_host'])) {
+                $this->dispatch('notify', type: 'error', message: __('restore.remote_filesystem_required'));
+
+                return;
+            }
+        }
+
+        // Validate custom names are not empty
+        foreach ($this->customDbNames as $item) {
+            if (in_array($item['original'], $this->selectedDatabases) && empty(trim($item['target']))) {
+                $this->dispatch('notify', type: 'error', message: __('restore.custom_name_empty'));
+
+                return;
+            }
+        }
+
+        foreach ($this->customPaths as $item) {
+            if (in_array($item['original'], $this->selectedPaths) && empty(trim($item['target']))) {
+                $this->dispatch('notify', type: 'error', message: __('restore.custom_name_empty'));
+
+                return;
+            }
+        }
+
         $this->showConfirmation = true;
+    }
+
+    /**
+     * Reset custom names to defaults.
+     */
+    public function resetCustomNames(): void
+    {
+        $timestamp = now()->format('Ymd_His');
+
+        foreach ($this->customDbNames as $index => $item) {
+            $this->customDbNames[$index]['target'] = $item['original'] . '_restored_' . $timestamp;
+        }
+
+        foreach ($this->customPaths as $index => $item) {
+            $this->customPaths[$index]['target'] = rtrim($item['original'], '/') . '_restored_' . $timestamp;
+        }
     }
 
     /**
@@ -174,10 +286,45 @@ class RestoreIndex extends Component
             $selectedItems['filesystem_paths'] = array_values($this->selectedPaths);
         }
 
+        // Build custom names mapping
+        $customNames = ['databases' => [], 'paths' => []];
+
+        foreach ($this->customDbNames as $item) {
+            if (in_array($item['original'], $this->selectedDatabases)) {
+                $customNames['databases'][$item['original']] = $item['target'];
+            }
+        }
+
+        foreach ($this->customPaths as $item) {
+            if (in_array($item['original'], $this->selectedPaths)) {
+                $customNames['paths'][$item['original']] = $item['target'];
+            }
+        }
+
+        // Build remote host config
+        $remoteHostConfig = null;
+        if ($this->restoreTarget === 'remote_host') {
+            $remoteHostConfig = [];
+
+            if ($this->selectedBackupInfo['has_mysql'] ?? false) {
+                $remoteHostConfig['mysql'] = $this->remoteConfig['mysql'];
+            }
+            if ($this->selectedBackupInfo['has_mongodb'] ?? false) {
+                $remoteHostConfig['mongodb'] = $this->remoteConfig['mongodb'];
+            }
+            if ($this->selectedBackupInfo['has_filesystem'] ?? false) {
+                $remoteHostConfig['filesystem'] = $this->remoteConfig['filesystem'];
+            }
+        }
+
         $restoreLog = RestoreLog::create([
             'backup_log_id' => $this->selectedBackupLogId,
             'user_id' => auth()->id(),
             'restore_type' => $this->restoreType,
+            'restore_target' => $this->restoreTarget,
+            'remote_host_config' => $remoteHostConfig,
+            'custom_names' => $customNames,
+            'override_existing' => $this->overrideExisting,
             'selected_items' => $selectedItems,
             'status' => 'pending',
             'started_at' => now(),

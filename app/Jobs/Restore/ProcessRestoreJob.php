@@ -46,6 +46,12 @@ class ProcessRestoreJob implements ShouldQueue
         $source = $backupJob->source;
         $destination = $backupJob->destination;
 
+        // Read new configuration options
+        $restoreTarget = $restoreLog->restore_target ?? 'same_host';
+        $remoteHostConfig = $restoreLog->remote_host_config ?? [];
+        $customNames = $restoreLog->custom_names ?? [];
+        $overrideExisting = $restoreLog->override_existing ?? false;
+
         // 1. Mark as running
         $restoreLog->update([
             'status' => 'running',
@@ -100,10 +106,19 @@ class ProcessRestoreJob implements ShouldQueue
 
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mysqlConf, ['database' => $db]);
+
+                    // Apply remote host config if restoring to a different server
+                    if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mysql'])) {
+                        $singleConf = array_merge($singleConf, $remoteHostConfig['mysql']);
+                    }
+
+                    // Get custom target name if specified
+                    $targetDbName = $customNames['databases'][$db] ?? null;
+
                     $dumpFile = $this->findMysqlDump($isPackage ? $extractedDir : $tmpDir, $db, $isPackage);
 
                     if ($dumpFile) {
-                        $r = $mysqlRestore->restore($singleConf, $dumpFile);
+                        $r = $mysqlRestore->restore($singleConf, $dumpFile, $targetDbName, $overrideExisting);
                         $results[] = $r;
                         $restoredDbNames[] = $r['restored_db_name'];
                     }
@@ -122,10 +137,19 @@ class ProcessRestoreJob implements ShouldQueue
 
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mongoConf, ['database' => $db]);
+
+                    // Apply remote host config if restoring to a different server
+                    if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mongodb'])) {
+                        $singleConf = array_merge($singleConf, $remoteHostConfig['mongodb']);
+                    }
+
+                    // Get custom target name if specified
+                    $targetDbName = $customNames['databases'][$db] ?? null;
+
                     $archiveFile = $this->findMongoArchive($isPackage ? $extractedDir : $tmpDir, $db, $isPackage);
 
                     if ($archiveFile) {
-                        $r = $mongodbRestore->restore($singleConf, $archiveFile);
+                        $r = $mongodbRestore->restore($singleConf, $archiveFile, $targetDbName, $overrideExisting);
                         $results[] = $r;
                         $restoredDbNames[] = $r['restored_db_name'];
                     }
@@ -144,10 +168,19 @@ class ProcessRestoreJob implements ShouldQueue
 
                 foreach ($paths as $path) {
                     $singleConf = ['path' => $path, 'exclude_patterns' => $fsConf['exclude_patterns'] ?? []];
+
+                    // Apply remote host SSH config if restoring to a different server
+                    if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['filesystem'])) {
+                        $singleConf['ssh'] = $remoteHostConfig['filesystem'];
+                    }
+
+                    // Get custom target path if specified
+                    $targetPath = $customNames['paths'][$path] ?? null;
+
                     $archiveFile = $this->findFilesystemArchive($isPackage ? $extractedDir : $tmpDir, basename($path), $isPackage);
 
                     if ($archiveFile) {
-                        $r = $filesystemRestore->restore($singleConf, $archiveFile);
+                        $r = $filesystemRestore->restore($singleConf, $archiveFile, $targetPath, $overrideExisting);
                         $results[] = $r;
                         $restoredPaths[] = $r['restored_path'];
                     }
@@ -167,6 +200,8 @@ class ProcessRestoreJob implements ShouldQueue
                 'restored_path' => ! empty($restoredPaths) ? implode(', ', $restoredPaths) : null,
                 'meta' => [
                     'restore_type' => $restoreType,
+                    'restore_target' => $restoreTarget,
+                    'override_existing' => $overrideExisting,
                     'results' => $results,
                 ],
             ]);

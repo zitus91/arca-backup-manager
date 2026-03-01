@@ -33,7 +33,7 @@
                     </div>
                     <div>
                         <span class="text-lg font-bold tracking-tight">Backup</span>
-                        <span class="text-xs text-base-content/50 block -mt-0.5">Manager v1.0</span>
+                        <span class="text-xs text-base-content/50 block -mt-0.5">Manager v1.1</span>
                     </div>
                 </a>
             </div>

@@ -7,21 +7,28 @@ use Illuminate\Support\Facades\Process;
 class MysqlRestoreService
 {
     /**
-     * Restore a MySQL dump file into a database with "_restored" suffix.
+     * Restore a MySQL dump file into a database.
      *
-     * @param  array   $config       MySQL connection config (host, port, username, password, database)
-     * @param  string  $dumpFilePath Path to the .sql / .sql.gz / .sql.zip file
+     * @param  array   $config           MySQL connection config (host, port, username, password, database)
+     * @param  string  $dumpFilePath     Path to the .sql / .sql.gz / .sql.zip file
+     * @param  string|null $targetDbName Custom target database name (default: originalDb_restored_TIMESTAMP)
+     * @param  bool    $overrideExisting If true, DROP existing database before restoring
      * @return array   Result with restored_db_name and meta
      */
-    public function restore(array $config, string $dumpFilePath): array
+    public function restore(array $config, string $dumpFilePath, ?string $targetDbName = null, bool $overrideExisting = false): array
     {
         $originalDb = $config['database'];
-        $restoredDb = $originalDb . '_restored_' . now()->format('Ymd_His');
+        $restoredDb = $targetDbName ?? ($originalDb . '_restored_' . now()->format('Ymd_His'));
 
-        // 1. Create the restored database if it doesn't exist
+        // 1. If override, drop existing database first
+        if ($overrideExisting) {
+            $this->dropDatabaseIfExists($config, $restoredDb);
+        }
+
+        // 2. Create the restored database if it doesn't exist
         $this->createDatabase($config, $restoredDb);
 
-        // 2. Detect compression and build restore command
+        // 3. Detect compression and build restore command
         $importCmd = $this->buildRestoreCommand($config, $restoredDb, $dumpFilePath);
 
         $result = Process::timeout(3600)->run($importCmd);
@@ -34,7 +41,29 @@ class MysqlRestoreService
             'restored_db_name' => $restoredDb,
             'original_db' => $originalDb,
             'dump_file' => basename($dumpFilePath),
+            'override_existing' => $overrideExisting,
         ];
+    }
+
+    /**
+     * Drop the target database if it exists (for override mode).
+     */
+    protected function dropDatabaseIfExists(array $config, string $dbName): void
+    {
+        $cmd = sprintf(
+            'mysql --host=%s --port=%s --user=%s --password=%s -e %s',
+            escapeshellarg($config['host']),
+            escapeshellarg((string) ($config['port'] ?? 3306)),
+            escapeshellarg($config['username']),
+            escapeshellarg($config['password']),
+            escapeshellarg("DROP DATABASE IF EXISTS `{$dbName}`;")
+        );
+
+        $result = Process::timeout(30)->run($cmd);
+
+        if (! $result->successful()) {
+            throw new \RuntimeException("Failed to drop database '{$dbName}': " . $result->errorOutput());
+        }
     }
 
     /**

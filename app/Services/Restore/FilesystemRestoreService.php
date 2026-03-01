@@ -7,16 +7,28 @@ use Illuminate\Support\Facades\Process;
 class FilesystemRestoreService
 {
     /**
-     * Restore a filesystem backup archive to the original path with "_restored" suffix.
+     * Restore a filesystem backup archive.
      *
-     * @param  array   $config       Filesystem config (path = original source path)
-     * @param  string  $archivePath  Path to the .tar.gz / .zip / .tar archive
+     * @param  array       $config           Filesystem config (path = original source path, optional ssh for remote)
+     * @param  string      $archivePath      Path to the .tar.gz / .zip / .tar archive
+     * @param  string|null $targetPath       Custom target path (default: originalPath_restored_TIMESTAMP)
+     * @param  bool        $overrideExisting If true, remove existing directory before restoring
      * @return array   Result with restored_path and meta
      */
-    public function restore(array $config, string $archivePath): array
+    public function restore(array $config, string $archivePath, ?string $targetPath = null, bool $overrideExisting = false): array
     {
         $originalPath = rtrim($config['path'], '/');
-        $restoredPath = $originalPath . '_restored_' . now()->format('Ymd_His');
+        $restoredPath = $targetPath ?? ($originalPath . '_restored_' . now()->format('Ymd_His'));
+        $sshConfig = $config['ssh'] ?? null;
+
+        if ($sshConfig) {
+            return $this->restoreRemote($originalPath, $restoredPath, $archivePath, $overrideExisting, $sshConfig);
+        }
+
+        // If override, remove existing directory first
+        if ($overrideExisting && is_dir($restoredPath)) {
+            Process::timeout(300)->run('rm -rf ' . escapeshellarg($restoredPath));
+        }
 
         // 1. Create the restored directory
         if (! is_dir($restoredPath)) {
@@ -42,6 +54,78 @@ class FilesystemRestoreService
             'original_path' => $originalPath,
             'files_count' => $fileCount,
             'archive_file' => basename($archivePath),
+            'override_existing' => $overrideExisting,
+        ];
+    }
+
+    /**
+     * Restore files to a remote host via SSH/rsync.
+     */
+    protected function restoreRemote(string $originalPath, string $targetPath, string $archivePath, bool $overrideExisting, array $sshConfig): array
+    {
+        // Extract to temp local dir first
+        $tmpDir = dirname($archivePath) . '/fs_remote_' . uniqid();
+        @mkdir($tmpDir, 0755, true);
+
+        $extractCmd = $this->buildExtractCommand($archivePath, $tmpDir);
+        $result = Process::timeout(3600)->run($extractCmd);
+
+        if (! $result->successful()) {
+            Process::run('rm -rf ' . escapeshellarg($tmpDir));
+            throw new \RuntimeException('Filesystem extract failed: ' . $result->errorOutput());
+        }
+
+        // Build SSH options
+        $sshOpts = '-o StrictHostKeyChecking=no -p ' . escapeshellarg((string) ($sshConfig['ssh_port'] ?? 22));
+        if (! empty($sshConfig['ssh_key_path'])) {
+            $sshOpts .= ' -i ' . escapeshellarg($sshConfig['ssh_key_path']);
+        }
+
+        $remoteHost = escapeshellarg($sshConfig['ssh_user'] . '@' . $sshConfig['ssh_host']);
+
+        // If override, remove remote directory first
+        if ($overrideExisting) {
+            $rmCmd = sprintf(
+                'ssh %s %s %s',
+                $sshOpts,
+                $remoteHost,
+                escapeshellarg("rm -rf " . $targetPath)
+            );
+            Process::timeout(60)->run($rmCmd);
+        }
+
+        // Create remote directory
+        $mkdirCmd = sprintf(
+            'ssh %s %s %s',
+            $sshOpts,
+            $remoteHost,
+            escapeshellarg("mkdir -p " . $targetPath)
+        );
+        Process::timeout(30)->run($mkdirCmd);
+
+        // rsync to remote
+        $rsyncCmd = sprintf(
+            'rsync -avz -e "ssh %s" %s/ %s',
+            $sshOpts,
+            escapeshellarg($tmpDir),
+            escapeshellarg($sshConfig['ssh_user'] . '@' . $sshConfig['ssh_host'] . ':' . $targetPath)
+        );
+
+        $rsyncResult = Process::timeout(3600)->run($rsyncCmd);
+
+        // Cleanup local temp
+        Process::run('rm -rf ' . escapeshellarg($tmpDir));
+
+        if (! $rsyncResult->successful()) {
+            throw new \RuntimeException('Remote filesystem restore failed: ' . $rsyncResult->errorOutput());
+        }
+
+        return [
+            'restored_path' => $sshConfig['ssh_user'] . '@' . $sshConfig['ssh_host'] . ':' . $targetPath,
+            'original_path' => $originalPath,
+            'archive_file' => basename($archivePath),
+            'override_existing' => $overrideExisting,
+            'remote' => true,
         ];
     }
 

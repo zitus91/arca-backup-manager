@@ -7,18 +7,25 @@ use Illuminate\Support\Facades\Process;
 class MongodbRestoreService
 {
     /**
-     * Restore a MongoDB dump archive into a database with "_restored" suffix.
+     * Restore a MongoDB dump archive into a database.
      *
-     * @param  array   $config       MongoDB connection config (host, port, database, username, password)
-     * @param  string  $archivePath  Path to the .tar.gz / .zip / .tar archive
+     * @param  array       $config           MongoDB connection config (host, port, database, username, password)
+     * @param  string      $archivePath      Path to the .tar.gz / .zip / .tar archive
+     * @param  string|null $targetDbName     Custom target database name (default: originalDb_restored_TIMESTAMP)
+     * @param  bool        $overrideExisting If true, DROP existing database before restoring
      * @return array   Result with restored_db_name and meta
      */
-    public function restore(array $config, string $archivePath): array
+    public function restore(array $config, string $archivePath, ?string $targetDbName = null, bool $overrideExisting = false): array
     {
         $originalDb = $config['database'];
-        $restoredDb = $originalDb . '_restored_' . now()->format('Ymd_His');
+        $restoredDb = $targetDbName ?? ($originalDb . '_restored_' . now()->format('Ymd_His'));
 
-        // 1. Extract the archive to a temp directory
+        // 1. If override, drop existing database first
+        if ($overrideExisting) {
+            $this->dropDatabaseIfExists($config, $restoredDb);
+        }
+
+        // 2. Extract the archive to a temp directory
         $extractDir = dirname($archivePath) . '/mongorestore_' . uniqid();
         @mkdir($extractDir, 0755, true);
 
@@ -45,7 +52,34 @@ class MongodbRestoreService
             'restored_db_name' => $restoredDb,
             'original_db' => $originalDb,
             'dump_file' => basename($archivePath),
+            'override_existing' => $overrideExisting,
         ];
+    }
+
+    /**
+     * Drop the target database if it exists (for override mode).
+     */
+    protected function dropDatabaseIfExists(array $config, string $dbName): void
+    {
+        $parts = [
+            'mongosh',
+            '--host', escapeshellarg($config['host']),
+            '--port', escapeshellarg((string) ($config['port'] ?? 27017)),
+        ];
+
+        if (! empty($config['username'])) {
+            $parts[] = '--username ' . escapeshellarg($config['username']);
+            $parts[] = '--password ' . escapeshellarg($config['password']);
+            $parts[] = '--authenticationDatabase ' . escapeshellarg($config['auth_database'] ?? 'admin');
+        }
+
+        $parts[] = '--eval ' . escapeshellarg("db.getSiblingDB('{$dbName}').dropDatabase()");
+
+        $result = Process::timeout(30)->run(implode(' ', $parts));
+
+        if (! $result->successful()) {
+            throw new \RuntimeException("Failed to drop MongoDB database '{$dbName}': " . $result->errorOutput());
+        }
     }
 
     /**
