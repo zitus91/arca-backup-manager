@@ -63,14 +63,60 @@
                                         @endswitch
                                     </td>
                                     <td class="text-xs text-base-content/60">
-                                        @if ($rLog->restored_db_name)
-                                            <span class="font-mono">{{ $rLog->restored_db_name }}</span>
-                                        @endif
-                                        @if ($rLog->restored_path)
-                                            <span class="font-mono">{{ $rLog->restored_path }}</span>
-                                        @endif
-                                        @if (! $rLog->restored_db_name && ! $rLog->restored_path)
-                                            -
+                                        @php
+                                            $selectedItems = $rLog->selected_items ?? [];
+                                            $customNames = $rLog->custom_names ?? [];
+                                            $mysqlDbs = $selectedItems['mysql_databases'] ?? [];
+                                            $mongoDbs = $selectedItems['mongodb_databases'] ?? [];
+                                            $fsPaths = $selectedItems['filesystem_paths'] ?? [];
+                                            $dbMapping = $customNames['databases'] ?? [];
+                                            $pathMapping = $customNames['paths'] ?? [];
+                                            $hasAny = ! empty($mysqlDbs) || ! empty($mongoDbs) || ! empty($fsPaths);
+                                        @endphp
+
+                                        @if ($hasAny)
+                                            <div class="flex flex-wrap gap-1">
+                                                @foreach ($mysqlDbs as $db)
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 font-mono">
+                                                        <span class="font-semibold uppercase text-[8px] opacity-70">MySQL</span>
+                                                        {{ $dbMapping[$db] ?? $db }}
+                                                    </span>
+                                                @endforeach
+                                                @foreach ($mongoDbs as $db)
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-400 font-mono">
+                                                        <span class="font-semibold uppercase text-[8px] opacity-70">Mongo</span>
+                                                        {{ $dbMapping[$db] ?? $db }}
+                                                    </span>
+                                                @endforeach
+                                                @foreach ($fsPaths as $path)
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 font-mono">
+                                                        <span class="font-semibold uppercase text-[8px] opacity-70">File</span>
+                                                        {{ $pathMapping[$path] ?? $path }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @elseif ($rLog->restored_db_name || $rLog->restored_path)
+                                            {{-- Fallback per restore log precedenti senza selected_items --}}
+                                            <div class="flex flex-wrap gap-1">
+                                                @if ($rLog->restored_db_name)
+                                                    @foreach (explode(', ', $rLog->restored_db_name) as $dbName)
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info font-mono">
+                                                            <span class="font-semibold uppercase text-[8px] opacity-70">DB</span>
+                                                            {{ $dbName }}
+                                                        </span>
+                                                    @endforeach
+                                                @endif
+                                                @if ($rLog->restored_path)
+                                                    @foreach (explode(', ', $rLog->restored_path) as $pathName)
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 font-mono">
+                                                            <span class="font-semibold uppercase text-[8px] opacity-70">File</span>
+                                                            {{ $pathName }}
+                                                        </span>
+                                                    @endforeach
+                                                @endif
+                                            </div>
+                                        @else
+                                            <span class="text-base-content/30">-</span>
                                         @endif
                                     </td>
                                     <td class="text-xs text-base-content/60 tabular-nums">{{ $rLog->created_at->format('d/m/Y H:i:s') }}</td>

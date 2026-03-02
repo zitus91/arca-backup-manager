@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }} &mdash; Backup Manager</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('/images/logo.png') }}">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
@@ -26,10 +27,12 @@
             {{-- Logo --}}
             <div class="px-6 py-5 border-b border-base-content/5 flex-shrink-0">
                 <a href="{{ route('admin.backup.dashboard') }}" class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary-content" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    {{-- <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20"> --}}
+                    <div class="rounded-xl flex items-center justify-center w-15 h-15">
+                        {{-- <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary-content" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                        </svg>
+                        </svg> --}}
+                        <img src="{{ asset('/images/logo.png') }}" alt="Backup Manager Logo" class="w-15 h-15" />
                     </div>
                     <div>
                         <span class="text-lg font-bold tracking-tight">Backup</span>
