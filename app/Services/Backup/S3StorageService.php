@@ -7,18 +7,24 @@ use Illuminate\Support\Facades\Storage;
 class S3StorageService
 {
     /**
-     * Upload a file to an S3 destination.
+     * Upload a file to an S3 destination using streaming to avoid memory issues.
      */
     public function upload(array $config, string $localPath, string $remotePath): string
     {
         $disk = $this->createDisk($config);
-        $content = file_get_contents($localPath);
+        $stream = fopen($localPath, 'rb');
 
-        if ($content === false) {
+        if ($stream === false) {
             throw new \RuntimeException("Cannot read local file: {$localPath}");
         }
 
-        $disk->put($remotePath, $content);
+        try {
+            $disk->writeStream($remotePath, $stream);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
 
         return $remotePath;
     }
@@ -35,17 +41,14 @@ class S3StorageService
 
     /**
      * Check if the connection to S3 works.
+     * Throws on failure so the caller can display the actual error.
      */
     public function testConnection(array $config): bool
     {
-        try {
-            $disk = $this->createDisk($config);
-            $disk->directories('/');
+        $disk = $this->createDisk($config);
+        $disk->directories('/');
 
-            return true;
-        } catch (\Throwable) {
-            return false;
-        }
+        return true;
     }
 
     /**
@@ -91,6 +94,7 @@ class S3StorageService
 
     /**
      * Create a temporary filesystem disk for the S3 config.
+     * Uses Storage::build() to avoid Laravel's disk caching.
      */
     protected function createDisk(array $config): \Illuminate\Contracts\Filesystem\Filesystem
     {
@@ -98,17 +102,16 @@ class S3StorageService
             'driver' => 's3',
             'key' => $config['access_key'],
             'secret' => $config['secret_key'],
-            'region' => $config['region'],
+            'region' => $config['region'] ?: 'us-east-1',
             'bucket' => $config['bucket'],
+            'throw' => true,
         ];
 
         if (! empty($config['endpoint'])) {
-            $diskConfig['endpoint'] = $config['endpoint'];
+            $diskConfig['endpoint'] = rtrim(trim($config['endpoint']), '/');
             $diskConfig['use_path_style_endpoint'] = true;
         }
 
-        config(['filesystems.disks.backup_s3_temp' => $diskConfig]);
-
-        return Storage::disk('backup_s3_temp');
+        return Storage::build($diskConfig);
     }
 }

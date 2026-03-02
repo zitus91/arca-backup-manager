@@ -83,7 +83,8 @@ it('validates required fields for S3', function () {
         ->set('type', 's3')
         ->set('name', '')
         ->call('save')
-        ->assertHasErrors(['name', 's3_bucket', 's3_region', 's3_access_key', 's3_secret_key']);
+        ->assertHasErrors(['name', 's3_bucket', 's3_access_key', 's3_secret_key'])
+        ->assertHasNoErrors(['s3_region']);
 });
 
 it('validates required fields for FTP', function () {

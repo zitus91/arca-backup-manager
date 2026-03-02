@@ -97,7 +97,7 @@ class StorageDestinationForm extends Component
         match ($this->type) {
             's3' => $rules = array_merge($rules, [
                 's3_bucket' => 'required|string|max:255',
-                's3_region' => 'required|string|max:255',
+                's3_region' => 'nullable|string|max:255',
                 's3_access_key' => 'required|string|max:255',
                 's3_secret_key' => 'required|string|max:255',
                 's3_endpoint' => 'nullable|string|max:500',
@@ -136,15 +136,10 @@ class StorageDestinationForm extends Component
         ];
 
         try {
-            $success = app(S3StorageService::class)->testConnection($config);
+            app(S3StorageService::class)->testConnection($config);
 
-            if ($success) {
-                $this->s3_connection_status = 'success';
-                $this->s3_connection_message = __('backup-storage-destination.s3_test_success');
-            } else {
-                $this->s3_connection_status = 'failed';
-                $this->s3_connection_message = __('backup-storage-destination.s3_test_failed');
-            }
+            $this->s3_connection_status = 'success';
+            $this->s3_connection_message = __('backup-storage-destination.s3_test_success');
         } catch (\Throwable $e) {
             $this->s3_connection_status = 'failed';
             $this->s3_connection_message = $e->getMessage();
