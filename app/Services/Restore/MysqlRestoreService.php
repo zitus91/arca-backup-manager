@@ -2,6 +2,7 @@
 
 namespace App\Services\Restore;
 
+use App\Services\Backup\SshTunnelService;
 use Illuminate\Support\Facades\Process;
 
 class MysqlRestoreService
@@ -16,6 +17,25 @@ class MysqlRestoreService
      * @return array   Result with restored_db_name and meta
      */
     public function restore(array $config, string $dumpFilePath, ?string $targetDbName = null, bool $overrideExisting = false): array
+    {
+        $ssh = $config['ssh'] ?? null;
+
+        if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
+            return app(SshTunnelService::class)->withTunnel(
+                $ssh,
+                $config['host'],
+                (int) ($config['port'] ?? 3306),
+                function (int $localPort) use ($config, $dumpFilePath, $targetDbName, $overrideExisting): array {
+                    $tunnelConfig = array_merge($config, ['host' => '127.0.0.1', 'port' => $localPort]);
+                    return $this->executeRestore($tunnelConfig, $dumpFilePath, $targetDbName, $overrideExisting);
+                }
+            );
+        }
+
+        return $this->executeRestore($config, $dumpFilePath, $targetDbName, $overrideExisting);
+    }
+
+    protected function executeRestore(array $config, string $dumpFilePath, ?string $targetDbName, bool $overrideExisting): array
     {
         $originalDb = $config['database'];
         $restoredDb = $targetDbName ?? ($originalDb . '_restored_' . now()->format('Ymd_His'));

@@ -79,6 +79,7 @@ class ProcessRestoreJob implements ShouldQueue
 
             // 3. Determine what types were backed up
             $sourceConfig = $source->config;
+            $sharedSsh    = $sourceConfig['ssh'] ?? ['enabled' => false];
             $restoreType = $restoreLog->restore_type;
             $selectedItems = $restoreLog->selected_items;
             $results = [];
@@ -110,6 +111,9 @@ class ProcessRestoreJob implements ShouldQueue
                     // Apply remote host config if restoring to a different server
                     if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mysql'])) {
                         $singleConf = array_merge($singleConf, $remoteHostConfig['mysql']);
+                    } elseif ($restoreTarget === 'same_host') {
+                        // Inject source SSH so the tunnel is used to reach the DB server
+                        $singleConf['ssh'] = $sharedSsh;
                     }
 
                     // Get custom target name if specified
@@ -141,6 +145,9 @@ class ProcessRestoreJob implements ShouldQueue
                     // Apply remote host config if restoring to a different server
                     if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mongodb'])) {
                         $singleConf = array_merge($singleConf, $remoteHostConfig['mongodb']);
+                    } elseif ($restoreTarget === 'same_host') {
+                        // Inject source SSH so the tunnel is used to reach the DB server
+                        $singleConf['ssh'] = $sharedSsh;
                     }
 
                     // Get custom target name if specified
@@ -169,8 +176,10 @@ class ProcessRestoreJob implements ShouldQueue
                 foreach ($paths as $path) {
                     $singleConf = ['path' => $path, 'exclude_patterns' => $fsConf['exclude_patterns'] ?? []];
 
-                    // Apply remote host SSH config if restoring to a different server
-                    if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['filesystem'])) {
+                    // Apply SSH config: source SSH for same_host, custom remote config for remote_host
+                    if ($restoreTarget === 'same_host') {
+                        $singleConf['ssh'] = $sharedSsh;
+                    } elseif ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['filesystem'])) {
                         $singleConf['ssh'] = $remoteHostConfig['filesystem'];
                     }
 

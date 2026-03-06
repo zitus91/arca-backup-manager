@@ -2,6 +2,7 @@
 
 namespace App\Services\Restore;
 
+use App\Services\Backup\SshTunnelService;
 use Illuminate\Support\Facades\Process;
 
 class FilesystemRestoreService
@@ -75,40 +76,37 @@ class FilesystemRestoreService
             throw new \RuntimeException('Filesystem extract failed: ' . $result->errorOutput());
         }
 
-        // Build SSH options
-        $sshOpts = '-o StrictHostKeyChecking=no -p ' . escapeshellarg((string) ($sshConfig['ssh_port'] ?? 22));
-        if (! empty($sshConfig['ssh_key_path'])) {
-            $sshOpts .= ' -i ' . escapeshellarg($sshConfig['ssh_key_path']);
-        }
+        // Build SSH options using SshTunnelService for consistent auth handling (key + sshpass)
+        $sshOptions = app(SshTunnelService::class)->buildSshOptions($sshConfig);
+        $sshUser    = $sshConfig['user'] ?? $sshConfig['ssh_user'] ?? '';
+        $sshHost    = $sshConfig['host'] ?? $sshConfig['ssh_host'] ?? '';
+        $remoteUser = escapeshellarg($sshUser . '@' . $sshHost);
 
-        $remoteHost = escapeshellarg($sshConfig['ssh_user'] . '@' . $sshConfig['ssh_host']);
+        // For plain ssh commands (mkdir, rm) we need ssh binary + options without sshpass prefix
+        $port     = (int) ($sshConfig['port'] ?? $sshConfig['ssh_port'] ?? 22);
+        $baseSsh  = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p {$port}";
+        if (($sshConfig['auth_method'] ?? 'key') === 'password' && ! empty($sshConfig['password'])) {
+            $pass    = escapeshellarg($sshConfig['password']);
+            $sshCmd  = "sshpass -p {$pass} ssh {$baseSsh}";
+        } else {
+            $keyPath = escapeshellarg($sshConfig['key_path'] ?? $sshConfig['ssh_key_path'] ?? '');
+            $sshCmd  = "ssh {$baseSsh} -i {$keyPath}";
+        }
 
         // If override, remove remote directory first
         if ($overrideExisting) {
-            $rmCmd = sprintf(
-                'ssh %s %s %s',
-                $sshOpts,
-                $remoteHost,
-                escapeshellarg("rm -rf " . $targetPath)
-            );
-            Process::timeout(60)->run($rmCmd);
+            Process::timeout(60)->run("{$sshCmd} {$remoteUser} " . escapeshellarg("rm -rf {$targetPath}"));
         }
 
         // Create remote directory
-        $mkdirCmd = sprintf(
-            'ssh %s %s %s',
-            $sshOpts,
-            $remoteHost,
-            escapeshellarg("mkdir -p " . $targetPath)
-        );
-        Process::timeout(30)->run($mkdirCmd);
+        Process::timeout(30)->run("{$sshCmd} {$remoteUser} " . escapeshellarg("mkdir -p {$targetPath}"));
 
-        // rsync to remote
+        // rsync to remote using the full ssh options string (handles sshpass)
         $rsyncCmd = sprintf(
-            'rsync -avz -e "ssh %s" %s/ %s',
-            $sshOpts,
+            'rsync -avz -e %s %s/ %s',
+            escapeshellarg($sshOptions),
             escapeshellarg($tmpDir),
-            escapeshellarg($sshConfig['ssh_user'] . '@' . $sshConfig['ssh_host'] . ':' . $targetPath)
+            escapeshellarg($sshUser . '@' . $sshHost . ':' . $targetPath)
         );
 
         $rsyncResult = Process::timeout(3600)->run($rsyncCmd);
@@ -121,7 +119,7 @@ class FilesystemRestoreService
         }
 
         return [
-            'restored_path' => $sshConfig['ssh_user'] . '@' . $sshConfig['ssh_host'] . ':' . $targetPath,
+            'restored_path' => $sshUser . '@' . $sshHost . ':' . $targetPath,
             'original_path' => $originalPath,
             'archive_file' => basename($archivePath),
             'override_existing' => $overrideExisting,

@@ -59,6 +59,7 @@ class ProcessBackupJob implements ShouldQueue
         try {
             // 2. Execute backup for each enabled source type
             $sourceConfig = $backupJob->source->config;
+            $sharedSsh = $sourceConfig['ssh'] ?? ['enabled' => false];
             $results = [];
             $totalSize = 0;
             $fileNames = [];
@@ -66,7 +67,7 @@ class ProcessBackupJob implements ShouldQueue
             if (isset($sourceConfig['mysql'])) {
                 $mysqlDir = $tmpDir . '/mysql';
                 @mkdir($mysqlDir, 0755, true);
-                $mysqlConf = $sourceConfig['mysql'];
+                $mysqlConf = array_merge($sourceConfig['mysql'], ['ssh' => $sharedSsh]);
                 $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mysqlConf, ['database' => $db]);
@@ -80,7 +81,7 @@ class ProcessBackupJob implements ShouldQueue
             if (isset($sourceConfig['mongodb'])) {
                 $mongoDir = $tmpDir . '/mongodb';
                 @mkdir($mongoDir, 0755, true);
-                $mongoConf = $sourceConfig['mongodb'];
+                $mongoConf = array_merge($sourceConfig['mongodb'], ['ssh' => $sharedSsh]);
                 $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mongoConf, ['database' => $db]);
@@ -98,7 +99,7 @@ class ProcessBackupJob implements ShouldQueue
                 $paths = $fsConf['paths'] ?? (isset($fsConf['path']) ? [$fsConf['path']] : []);
                 $excludePatterns = $fsConf['exclude_patterns'] ?? [];
                 foreach ($paths as $path) {
-                    $singleConf = ['path' => $path, 'exclude_patterns' => $excludePatterns];
+                    $singleConf = ['path' => $path, 'exclude_patterns' => $excludePatterns, 'ssh' => $sharedSsh];
                     $r = $filesystemService->backup($singleConf, $fsDir, $backupJob->compression);
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
@@ -233,11 +234,7 @@ class ProcessBackupJob implements ShouldQueue
         $date = now()->format('Y/m/d');
         $sourceName = \Illuminate\Support\Str::slug($job->source->name);
 
-        // Determine source types from config keys
-        $types = array_intersect(array_keys($job->source->config ?? []), ['mysql', 'mongodb', 'filesystem']);
-        $typeLabel = implode('-', $types) ?: 'unknown';
-
-        return "backups/{$typeLabel}/{$sourceName}/{$date}/{$fileName}";
+        return "backups/{$sourceName}/{$date}/{$fileName}";
     }
 
     /**

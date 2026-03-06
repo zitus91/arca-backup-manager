@@ -15,67 +15,6 @@ use App\Models\AuditLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-// === DEBUG: rotta diagnostica (rimuovere dopo fix) ===
-Route::get('/debug-login', function () {
-    return response()->json([
-        'app_env' => config('app.env'),
-        'app_url' => config('app.url'),
-        'session_driver' => config('session.driver'),
-        'session_domain' => config('session.domain'),
-        'session_secure' => config('session.secure'),
-        'session_same_site' => config('session.same_site'),
-        'session_cookie' => config('session.cookie'),
-        'request_url' => request()->url(),
-        'request_secure' => request()->isSecure(),
-        'request_ip' => request()->ip(),
-        'request_scheme' => request()->getScheme(),
-        'trusted_proxies' => request()->getTrustedProxies(),
-        'x_forwarded_proto' => request()->header('X-Forwarded-Proto'),
-        'x_forwarded_for' => request()->header('X-Forwarded-For'),
-        'user_count' => \App\Models\User::count(),
-        'sessions_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('sessions'),
-        'auth_check' => auth()->check(),
-        'php_version' => PHP_VERSION,
-    ]);
-});
-
-// === DEBUG: test login diretto senza Livewire (rimuovere dopo fix) ===
-Route::get('/debug-test-login', function () {
-    $email = 'admin@backup.local';
-    $password = 'password';
-    $results = [];
-
-    // 1. Verifica utente
-    $user = \App\Models\User::where('email', $email)->first();
-    $results['user_found'] = (bool) $user;
-    if ($user) {
-        $results['user_id'] = $user->id;
-        $results['password_hash_length'] = strlen($user->password);
-        $results['password_hash_starts'] = substr($user->password, 0, 20);
-        $results['hash_check'] = \Illuminate\Support\Facades\Hash::check($password, $user->password);
-        $results['hash_info'] = password_get_info($user->password);
-    }
-
-    // 2. Prova Auth::attempt
-    $results['auth_attempt'] = Auth::attempt(['email' => $email, 'password' => $password]);
-    $results['auth_check_after'] = Auth::check();
-    $results['auth_id_after'] = Auth::id();
-    $results['session_id'] = session()->getId();
-
-    // 3. Logout per non sporcare
-    Auth::logout();
-    session()->invalidate();
-    session()->regenerateToken();
-
-    // 4. Info livewire
-    $results['livewire_js_exists'] = file_exists(public_path('vendor/livewire/livewire.js'));
-    $results['livewire_config'] = config('livewire.asset_url');
-    $results['vite_manifest_exists'] = file_exists(public_path('build/manifest.json'));
-    $results['hot_file_exists'] = file_exists(public_path('hot'));
-
-    return response()->json($results);
-});
-
 Route::get('/', function () {
     return redirect()->route('admin.backup.dashboard');
 });

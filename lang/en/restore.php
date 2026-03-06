@@ -75,6 +75,9 @@ return [
     'target_same_host_desc' => 'Restore to the original server',
     'target_remote_host' => 'Remote Host',
     'target_remote_host_desc' => 'Restore to a different server',
+    'target_known_host' => 'Known Host',
+    'target_known_host_desc' => 'Use credentials from an existing backup source',
+    'known_host_select' => 'Select Source',
 
     // Remote config
     'remote_config' => 'Remote Host Configuration',
@@ -110,6 +113,7 @@ return [
     'confirm_target' => 'Restore Target',
     'confirm_target_same' => 'Same Host (Original Server)',
     'confirm_target_remote' => 'Remote Host',
+    'confirm_target_known' => 'Known Host (from Source)',
     'confirm_override' => 'Override Mode',
     'confirm_override_yes' => 'YES - Existing data will be replaced',
     'confirm_override_no' => 'No - Safe restore',

@@ -8,8 +8,37 @@ class MongodbBackupService
 {
     /**
      * Execute a MongoDB dump and return the path to the generated file.
+     * Supports an optional SSH tunnel via $config['ssh'].
      */
     public function dump(array $config, string $outputPath, string $compression = 'gzip'): array
+    {
+        $ssh = $config['ssh'] ?? null;
+
+        if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
+            $tunnelService = app(SshTunnelService::class);
+
+            return $tunnelService->withTunnel(
+                $ssh,
+                '127.0.0.1',
+                (int) ($config['port'] ?? 27017),
+                function (int $localPort) use ($config, $outputPath, $compression) {
+                    $tunnelConfig = array_merge($config, [
+                        'host' => '127.0.0.1',
+                        'port' => $localPort,
+                    ]);
+
+                    return $this->executeDump($tunnelConfig, $outputPath, $compression);
+                }
+            );
+        }
+
+        return $this->executeDump($config, $outputPath, $compression);
+    }
+
+    /**
+     * Internal dump execution (no SSH).
+     */
+    protected function executeDump(array $config, string $outputPath, string $compression): array
     {
         $dumpDir = rtrim($outputPath, '/') . '/mongodump_' . now()->format('Ymd_His');
         $command = $this->buildCommand($config, $dumpDir);

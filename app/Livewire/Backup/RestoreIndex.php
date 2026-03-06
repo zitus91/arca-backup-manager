@@ -5,6 +5,7 @@ namespace App\Livewire\Backup;
 use App\Jobs\Restore\ProcessRestoreJob;
 use App\Models\BackupJob;
 use App\Models\BackupLog;
+use App\Models\BackupSource;
 use App\Models\RestoreLog;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -37,6 +38,7 @@ class RestoreIndex extends Component
 
     // Restore target
     public string $restoreTarget = 'same_host';
+    public ?int $knownSourceId = null;
     public array $remoteConfig = [];
 
     // Override existing
@@ -153,6 +155,7 @@ class RestoreIndex extends Component
 
         // Initialize restore target and remote config
         $this->restoreTarget = 'same_host';
+        $this->knownSourceId = null;
         $this->overrideExisting = false;
         $this->remoteConfig = [
             'mysql' => ['host' => '', 'port' => '3306', 'username' => '', 'password' => ''],
@@ -177,6 +180,7 @@ class RestoreIndex extends Component
         $this->customDbNames = [];
         $this->customPaths = [];
         $this->restoreTarget = 'same_host';
+        $this->knownSourceId = null;
         $this->remoteConfig = [];
         $this->overrideExisting = false;
         $this->showConfirmation = false;
@@ -198,7 +202,7 @@ class RestoreIndex extends Component
         }
 
         // Validate remote config if remote host is selected
-        if ($this->restoreTarget === 'remote_host') {
+        if (in_array($this->restoreTarget, ['remote_host', 'known_host'])) {
             if ($hasSelectedDb) {
                 $hasMysql = ($this->selectedBackupInfo['has_mysql'] ?? false);
                 $hasMongo = ($this->selectedBackupInfo['has_mongodb'] ?? false);
@@ -303,7 +307,7 @@ class RestoreIndex extends Component
 
         // Build remote host config
         $remoteHostConfig = null;
-        if ($this->restoreTarget === 'remote_host') {
+        if (in_array($this->restoreTarget, ['remote_host', 'known_host'])) {
             $remoteHostConfig = [];
 
             if ($this->selectedBackupInfo['has_mysql'] ?? false) {
@@ -317,11 +321,15 @@ class RestoreIndex extends Component
             }
         }
 
+        $effectiveTarget = in_array($this->restoreTarget, ['remote_host', 'known_host'])
+            ? 'remote_host'
+            : $this->restoreTarget;
+
         $restoreLog = RestoreLog::create([
             'backup_log_id' => $this->selectedBackupLogId,
             'user_id' => auth()->id(),
             'restore_type' => $this->restoreType,
-            'restore_target' => $this->restoreTarget,
+            'restore_target' => $effectiveTarget,
             'remote_host_config' => $remoteHostConfig,
             'custom_names' => $customNames,
             'override_existing' => $this->overrideExisting,
@@ -336,6 +344,62 @@ class RestoreIndex extends Component
         $this->isRestoring = false;
 
         $this->dispatch('notify', type: 'info', message: __('restore.restore_started'));
+    }
+
+    /**
+     * When a known source is selected, pre-fill remoteConfig from its credentials.
+     */
+    public function updatedKnownSourceId(?int $value): void
+    {
+        if (! $value) {
+            return;
+        }
+
+        $source = BackupSource::find($value);
+        if (! $source) {
+            return;
+        }
+
+        $cfg = $source->config ?? [];
+
+        if (isset($cfg['mysql'])) {
+            $this->remoteConfig['mysql'] = [
+                'host'     => $cfg['mysql']['host'] ?? '',
+                'port'     => (string) ($cfg['mysql']['port'] ?? 3306),
+                'username' => $cfg['mysql']['username'] ?? '',
+                'password' => $cfg['mysql']['password'] ?? '',
+            ];
+        }
+
+        if (isset($cfg['mongodb'])) {
+            $this->remoteConfig['mongodb'] = [
+                'host'          => $cfg['mongodb']['host'] ?? '',
+                'port'          => (string) ($cfg['mongodb']['port'] ?? 27017),
+                'username'      => $cfg['mongodb']['username'] ?? '',
+                'password'      => $cfg['mongodb']['password'] ?? '',
+                'auth_database' => 'admin',
+            ];
+        }
+
+        if (isset($cfg['filesystem'])) {
+            $ssh = $cfg['filesystem']['ssh'] ?? [];
+            $this->remoteConfig['filesystem'] = [
+                'ssh_host'     => $ssh['host'] ?? '',
+                'ssh_port'     => (string) ($ssh['port'] ?? 22),
+                'ssh_user'     => $ssh['user'] ?? '',
+                'ssh_key_path' => $ssh['key_path'] ?? '',
+            ];
+        }
+    }
+
+    /**
+     * Reset known source selection when restore target changes.
+     */
+    public function updatedRestoreTarget(string $value): void
+    {
+        if ($value !== 'known_host') {
+            $this->knownSourceId = null;
+        }
     }
 
     /**
@@ -405,6 +469,7 @@ class RestoreIndex extends Component
             'jobs' => BackupJob::all(),
             'restoreLogs' => $restoreLogs,
             'detailLog' => $detailLog,
+            'backupSources' => BackupSource::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 }

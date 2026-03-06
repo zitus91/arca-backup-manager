@@ -52,6 +52,7 @@
                     <tr class="border-b border-base-content/5">
                         <th class="text-xs font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-source.col_name') }}</th>
                         <th class="text-xs font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-source.col_sources') }}</th>
+                        <th class="text-xs font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-source.col_ssh') }}</th>
                         <th class="text-xs font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-source.col_details') }}</th>
                         <th class="text-xs font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-source.col_status') }}</th>
                         <th class="text-xs font-semibold text-base-content/40 uppercase tracking-wider text-right">{{ __('backup-source.col_actions') }}</th>
@@ -86,6 +87,27 @@
                                         <span class="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold bg-warning/10 text-warning">Filesystem</span>
                                     @endif
                                 </div>
+                            </td>
+                            {{-- SSH --}}
+                            <td>
+                                @php $sshCfg = $config['ssh'] ?? null; @endphp
+                                @if ($sshCfg && !empty($sshCfg['enabled']))
+                                    <div class="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                                        <div>
+                                            <div class="text-xs font-semibold text-secondary font-mono">{{ $sshCfg['host'] ?? '—' }}</div>
+                                            <div class="text-[10px] text-base-content/40">
+                                                {{ $sshCfg['user'] ?? '' }}@:{{ $sshCfg['port'] ?? 22 }}
+                                                &middot;
+                                                <span class="{{ ($sshCfg['auth_method'] ?? 'key') === 'key' ? 'text-secondary/70' : 'text-base-content/40' }}">
+                                                    {{ ($sshCfg['auth_method'] ?? 'key') === 'key' ? '🔑 key' : '🔒 pwd' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-[10px] text-base-content/20 italic">—</span>
+                                @endif
                             </td>
                             {{-- Details --}}
                             <td>
@@ -152,7 +174,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5">
+                            <td colspan="6">
                                 <div class="text-center py-12">
                                     <div class="w-16 h-16 mx-auto rounded-2xl bg-base-content/5 flex items-center justify-center mb-4">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>

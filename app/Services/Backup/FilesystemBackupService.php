@@ -8,11 +8,17 @@ class FilesystemBackupService
 {
     /**
      * Create a backup of a filesystem path.
+     * If $config['ssh'] is set and enabled, uses rsync over SSH.
      */
     public function backup(array $config, string $outputPath, string $compression = 'gzip'): array
     {
         $sourcePath = $config['path'];
         $excludePatterns = $config['exclude_patterns'] ?? [];
+        $ssh = $config['ssh'] ?? null;
+
+        if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
+            return $this->backupViaSsh($ssh, $sourcePath, $excludePatterns, $outputPath, $compression);
+        }
 
         if (! is_dir($sourcePath) && ! is_file($sourcePath)) {
             throw new \RuntimeException("Source path does not exist: {$sourcePath}");
@@ -35,6 +41,77 @@ class FilesystemBackupService
             'source_path' => $sourcePath,
             'exclude_patterns' => $excludePatterns,
             'files_count' => $fileCount,
+        ];
+
+        return [
+            'file_name' => $fileName,
+            'file_path' => $fullPath,
+            'file_size' => file_exists($fullPath) ? filesize($fullPath) : 0,
+            'meta' => $meta,
+        ];
+    }
+
+    /**
+     * Backup a remote filesystem path via rsync over SSH, then compress locally.
+     */
+    protected function backupViaSsh(array $ssh, string $remotePath, array $excludePatterns, string $outputPath, string $compression): array
+    {
+        $tunnelService = app(SshTunnelService::class);
+        $sshOptions = $tunnelService->buildSshOptions($ssh);
+
+        $localRsyncDir = rtrim($outputPath, '/') . '/rsync_' . now()->format('Ymd_His');
+        @mkdir($localRsyncDir, 0755, true);
+
+        // Build exclude flags for rsync
+        $excludes = '';
+        foreach ($excludePatterns as $pattern) {
+            $excludes .= ' --exclude=' . escapeshellarg($pattern);
+        }
+
+        $remoteSource = sprintf(
+            '%s@%s:%s',
+            escapeshellarg($ssh['user']),
+            escapeshellarg($ssh['host']),
+            escapeshellarg(rtrim($remotePath, '/') . '/')
+        );
+
+        $rsyncCmd = sprintf(
+            'rsync -az -e %s %s %s %s/',
+            escapeshellarg($sshOptions),
+            $excludes,
+            $remoteSource,
+            escapeshellarg($localRsyncDir)
+        );
+
+        $result = Process::timeout(7200)->run($rsyncCmd);
+
+        if (! $result->successful()) {
+            Process::run('rm -rf ' . escapeshellarg($localRsyncDir));
+            throw new \RuntimeException('SSH filesystem backup (rsync) failed: ' . $result->errorOutput());
+        }
+
+        $baseName = basename(rtrim($remotePath, '/'));
+        $fileName = $this->generateFileName($baseName . '_ssh', $compression);
+        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+
+        $archiveCmd = match ($compression) {
+            'gzip' => 'tar -czf ' . escapeshellarg($fullPath) . ' -C ' . escapeshellarg(dirname($localRsyncDir)) . ' ' . escapeshellarg(basename($localRsyncDir)),
+            'zip'  => 'cd ' . escapeshellarg(dirname($localRsyncDir)) . ' && zip -r ' . escapeshellarg($fullPath) . ' ' . escapeshellarg(basename($localRsyncDir)),
+            default => 'tar -cf ' . escapeshellarg($fullPath) . ' -C ' . escapeshellarg(dirname($localRsyncDir)) . ' ' . escapeshellarg(basename($localRsyncDir)),
+        };
+
+        $archiveResult = Process::timeout(3600)->run($archiveCmd);
+        Process::run('rm -rf ' . escapeshellarg($localRsyncDir));
+
+        if (! $archiveResult->successful()) {
+            throw new \RuntimeException('SSH filesystem backup archiving failed: ' . $archiveResult->errorOutput());
+        }
+
+        $meta = [
+            'source_path' => $remotePath,
+            'ssh_host' => $ssh['host'],
+            'exclude_patterns' => $excludePatterns,
+            'via_ssh' => true,
         ];
 
         return [

@@ -75,6 +75,9 @@ return [
     'target_same_host_desc' => 'Ripristina sullo stesso server di origine',
     'target_remote_host' => 'Host Remoto',
     'target_remote_host_desc' => 'Ripristina su un server diverso',
+    'target_known_host' => 'Host Noto',
+    'target_known_host_desc' => 'Usa le credenziali di una sorgente backup esistente',
+    'known_host_select' => 'Seleziona Sorgente',
 
     // Remote config
     'remote_config' => 'Configurazione Host Remoto',
@@ -110,6 +113,7 @@ return [
     'confirm_target' => 'Destinazione Restore',
     'confirm_target_same' => 'Stesso Host (Server Originale)',
     'confirm_target_remote' => 'Host Remoto',
+    'confirm_target_known' => 'Host Noto (da Sorgente)',
     'confirm_override' => 'Modalità Sovrascrittura',
     'confirm_override_yes' => 'SÌ - I dati esistenti verranno sostituiti',
     'confirm_override_no' => 'No - Restore sicuro',

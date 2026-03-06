@@ -291,7 +291,7 @@
                         {{-- Restore Target Selection --}}
                         <div>
                             <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-3">{{ __('restore.restore_target') }}</p>
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-3 gap-3">
                                 <label class="cursor-pointer">
                                     <input type="radio" wire:model.live="restoreTarget" value="same_host" class="peer hidden" />
                                     <div class="border-2 rounded-xl p-4 text-center transition-all
@@ -312,13 +312,38 @@
                                         <p class="text-[10px] text-base-content/40 mt-1">{{ __('restore.target_remote_host_desc') }}</p>
                                     </div>
                                 </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" wire:model.live="restoreTarget" value="known_host" class="peer hidden" />
+                                    <div class="border-2 rounded-xl p-4 text-center transition-all
+                                        peer-checked:border-secondary peer-checked:bg-secondary/5
+                                        border-base-content/10 hover:border-base-content/20">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mx-auto mb-2 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
+                                        <p class="text-sm font-semibold">{{ __('restore.target_known_host') }}</p>
+                                        <p class="text-[10px] text-base-content/40 mt-1">{{ __('restore.target_known_host_desc') }}</p>
+                                    </div>
+                                </label>
                             </div>
                         </div>
 
                         {{-- Remote Host Configuration --}}
-                        @if ($restoreTarget === 'remote_host')
+                        @if (in_array($restoreTarget, ['remote_host', 'known_host']))
                             <div class="rounded-xl border border-primary/20 bg-primary/[0.02] p-4 space-y-4">
-                                <p class="text-xs font-semibold text-primary uppercase tracking-wider">{{ __('restore.remote_config') }}</p>
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs font-semibold text-primary uppercase tracking-wider">{{ __('restore.remote_config') }}</p>
+                                </div>
+
+                                {{-- Known Host: source selector --}}
+                                @if ($restoreTarget === 'known_host')
+                                    <div class="form-control">
+                                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('restore.known_host_select') }}</span></label>
+                                        <select wire:model.live="knownSourceId" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10">
+                                            <option value="">— {{ __('restore.known_host_select') }} —</option>
+                                            @foreach ($backupSources as $src)
+                                                <option value="{{ $src->id }}">{{ $src->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
 
                                 @if (($selectedBackupInfo['has_mysql'] ?? false) && in_array($restoreType, ['full', 'db_only']))
                                     <div class="space-y-2">
@@ -626,7 +651,7 @@
 
                                     {{-- Target summary --}}
                                     <div class="text-xs {{ $overrideExisting ? 'text-error/60' : 'text-warning/60' }}">
-                                        @if ($restoreTarget === 'remote_host')
+                                        @if (in_array($restoreTarget, ['remote_host', 'known_host']))
                                             <p>{{ __('restore.warning_remote_target') }}</p>
                                             <ul class="mt-1 ml-3 space-y-0.5 font-mono text-[11px]">
                                                 @if (! empty($remoteConfig['mysql']['host']) && in_array($restoreType, ['full', 'db_only']))
@@ -699,8 +724,14 @@
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-base-content/50">{{ __('restore.confirm_target') }}</span>
-                                <span class="font-medium {{ $restoreTarget === 'remote_host' ? 'text-warning' : '' }}">
-                                    {{ $restoreTarget === 'remote_host' ? __('restore.confirm_target_remote') : __('restore.confirm_target_same') }}
+                                <span class="font-medium {{ in_array($restoreTarget, ['remote_host', 'known_host']) ? 'text-warning' : '' }}">
+                                    @if ($restoreTarget === 'remote_host')
+                                        {{ __('restore.confirm_target_remote') }}
+                                    @elseif ($restoreTarget === 'known_host')
+                                        {{ __('restore.confirm_target_known') }}
+                                    @else
+                                        {{ __('restore.confirm_target_same') }}
+                                    @endif
                                 </span>
                             </div>
                             <div class="flex justify-between text-sm">

@@ -2,6 +2,7 @@
 
 namespace App\Services\Restore;
 
+use App\Services\Backup\SshTunnelService;
 use Illuminate\Support\Facades\Process;
 
 class MongodbRestoreService
@@ -17,6 +18,25 @@ class MongodbRestoreService
      */
     public function restore(array $config, string $archivePath, ?string $targetDbName = null, bool $overrideExisting = false): array
     {
+        $ssh = $config['ssh'] ?? null;
+
+        if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
+            return app(SshTunnelService::class)->withTunnel(
+                $ssh,
+                $config['host'],
+                (int) ($config['port'] ?? 27017),
+                function (int $localPort) use ($config, $archivePath, $targetDbName, $overrideExisting): array {
+                    $tunnelConfig = array_merge($config, ['host' => '127.0.0.1', 'port' => $localPort]);
+                    return $this->executeRestore($tunnelConfig, $archivePath, $targetDbName, $overrideExisting);
+                }
+            );
+        }
+
+        return $this->executeRestore($config, $archivePath, $targetDbName, $overrideExisting);
+    }
+
+    protected function executeRestore(array $config, string $archivePath, ?string $targetDbName, bool $overrideExisting): array
+    {
         $originalDb = $config['database'];
         $restoredDb = $targetDbName ?? ($originalDb . '_restored_' . now()->format('Ymd_His'));
 
@@ -31,7 +51,7 @@ class MongodbRestoreService
 
         $this->extractArchive($archivePath, $extractDir);
 
-        // 2. Find the dump directory (mongodump creates a subfolder with the db name)
+        // Find the dump directory (mongodump creates a subfolder with the db name)
         $dumpPath = $this->findDumpPath($extractDir, $originalDb);
 
         // 3. Run mongorestore with nsFrom/nsTo to rename db
@@ -40,12 +60,10 @@ class MongodbRestoreService
         $result = Process::timeout(3600)->run($cmd);
 
         if (! $result->successful()) {
-            // Cleanup before throwing
             Process::run('rm -rf ' . escapeshellarg($extractDir));
             throw new \RuntimeException('MongoDB restore failed: ' . $result->errorOutput());
         }
 
-        // Cleanup extracted files
         Process::run('rm -rf ' . escapeshellarg($extractDir));
 
         return [
