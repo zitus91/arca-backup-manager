@@ -84,7 +84,7 @@ class FilesystemRestoreService
 
         // For plain ssh commands (mkdir, rm) we need ssh binary + options without sshpass prefix
         $port     = (int) ($sshConfig['port'] ?? $sshConfig['ssh_port'] ?? 22);
-        $baseSsh  = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p {$port}";
+        $baseSsh  = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p {$port}";
         if (($sshConfig['auth_method'] ?? 'key') === 'password' && ! empty($sshConfig['password'])) {
             $pass    = escapeshellarg($sshConfig['password']);
             $sshCmd  = "sshpass -p {$pass} ssh {$baseSsh}";

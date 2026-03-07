@@ -369,7 +369,7 @@ class BackupSourceForm extends Component
             $host = escapeshellarg($this->ssh_host);
             $port = (int) $this->ssh_port;
 
-            $baseOpts = "-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p {$port}";
+            $baseOpts = "-o ConnectTimeout=8 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p {$port}";
 
             if ($this->ssh_auth_method === 'password') {
                 $pass = escapeshellarg($this->ssh_password);
@@ -563,7 +563,7 @@ class BackupSourceForm extends Component
             $user     = escapeshellarg($this->ssh_user);
             $host     = escapeshellarg($this->ssh_host);
             $port     = (int) $this->ssh_port;
-            $baseOpts = "-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p {$port}";
+            $baseOpts = "-o ConnectTimeout=8 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p {$port}";
 
             $safeRemotePath = '"' . str_replace('"', '\\"', $path) . '"';
             $remoteCheckCmd = "[ -d {$safeRemotePath} ] && echo dir || [ -f {$safeRemotePath} ] && echo file || echo notfound";

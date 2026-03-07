@@ -19,7 +19,7 @@ class SshTunnelService
         $localPort   = $this->findFreePort();
         $authMethod  = $ssh['auth_method'] ?? 'key';
         $baseOpts    = sprintf(
-            '-N -f -L %d:%s:%d -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p %d %s@%s',
+            '-N -f -L %d:%s:%d -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p %d %s@%s',
             $localPort,
             escapeshellarg($remoteHost),
             $remotePort,
@@ -91,7 +91,7 @@ class SshTunnelService
     {
         $authMethod = $ssh['auth_method'] ?? 'key';
         $baseOpts   = sprintf(
-            'ssh -p %d -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null',
+            'ssh -p %d -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR',
             (int) ($ssh['port'] ?? 22)
         );
 
