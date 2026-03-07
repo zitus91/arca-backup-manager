@@ -76,7 +76,7 @@ class FilesystemBackupService
         );
 
         $rsyncCmd = sprintf(
-            'rsync -az -e %s %s %s %s/',
+            'rsync -az --ignore-errors -e %s %s %s %s/',
             escapeshellarg($sshOptions),
             $excludes,
             $remoteSource,
@@ -85,9 +85,18 @@ class FilesystemBackupService
 
         $result = Process::timeout(7200)->run($rsyncCmd);
 
-        if (! $result->successful()) {
+        // Exit code 23 = partial transfer due to permission/read errors (non-fatal)
+        // Exit code 24 = partial transfer due to vanished source files (non-fatal)
+        $exitCode = $result->exitCode();
+        $rsyncWarnings = null;
+
+        if (! $result->successful() && ! in_array($exitCode, [23, 24])) {
             Process::run('rm -rf ' . escapeshellarg($localRsyncDir));
             throw new \RuntimeException('SSH filesystem backup (rsync) failed: ' . $result->errorOutput());
+        }
+
+        if (in_array($exitCode, [23, 24])) {
+            $rsyncWarnings = trim($result->errorOutput());
         }
 
         $baseName = basename(rtrim($remotePath, '/'));
@@ -112,6 +121,7 @@ class FilesystemBackupService
             'ssh_host' => $ssh['host'],
             'exclude_patterns' => $excludePatterns,
             'via_ssh' => true,
+            'rsync_warnings' => $rsyncWarnings,
         ];
 
         return [
