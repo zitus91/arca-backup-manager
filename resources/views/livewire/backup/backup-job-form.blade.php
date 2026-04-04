@@ -11,7 +11,7 @@
         <div class="grid grid-cols-2 gap-4">
             <div class="form-control">
                 <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-job.source') }}</span></label>
-                <select wire:model="backup_source_id" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                <select wire:model="backup_source_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 focus:border-primary">
                     <option value="">{{ __('backup-job.select_source') }}</option>
                     @foreach ($sources as $source)
                         <option value="{{ $source->id }}">{{ $source->name }} ({{ implode(', ', $source->enabled_types) }})</option>
@@ -21,7 +21,7 @@
             </div>
             <div class="form-control">
                 <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-job.destination') }}</span></label>
-                <select wire:model="backup_storage_destination_id" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                <select wire:model="backup_storage_destination_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 focus:border-primary">
                     <option value="">{{ __('backup-job.select_destination') }}</option>
                     @foreach ($destinations as $dest)
                         <option value="{{ $dest->id }}">{{ $dest->name }} ({{ $dest->type }})</option>
@@ -137,10 +137,98 @@
             </div>
 
             @if ($notify_on_success || $notify_on_failure)
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-job.notification_email') }}</span></label>
-                    <input type="email" wire:model="notification_email" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                    @error('notification_email') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                <div class="space-y-3">
+                    <label class="label pb-0 pt-0">
+                        <span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-job.notification_emails') }}</span>
+                    </label>
+
+                    {{-- Email list --}}
+                    @if(count($notification_emails) > 0)
+                        <div class="space-y-1.5">
+                            @foreach($notification_emails as $i => $email)
+                                <div class="flex items-center gap-2 bg-base-100 border border-base-content/10 rounded-lg px-3 py-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-base-content/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                                    <span class="text-sm flex-1 truncate">{{ $email }}</span>
+                                    <button
+                                        type="button"
+                                        wire:click="removeEmail({{ $i }})"
+                                        class="btn btn-xs btn-ghost btn-circle text-base-content/40 hover:text-error hover:bg-error/10"
+                                        title="{{ __('backup-job.email_remove') }}"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                    @error('notification_emails') <span class="text-error text-xs">{{ $message }}</span> @enderror
+
+                    {{-- Add new email --}}
+                    <datalist id="registered-users-list">
+                        @foreach($this->registeredUsers as $user)
+                            <option value="{{ $user['email'] }}">{{ $user['name'] }} &lt;{{ $user['email'] }}&gt;</option>
+                        @endforeach
+                    </datalist>
+
+                    <div class="flex gap-2">
+                        <input
+                            type="email"
+                            wire:model="newEmail"
+                            wire:keydown.enter.prevent="addEmail"
+                            list="registered-users-list"
+                            class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 flex-1 @error('newEmail') input-error @enderror"
+                            placeholder="{{ __('backup-job.email_add_placeholder') }}"
+                        />
+                        <button
+                            type="button"
+                            wire:click="addEmail"
+                            wire:loading.attr="disabled"
+                            wire:target="addEmail"
+                            class="btn btn-sm btn-outline rounded-lg gap-1.5"
+                            title="{{ __('backup-job.email_add') }}"
+                        >
+                            <span wire:loading wire:target="addEmail" class="loading loading-spinner loading-xs"></span>
+                            <span wire:loading.remove wire:target="addEmail">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            </span>
+                            <span class="text-xs font-medium">{{ __('backup-job.email_add') }}</span>
+                        </button>
+                        <button
+                            type="button"
+                            wire:click="sendTestEmail"
+                            wire:loading.attr="disabled"
+                            wire:target="sendTestEmail"
+                            @if(count($notification_emails) === 0) disabled @endif
+                            class="btn btn-sm rounded-lg gap-1.5 {{ count($notification_emails) === 0 ? 'btn-disabled' : ($testEmailState === 'success' ? 'btn-success' : ($testEmailState === 'error' ? 'btn-error' : 'btn-outline btn-warning')) }}"
+                            title="{{ __('backup-job.test_email_btn_title') }}"
+                        >
+                            <span wire:loading wire:target="sendTestEmail" class="loading loading-spinner loading-xs"></span>
+                            <span wire:loading.remove wire:target="sendTestEmail">
+                                @if($testEmailState === 'success')
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                @elseif($testEmailState === 'error')
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                @else
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                                @endif
+                            </span>
+                            <span class="text-xs font-medium">{{ __('backup-job.test_email_btn') }}</span>
+                        </button>
+                    </div>
+                    @error('newEmail') <span class="text-error text-xs mt-0.5">{{ $message }}</span> @enderror
+
+                    {{-- Test feedback --}}
+                    @if($testEmailState === 'success')
+                        <div class="flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-success flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            <span class="text-success text-xs">{{ __('backup-job.test_email_sent') }}</span>
+                        </div>
+                    @elseif($testEmailState === 'error')
+                        <div class="flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-error flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                            <span class="text-error text-xs">{{ __('backup-job.test_email_failed') }}</span>
+                        </div>
+                    @endif
                 </div>
             @endif
         </div>

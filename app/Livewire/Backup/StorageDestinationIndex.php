@@ -72,6 +72,27 @@ class StorageDestinationIndex extends Component
         $this->testingId = null;
     }
 
+    public ?int $confirmingDeleteId = null;
+
+    public function confirmDelete(int $id): void
+    {
+        $this->confirmingDeleteId = $id;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
+    public function deleteConfirmed(): void
+    {
+        if ($this->confirmingDeleteId === null) {
+            return;
+        }
+        $this->delete($this->confirmingDeleteId);
+        $this->confirmingDeleteId = null;
+    }
+
     public function delete(int $id): void
     {
         $dest = BackupStorageDestination::findOrFail($id);

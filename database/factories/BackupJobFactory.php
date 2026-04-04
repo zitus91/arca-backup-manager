@@ -28,7 +28,7 @@ class BackupJobFactory extends Factory
             'compression' => $this->faker->randomElement(['none', 'gzip', 'zip']),
             'notify_on_success' => false,
             'notify_on_failure' => true,
-            'notification_email' => $this->faker->safeEmail(),
+            'notification_emails' => [$this->faker->safeEmail()],
             'is_active' => true,
             'last_run_at' => null,
             'next_run_at' => now()->addHours($this->faker->numberBetween(1, 24)),

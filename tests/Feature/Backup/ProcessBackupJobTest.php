@@ -23,7 +23,7 @@ it('processes a backup job successfully', function () {
         'backup_storage_destination_id' => $dest->id,
         'compression' => 'gzip',
         'notify_on_success' => true,
-        'notification_email' => 'admin@test.com',
+        'notification_emails' => ['admin@test.com'],
     ]);
     $log = BackupLog::factory()->pending()->create([
         'backup_job_id' => $job->id,
@@ -76,7 +76,7 @@ it('handles backup job failure', function () {
         'backup_source_id' => $source->id,
         'backup_storage_destination_id' => $dest->id,
         'notify_on_failure' => true,
-        'notification_email' => 'admin@test.com',
+        'notification_emails' => ['admin@test.com'],
     ]);
     $log = BackupLog::factory()->pending()->create([
         'backup_job_id' => $job->id,

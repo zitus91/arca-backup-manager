@@ -55,6 +55,27 @@ class BackupSourceIndex extends Component
         session()->flash('message', __('backup-source.saved'));
     }
 
+    public ?int $confirmingDeleteId = null;
+
+    public function confirmDelete(int $id): void
+    {
+        $this->confirmingDeleteId = $id;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
+    public function deleteConfirmed(): void
+    {
+        if ($this->confirmingDeleteId === null) {
+            return;
+        }
+        $this->delete($this->confirmingDeleteId);
+        $this->confirmingDeleteId = null;
+    }
+
     public function delete(int $id): void
     {
         $source = BackupSource::findOrFail($id);

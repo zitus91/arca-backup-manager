@@ -2,11 +2,16 @@
 
 namespace App\Livewire\Backup;
 
+use App\Mail\BackupTestMail;
 use App\Models\AuditLog;
 use App\Models\BackupJob;
 use App\Models\BackupSource;
 use App\Models\BackupStorageDestination;
+use App\Models\User;
 use App\Services\Backup\BackupSchedulerService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class BackupJobForm extends Component
@@ -25,10 +30,15 @@ class BackupJobForm extends Component
     public string $compression = 'gzip';
     public bool $notify_on_success = false;
     public bool $notify_on_failure = true;
-    public string $notification_email = '';
+    /** @var string[] */
+    public array $notification_emails = [];
+    public string $newEmail = '';
     public bool $is_active = true;
 
     public string $cronPreview = '';
+
+    /** 'idle' | 'sending' | 'success' | 'error' */
+    public string $testEmailState = 'idle';
 
     public function mount(?int $jobId = null): void
     {
@@ -47,8 +57,11 @@ class BackupJobForm extends Component
             $this->compression = $job->compression;
             $this->notify_on_success = $job->notify_on_success;
             $this->notify_on_failure = $job->notify_on_failure;
-            $this->notification_email = $job->notification_email ?? '';
+            $this->notification_emails = $job->notification_emails ?? [];
             $this->is_active = $job->is_active;
+        } else {
+            // Default: pre-fill with the logged-in user's email
+            $this->notification_emails = [Auth::user()->email];
         }
     }
 
@@ -70,7 +83,9 @@ class BackupJobForm extends Component
             'compression' => 'required|in:none,gzip,zip',
             'notify_on_success' => 'boolean',
             'notify_on_failure' => 'boolean',
-            'notification_email' => 'nullable|email|max:255',
+            'notification_emails' => 'nullable|array',
+            'notification_emails.*' => 'email|max:255',
+            'newEmail' => 'nullable|email|max:255',
             'is_active' => 'boolean',
         ];
 
@@ -91,7 +106,8 @@ class BackupJobForm extends Component
         }
 
         if ($this->notify_on_success || $this->notify_on_failure) {
-            $rules['notification_email'] = 'required|email|max:255';
+            $rules['notification_emails'] = 'required|array|min:1';
+            $rules['notification_emails.*'] = 'email|max:255';
         }
 
         return $rules;
@@ -100,7 +116,6 @@ class BackupJobForm extends Component
     public function save(): void
     {
         $this->validate();
-
         $data = [
             'name' => $this->name,
             'backup_source_id' => $this->backup_source_id,
@@ -114,7 +129,7 @@ class BackupJobForm extends Component
             'compression' => $this->compression,
             'notify_on_success' => $this->notify_on_success,
             'notify_on_failure' => $this->notify_on_failure,
-            'notification_email' => ($this->notify_on_success || $this->notify_on_failure) ? $this->notification_email : null,
+            'notification_emails' => ($this->notify_on_success || $this->notify_on_failure) ? array_values($this->notification_emails) : null,
             'is_active' => $this->is_active,
         ];
 
@@ -134,6 +149,59 @@ class BackupJobForm extends Component
         $job->update(['next_run_at' => $nextRun]);
 
         $this->dispatch('job-saved');
+    }
+
+    public function sendTestEmail(): void
+    {
+        $this->validate([
+            'notification_emails' => 'required|array|min:1',
+            'notification_emails.*' => 'email|max:255',
+        ]);
+
+        $this->testEmailState = 'sending';
+
+        try {
+            $jobName = $this->name ?: __('backup-job.test_job_name_fallback');
+
+            foreach ($this->notification_emails as $email) {
+                Mail::to($email)->send(new BackupTestMail($jobName, $email));
+            }
+
+            $this->testEmailState = 'success';
+            $this->dispatch('test-email-result', status: 'success', message: __('backup-job.test_email_sent'));
+        } catch (\Throwable $e) {
+            $this->testEmailState = 'error';
+            $this->dispatch('test-email-result', status: 'error', message: __('backup-job.test_email_failed'));
+        }
+    }
+
+    public function addEmail(): void
+    {
+        $this->validateOnly('newEmail', [
+            'newEmail' => 'required|email|max:255',
+        ]);
+
+        $email = strtolower(trim($this->newEmail));
+
+        if (! in_array($email, array_map('strtolower', $this->notification_emails))) {
+            $this->notification_emails[] = $email;
+        }
+
+        $this->newEmail = '';
+        $this->testEmailState = 'idle';
+    }
+
+    public function removeEmail(int $index): void
+    {
+        unset($this->notification_emails[$index]);
+        $this->notification_emails = array_values($this->notification_emails);
+        $this->testEmailState = 'idle';
+    }
+
+    #[Computed]
+    public function registeredUsers(): array
+    {
+        return User::orderBy('name')->get(['name', 'email'])->toArray();
     }
 
     public function render()

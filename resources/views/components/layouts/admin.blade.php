@@ -204,6 +204,17 @@
                         }
                     });
             }
+
+            document.addEventListener('livewire:initialized', () => {
+                Livewire.on('test-email-result', (params) => {
+                    const p = Array.isArray(params) ? params[0] : params;
+                    if (p.status === 'success') {
+                        showToast('success', '{{ __("backup-job.test_email_toast_title") }}', p.message);
+                    } else {
+                        showToast('error', '{{ __("backup-job.test_email_toast_error_title") }}', p.message);
+                    }
+                });
+            });
         });
 
         function showToast(type, title, subtitle) {

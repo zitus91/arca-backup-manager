@@ -67,12 +67,40 @@ class BackupJobIndex extends Component
         session()->flash('message', __('backup-job.dispatched'));
     }
 
+    public ?int $confirmingDeleteId = null;
+
+    public function confirmDelete(int $id): void
+    {
+        $this->confirmingDeleteId = $id;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
+    public function deleteConfirmed(): void
+    {
+        if ($this->confirmingDeleteId === null) {
+            return;
+        }
+        $this->delete($this->confirmingDeleteId);
+        $this->confirmingDeleteId = null;
+    }
+
     public function delete(int $id): void
     {
         $job = BackupJob::findOrFail($id);
         AuditLog::record('deleted', "Deleted backup job: {$job->name}", $job);
         $job->delete();
         session()->flash('message', __('backup-job.deleted'));
+    }
+
+    #[On('job-saved')]
+    public function onJobSaved(): void
+    {
+        $this->closeForm();
+        session()->flash('message', __('backup-job.saved'));
     }
 
     #[On('echo:backup-jobs,.backup.started')]

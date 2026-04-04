@@ -4,6 +4,7 @@ namespace App\Jobs\Backup;
 
 use App\Events\Backup\BackupJobCompleted;
 use App\Events\Backup\BackupJobStarted;
+use App\Mail\BackupNotificationMail;
 use App\Models\BackupJob;
 use App\Models\BackupLog;
 use App\Services\Backup\BackupSchedulerService;
@@ -188,7 +189,7 @@ class ProcessBackupJob implements ShouldQueue
             ));
 
             // 8. Send notification if configured
-            if ($backupJob->notify_on_success && $backupJob->notification_email) {
+            if ($backupJob->notify_on_success && !empty($backupJob->notification_emails)) {
                 $this->sendNotification($backupJob, $log, 'success');
             }
 
@@ -217,7 +218,7 @@ class ProcessBackupJob implements ShouldQueue
                 errorMessage: $e->getMessage(),
             ));
 
-            if ($backupJob->notify_on_failure && $backupJob->notification_email) {
+            if ($backupJob->notify_on_failure && !empty($backupJob->notification_emails)) {
                 $this->sendNotification($backupJob, $log, 'failed');
             }
         } finally {
@@ -287,52 +288,69 @@ class ProcessBackupJob implements ShouldQueue
     }
 
     /**
-     * Send email notification about backup result.
+     * Send email notification about backup result to all configured recipients.
      */
     protected function sendNotification(BackupJob $job, BackupLog $log, string $status): void
     {
-        try {
-            Mail::raw(
-                $this->buildNotificationMessage($job, $log, $status),
-                function ($message) use ($job, $status) {
-                    $message->to($job->notification_email)
-                        ->subject("Backup {$status}: {$job->name}");
-                }
-            );
-        } catch (\Throwable $e) {
-            Log::warning('Failed to send backup notification', [
-                'job_id' => $job->id,
-                'email' => $job->notification_email,
-                'error' => $e->getMessage(),
-            ]);
+        $emails = $job->notification_emails ?? [];
+        if (empty($emails)) {
+            return;
+        }
+
+        // Re-read .env to override stale in-memory config (worker may have started before mail config was set)
+        $this->refreshSmtpConfig();
+
+        foreach ($emails as $email) {
+            try {
+                Mail::mailer('smtp')->to($email)->send(new BackupNotificationMail($job, $log, $status));
+            } catch (\Throwable $e) {
+                Log::error('Failed to send backup notification', [
+                    'job_id' => $job->id,
+                    'email' => $email,
+                    'status' => $status,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 
     /**
-     * Build notification message body.
+     * Re-parse .env and update the in-memory SMTP mail config.
+     * This ensures the queue worker always uses current SMTP settings
+     * even if it was started before the mail config was finalised.
      */
-    protected function buildNotificationMessage(BackupJob $job, BackupLog $log, string $status): string
+    private function refreshSmtpConfig(): void
     {
-        $lines = [
-            "Backup Job: {$job->name}",
-            "Status: " . strtoupper($status),
-            "Source: {$job->source->name}",
-            "Destination: {$job->destination->name} ({$job->destination->type})",
-            "Started: {$log->started_at}",
-            "Finished: {$log->finished_at}",
-            "Duration: {$log->formatted_duration}",
-        ];
-
-        if ($status === 'success') {
-            $lines[] = "File: {$log->file_name}";
-            $lines[] = "Size: {$log->formatted_size}";
+        $envFile = base_path('.env');
+        if (! is_readable($envFile)) {
+            return;
         }
 
-        if ($status === 'failed' && $log->error_message) {
-            $lines[] = "Error: {$log->error_message}";
+        $vars = [];
+        foreach (file($envFile) as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#') || ! str_contains($line, '=')) {
+                continue;
+            }
+            [$key, $val] = explode('=', $line, 2);
+            $vars[trim($key)] = trim($val, '"\'');
         }
 
-        return implode("\n", $lines);
+        $overrides = array_filter([
+            'mail.mailers.smtp.host'       => $vars['MAIL_HOST'] ?? null,
+            'mail.mailers.smtp.port'       => isset($vars['MAIL_PORT']) ? (int) $vars['MAIL_PORT'] : null,
+            'mail.mailers.smtp.encryption' => $vars['MAIL_ENCRYPTION'] ?? null,
+            'mail.mailers.smtp.username'   => $vars['MAIL_USERNAME'] ?? null,
+            'mail.mailers.smtp.password'   => $vars['MAIL_PASSWORD'] ?? null,
+            'mail.from.address'            => $vars['MAIL_FROM_ADDRESS'] ?? null,
+            'mail.from.name'               => $vars['MAIL_FROM_NAME'] ?? null,
+        ], fn ($v) => $v !== null);
+
+        if (! empty($overrides)) {
+            config($overrides);
+            // Purge cached smtp mailer so it is rebuilt with updated config
+            Mail::purge('smtp');
+        }
     }
 
     /**
