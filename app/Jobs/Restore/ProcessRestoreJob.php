@@ -52,6 +52,9 @@ class ProcessRestoreJob implements ShouldQueue
         $customNames = $restoreLog->custom_names ?? [];
         $overrideExisting = $restoreLog->override_existing ?? false;
 
+        // Build the chain of backup logs to restore (for incremental backups)
+        $backupChain = $this->buildRestoreChain($backupLog);
+
         // 1. Mark as running
         $restoreLog->update([
             'status' => 'running',
@@ -68,16 +71,7 @@ class ProcessRestoreJob implements ShouldQueue
         @mkdir($tmpDir, 0755, true);
 
         try {
-            // 2. Download backup file from destination to temp dir
-            $localFilePath = $this->downloadBackupFile(
-                $destination,
-                $backupLog,
-                $tmpDir,
-                $s3Service,
-                $ftpService,
-            );
-
-            // 3. Determine what types were backed up
+            // 2. Download and restore each backup in the chain (full first, then incrementals)
             $sourceConfig = $source->config;
             $sharedSsh    = $sourceConfig['ssh'] ?? ['enabled' => false];
             $restoreType = $restoreLog->restore_type;
@@ -86,14 +80,33 @@ class ProcessRestoreJob implements ShouldQueue
             $restoredDbNames = [];
             $restoredPaths = [];
 
-            // If it's a multi-type package archive, extract it first
-            $isPackage = $this->isPackageArchive($backupLog, $sourceConfig);
+            foreach ($backupChain as $chainIndex => $chainLog) {
+                $isFirstInChain = $chainIndex === 0;
 
-            if ($isPackage) {
-                $extractedDir = $tmpDir . '/extracted';
-                @mkdir($extractedDir, 0755, true);
-                $this->extractPackage($localFilePath, $extractedDir);
-            }
+                // Download this backup file
+                $chainTmpDir = $tmpDir . '/chain_' . $chainLog->id;
+                @mkdir($chainTmpDir, 0755, true);
+
+                $localFilePath = $this->downloadBackupFile(
+                    $destination,
+                    $chainLog,
+                    $chainTmpDir,
+                    $s3Service,
+                    $ftpService,
+                );
+
+                // Determine if it's a multi-type package archive
+                $isPackage = $this->isPackageArchive($chainLog, $sourceConfig);
+
+                if ($isPackage) {
+                    $extractedDir = $chainTmpDir . '/extracted';
+                    @mkdir($extractedDir, 0755, true);
+                    $this->extractPackage($localFilePath, $extractedDir);
+                }
+
+                // For incremental restores after the first (full): always override
+                // because we're applying deltas on top of the base
+                $stepOverride = $isFirstInChain ? $overrideExisting : true;
 
             // 4. Restore MySQL if applicable
             if (in_array($restoreType, ['db_only', 'full']) && isset($sourceConfig['mysql'])) {
@@ -119,10 +132,10 @@ class ProcessRestoreJob implements ShouldQueue
                     // Get custom target name if specified
                     $targetDbName = $customNames['databases'][$db] ?? null;
 
-                    $dumpFile = $this->findMysqlDump($isPackage ? $extractedDir : $tmpDir, $db, $isPackage);
+                    $dumpFile = $this->findMysqlDump($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
 
                     if ($dumpFile) {
-                        $r = $mysqlRestore->restore($singleConf, $dumpFile, $targetDbName, $overrideExisting);
+                        $r = $mysqlRestore->restore($singleConf, $dumpFile, $targetDbName, $stepOverride);
                         $results[] = $r;
                         $restoredDbNames[] = $r['restored_db_name'];
                     }
@@ -153,10 +166,10 @@ class ProcessRestoreJob implements ShouldQueue
                     // Get custom target name if specified
                     $targetDbName = $customNames['databases'][$db] ?? null;
 
-                    $archiveFile = $this->findMongoArchive($isPackage ? $extractedDir : $tmpDir, $db, $isPackage);
+                    $archiveFile = $this->findMongoArchive($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
 
                     if ($archiveFile) {
-                        $r = $mongodbRestore->restore($singleConf, $archiveFile, $targetDbName, $overrideExisting);
+                        $r = $mongodbRestore->restore($singleConf, $archiveFile, $targetDbName, $stepOverride);
                         $results[] = $r;
                         $restoredDbNames[] = $r['restored_db_name'];
                     }
@@ -186,15 +199,17 @@ class ProcessRestoreJob implements ShouldQueue
                     // Get custom target path if specified
                     $targetPath = $customNames['paths'][$path] ?? null;
 
-                    $archiveFile = $this->findFilesystemArchive($isPackage ? $extractedDir : $tmpDir, basename($path), $isPackage);
+                    $archiveFile = $this->findFilesystemArchive($isPackage ? $extractedDir : $chainTmpDir, basename($path), $isPackage);
 
                     if ($archiveFile) {
-                        $r = $filesystemRestore->restore($singleConf, $archiveFile, $targetPath, $overrideExisting);
+                        $r = $filesystemRestore->restore($singleConf, $archiveFile, $targetPath, $stepOverride);
                         $results[] = $r;
                         $restoredPaths[] = $r['restored_path'];
                     }
                 }
             }
+
+            } // end foreach backupChain
 
             if (empty($results)) {
                 throw new \RuntimeException('No matching backup data found for the requested restore type.');
@@ -205,13 +220,14 @@ class ProcessRestoreJob implements ShouldQueue
                 'status' => 'success',
                 'finished_at' => now(),
                 'duration_seconds' => now()->diffInSeconds($restoreLog->started_at),
-                'restored_db_name' => ! empty($restoredDbNames) ? implode(', ', $restoredDbNames) : null,
-                'restored_path' => ! empty($restoredPaths) ? implode(', ', $restoredPaths) : null,
+                'restored_db_name' => ! empty($restoredDbNames) ? implode(', ', array_unique($restoredDbNames)) : null,
+                'restored_path' => ! empty($restoredPaths) ? implode(', ', array_unique($restoredPaths)) : null,
                 'meta' => [
                     'restore_type' => $restoreType,
                     'restore_target' => $restoreTarget,
                     'override_existing' => $overrideExisting,
                     'results' => $results,
+                    'backup_chain_count' => count($backupChain),
                 ],
             ]);
 
@@ -246,6 +262,41 @@ class ProcessRestoreJob implements ShouldQueue
         } finally {
             $this->cleanupTempDir($tmpDir);
         }
+    }
+
+    /**
+     * Build the ordered chain of backup logs needed to restore from an incremental backup.
+     * Returns [full_backup, incremental_1, incremental_2, ..., target_backup].
+     * For full backups, returns just the single log.
+     */
+    protected function buildRestoreChain(BackupLog $targetLog): array
+    {
+        // If the target is a full backup, just return it
+        if ($targetLog->is_full) {
+            return [$targetLog];
+        }
+
+        // Find the parent full backup
+        $fullLog = $targetLog->parent_backup_log_id
+            ? BackupLog::find($targetLog->parent_backup_log_id)
+            : null;
+
+        if (! $fullLog) {
+            // No parent found: treat this log as standalone
+            return [$targetLog];
+        }
+
+        // Get all incremental backups between the full and the target, ordered chronologically
+        $incrementals = BackupLog::where('backup_job_id', $targetLog->backup_job_id)
+            ->where('status', 'success')
+            ->where('is_full', false)
+            ->where('parent_backup_log_id', $fullLog->id)
+            ->where('started_at', '<=', $targetLog->started_at)
+            ->orderBy('started_at')
+            ->get()
+            ->all();
+
+        return array_merge([$fullLog], $incrementals);
     }
 
     /**

@@ -17,6 +17,8 @@ class BackupLogFactory extends Factory
 
         return [
             'backup_job_id' => BackupJob::factory(),
+            'parent_backup_log_id' => null,
+            'is_full' => true,
             'status' => 'success',
             'started_at' => $startedAt,
             'finished_at' => (clone $startedAt)->modify("+{$duration} seconds"),
@@ -74,6 +76,14 @@ class BackupLogFactory extends Factory
         return $this->state(fn () => [
             'status' => 'partial',
             'error_message' => 'Some tables could not be dumped: ' . $this->faker->word(),
+        ]);
+    }
+
+    public function incremental(?int $parentId = null): static
+    {
+        return $this->state(fn () => [
+            'is_full' => false,
+            'parent_backup_log_id' => $parentId,
         ]);
     }
 }

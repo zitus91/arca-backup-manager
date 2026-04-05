@@ -26,6 +26,8 @@ class BackupJobFactory extends Factory
             'schedule_day_of_month' => $scheduleType === 'monthly' ? $this->faker->numberBetween(1, 28) : null,
             'retention_count' => $this->faker->randomElement([3, 5, 7, 14, 30]),
             'compression' => $this->faker->randomElement(['none', 'gzip', 'zip']),
+            'backup_type' => 'full',
+            'full_backup_every' => null,
             'notify_on_success' => false,
             'notify_on_failure' => true,
             'notification_emails' => [$this->faker->safeEmail()],
@@ -91,5 +93,13 @@ class BackupJobFactory extends Factory
     public function inactive(): static
     {
         return $this->state(fn () => ['is_active' => false]);
+    }
+
+    public function incremental(int $fullEvery = 7): static
+    {
+        return $this->state(fn () => [
+            'backup_type' => 'incremental',
+            'full_backup_every' => $fullEvery,
+        ]);
     }
 }

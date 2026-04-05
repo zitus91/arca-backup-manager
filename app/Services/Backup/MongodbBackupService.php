@@ -36,6 +36,109 @@ class MongodbBackupService
     }
 
     /**
+     * Execute an incremental MongoDB dump: only documents created/modified since checkpoint.
+     * Uses ObjectId timestamp comparison for collections with _id as ObjectId.
+     */
+    public function incrementalDump(array $config, string $outputPath, string $compression = 'gzip', ?array $checkpoint = null): array
+    {
+        $ssh = $config['ssh'] ?? null;
+
+        if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
+            $tunnelService = app(SshTunnelService::class);
+
+            return $tunnelService->withTunnel(
+                $ssh,
+                '127.0.0.1',
+                (int) ($config['port'] ?? 27017),
+                function (int $localPort) use ($config, $outputPath, $compression, $checkpoint) {
+                    $tunnelConfig = array_merge($config, [
+                        'host' => '127.0.0.1',
+                        'port' => $localPort,
+                    ]);
+
+                    return $this->executeIncrementalDump($tunnelConfig, $outputPath, $compression, $checkpoint);
+                }
+            );
+        }
+
+        return $this->executeIncrementalDump($config, $outputPath, $compression, $checkpoint);
+    }
+
+    /**
+     * Internal incremental dump: uses --query with ObjectId timestamp filter.
+     */
+    protected function executeIncrementalDump(array $config, string $outputPath, string $compression, ?array $checkpoint): array
+    {
+        $sinceTimestamp = $checkpoint['timestamp'] ?? null;
+
+        // Build an ObjectId from the checkpoint timestamp for _id comparison
+        $query = null;
+        if ($sinceTimestamp) {
+            $unixTime = strtotime($sinceTimestamp);
+            if ($unixTime) {
+                $hexTimestamp = dechex($unixTime);
+                $objectIdPrefix = str_pad($hexTimestamp, 8, '0', STR_PAD_LEFT) . '0000000000000000';
+                $query = '{"_id":{"\$gt":{"\$oid":"' . $objectIdPrefix . '"}}}';
+            }
+        }
+
+        $dumpDir = rtrim($outputPath, '/') . '/mongodump_incr_' . now()->format('Ymd_His');
+        $command = $this->buildCommand($config, $dumpDir);
+
+        if ($query) {
+            $command .= ' --queryFile=' . escapeshellarg($this->writeQueryFile($query, $outputPath));
+        }
+
+        $result = Process::timeout(3600)->run($command);
+
+        if (! $result->successful()) {
+            throw new \RuntimeException('mongodump incremental failed: ' . $result->errorOutput());
+        }
+
+        $fileName = $this->generateFileName($config['database'], $compression, true);
+        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+
+        $this->compressDirectory($dumpDir, $fullPath, $compression);
+
+        Process::run('rm -rf ' . escapeshellarg($dumpDir));
+
+        // Cleanup query file
+        $queryFile = rtrim($outputPath, '/') . '/.mongodump_query.json';
+        @unlink($queryFile);
+
+        $meta = [
+            'database' => $config['database'],
+            'collections' => $config['collections'] ?? 'all',
+            'host' => $config['host'],
+            'incremental' => true,
+            'since' => $sinceTimestamp,
+        ];
+
+        return [
+            'file_name' => $fileName,
+            'file_path' => $fullPath,
+            'file_size' => file_exists($fullPath) ? filesize($fullPath) : 0,
+            'meta' => $meta,
+            'incremental_checkpoint' => [
+                'type' => 'mongodb',
+                'database' => $config['database'],
+                'timestamp' => now()->toIso8601String(),
+            ],
+        ];
+    }
+
+    /**
+     * Write a query JSON file for mongodump --queryFile.
+     */
+    protected function writeQueryFile(string $query, string $dir): string
+    {
+        $path = rtrim($dir, '/') . '/.mongodump_query.json';
+        file_put_contents($path, $query);
+
+        return $path;
+    }
+
+    /**
      * Internal dump execution (no SSH).
      */
     protected function executeDump(array $config, string $outputPath, string $compression): array
@@ -124,15 +227,16 @@ class MongodbBackupService
     /**
      * Generate a timestamped file name.
      */
-    protected function generateFileName(string $database, string $compression): string
+    protected function generateFileName(string $database, string $compression, bool $isIncremental = false): string
     {
         $timestamp = now()->format('Ymd_His');
+        $prefix = $isIncremental ? 'mongodb_incr' : 'mongodb';
         $ext = match ($compression) {
             'gzip' => '.tar.gz',
             'zip' => '.zip',
             default => '.tar',
         };
 
-        return "mongodb_{$database}_{$timestamp}{$ext}";
+        return "{$prefix}_{$database}_{$timestamp}{$ext}";
     }
 }

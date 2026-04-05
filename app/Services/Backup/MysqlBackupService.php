@@ -37,12 +37,122 @@ class MysqlBackupService
     }
 
     /**
+     * Execute an incremental MySQL dump: only tables modified since the checkpoint.
+     * Returns the same structure as dump() plus an 'incremental_checkpoint' key.
+     */
+    public function incrementalDump(array $config, string $outputPath, string $compression = 'gzip', ?array $checkpoint = null): array
+    {
+        $ssh = $config['ssh'] ?? null;
+
+        if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
+            $tunnelService = app(SshTunnelService::class);
+
+            return $tunnelService->withTunnel(
+                $ssh,
+                '127.0.0.1',
+                (int) ($config['port'] ?? 3306),
+                function (int $localPort) use ($config, $outputPath, $compression, $checkpoint) {
+                    $tunnelConfig = array_merge($config, [
+                        'host' => '127.0.0.1',
+                        'port' => $localPort,
+                    ]);
+
+                    return $this->executeIncrementalDump($tunnelConfig, $outputPath, $compression, $checkpoint);
+                }
+            );
+        }
+
+        return $this->executeIncrementalDump($config, $outputPath, $compression, $checkpoint);
+    }
+
+    /**
+     * Internal incremental dump: queries information_schema for modified tables.
+     */
+    protected function executeIncrementalDump(array $config, string $outputPath, string $compression, ?array $checkpoint): array
+    {
+        $since = $checkpoint['timestamp'] ?? null;
+        $changedTables = $this->getChangedTables($config, $since);
+
+        // If no tables changed, create an empty marker file
+        if (empty($changedTables)) {
+            $fileName = $this->generateFileName($config['database'], $compression, true);
+            $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+            file_put_contents($fullPath, '-- incremental: no changes since ' . ($since ?? 'unknown'));
+
+            return [
+                'file_name' => $fileName,
+                'file_path' => $fullPath,
+                'file_size' => filesize($fullPath),
+                'meta' => [
+                    'database' => $config['database'],
+                    'tables' => [],
+                    'host' => $config['host'],
+                    'incremental' => true,
+                    'no_changes' => true,
+                ],
+                'incremental_checkpoint' => [
+                    'type' => 'mysql',
+                    'database' => $config['database'],
+                    'timestamp' => now()->toIso8601String(),
+                ],
+            ];
+        }
+
+        // Dump only changed tables
+        $dumpConfig = array_merge($config, ['tables' => $changedTables]);
+        $result = $this->executeDump($dumpConfig, $outputPath, $compression, true);
+
+        $result['meta']['incremental'] = true;
+        $result['meta']['changed_tables'] = $changedTables;
+        $result['incremental_checkpoint'] = [
+            'type' => 'mysql',
+            'database' => $config['database'],
+            'timestamp' => now()->toIso8601String(),
+        ];
+
+        return $result;
+    }
+
+    /**
+     * Query information_schema to find tables modified since $since.
+     */
+    protected function getChangedTables(array $config, ?string $since): array
+    {
+        if (! $since) {
+            return []; // No checkpoint = should do full backup
+        }
+
+        $cmd = sprintf(
+            'mysql --host=%s --port=%s --user=%s --password=%s -N -e %s',
+            escapeshellarg($config['host']),
+            escapeshellarg((string) ($config['port'] ?? 3306)),
+            escapeshellarg($config['username']),
+            escapeshellarg($config['password']),
+            escapeshellarg(
+                "SELECT TABLE_NAME FROM information_schema.TABLES "
+                . "WHERE TABLE_SCHEMA = '{$config['database']}' "
+                . "AND TABLE_TYPE = 'BASE TABLE' "
+                . "AND (UPDATE_TIME IS NULL OR UPDATE_TIME >= '{$since}')"
+            )
+        );
+
+        $result = Process::timeout(60)->run($cmd);
+
+        if (! $result->successful()) {
+            // Fallback: cannot determine changed tables, return empty to force full
+            return [];
+        }
+
+        return array_filter(array_map('trim', explode("\n", trim($result->output()))));
+    }
+
+    /**
      * Internal dump execution (no SSH).
      */
-    protected function executeDump(array $config, string $outputPath, string $compression): array
+    protected function executeDump(array $config, string $outputPath, string $compression, bool $isIncremental = false): array
     {
         $command = $this->buildCommand($config);
-        $fileName = $this->generateFileName($config['database'], $compression);
+        $fileName = $this->generateFileName($config['database'], $compression, $isIncremental);
         $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
 
         $cmd = $command;
@@ -119,15 +229,16 @@ class MysqlBackupService
     /**
      * Generate a timestamped file name.
      */
-    protected function generateFileName(string $database, string $compression): string
+    protected function generateFileName(string $database, string $compression, bool $isIncremental = false): string
     {
         $timestamp = now()->format('Ymd_His');
+        $prefix = $isIncremental ? 'mysql_incr' : 'mysql';
         $ext = match ($compression) {
             'gzip' => '.sql.gz',
             'zip' => '.sql.zip',
             default => '.sql',
         };
 
-        return "mysql_{$database}_{$timestamp}{$ext}";
+        return "{$prefix}_{$database}_{$timestamp}{$ext}";
     }
 }

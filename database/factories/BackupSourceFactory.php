@@ -11,16 +11,11 @@ class BackupSourceFactory extends Factory
 
     public function definition(): array
     {
-        $type = $this->faker->randomElement(['mysql', 'mongodb', 'filesystem']);
-
         return [
-            'name' => $this->faker->company() . ' ' . ucfirst($type),
-            'type' => $type,
-            'config' => match ($type) {
+            'name' => $this->faker->unique()->company(),
+            'config' => [
                 'mysql' => $this->mysqlConfig(),
-                'mongodb' => $this->mongodbConfig(),
-                'filesystem' => $this->filesystemConfig(),
-            },
+            ],
             'is_active' => true,
         ];
     }
@@ -28,24 +23,27 @@ class BackupSourceFactory extends Factory
     public function mysql(): static
     {
         return $this->state(fn () => [
-            'type' => 'mysql',
-            'config' => $this->mysqlConfig(),
+            'config' => [
+                'mysql' => $this->mysqlConfig(),
+            ],
         ]);
     }
 
     public function mongodb(): static
     {
         return $this->state(fn () => [
-            'type' => 'mongodb',
-            'config' => $this->mongodbConfig(),
+            'config' => [
+                'mongodb' => $this->mongodbConfig(),
+            ],
         ]);
     }
 
     public function filesystem(): static
     {
         return $this->state(fn () => [
-            'type' => 'filesystem',
-            'config' => $this->filesystemConfig(),
+            'config' => [
+                'filesystem' => $this->filesystemConfig(),
+            ],
         ]);
     }
 

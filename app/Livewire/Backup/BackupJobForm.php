@@ -28,6 +28,8 @@ class BackupJobForm extends Component
     public string $schedule_day_of_month = '';
     public int $retention_count = 7;
     public string $compression = 'gzip';
+    public string $backup_type = 'full';
+    public string $full_backup_every = '';
     public bool $notify_on_success = false;
     public bool $notify_on_failure = true;
     /** @var string[] */
@@ -55,6 +57,8 @@ class BackupJobForm extends Component
             $this->schedule_day_of_month = $job->schedule_day_of_month !== null ? (string) $job->schedule_day_of_month : '';
             $this->retention_count = $job->retention_count;
             $this->compression = $job->compression;
+            $this->backup_type = $job->backup_type ?? 'full';
+            $this->full_backup_every = $job->full_backup_every !== null ? (string) $job->full_backup_every : '';
             $this->notify_on_success = $job->notify_on_success;
             $this->notify_on_failure = $job->notify_on_failure;
             $this->notification_emails = $job->notification_emails ?? [];
@@ -81,6 +85,7 @@ class BackupJobForm extends Component
             'schedule_type' => 'required|in:manual,hourly,daily,weekly,monthly,custom',
             'retention_count' => 'required|integer|min:1|max:365',
             'compression' => 'required|in:none,gzip,zip',
+            'backup_type' => 'required|in:full,incremental',
             'notify_on_success' => 'boolean',
             'notify_on_failure' => 'boolean',
             'notification_emails' => 'nullable|array',
@@ -105,6 +110,10 @@ class BackupJobForm extends Component
             $rules['schedule_cron'] = 'required|string|max:100';
         }
 
+        if ($this->backup_type === 'incremental' && $this->full_backup_every !== '') {
+            $rules['full_backup_every'] = 'required|integer|min:1|max:365';
+        }
+
         if ($this->notify_on_success || $this->notify_on_failure) {
             $rules['notification_emails'] = 'required|array|min:1';
             $rules['notification_emails.*'] = 'email|max:255';
@@ -127,6 +136,8 @@ class BackupJobForm extends Component
             'schedule_day_of_month' => $this->schedule_type === 'monthly' ? (int) $this->schedule_day_of_month : null,
             'retention_count' => $this->retention_count,
             'compression' => $this->compression,
+            'backup_type' => $this->backup_type,
+            'full_backup_every' => $this->backup_type === 'incremental' && $this->full_backup_every !== '' ? (int) $this->full_backup_every : null,
             'notify_on_success' => $this->notify_on_success,
             'notify_on_failure' => $this->notify_on_failure,
             'notification_emails' => ($this->notify_on_success || $this->notify_on_failure) ? array_values($this->notification_emails) : null,

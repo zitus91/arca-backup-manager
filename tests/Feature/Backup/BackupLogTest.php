@@ -16,13 +16,15 @@ it('filters logs by job', function () {
     $job1 = BackupJob::factory()->create(['name' => 'Job One']);
     $job2 = BackupJob::factory()->create(['name' => 'Job Two']);
 
-    BackupLog::factory()->for($job1, 'job')->create();
+    $log1 = BackupLog::factory()->for($job1, 'job')->create();
     BackupLog::factory()->for($job2, 'job')->create();
 
-    Livewire::test(BackupLogIndex::class)
-        ->set('filterJobId', (string) $job1->id)
-        ->assertSee('Job One')
-        ->assertDontSee('Job Two');
+    $component = Livewire::test(BackupLogIndex::class)
+        ->set('filterJobId', (string) $job1->id);
+
+    $visibleIds = $component->viewData('logs')->pluck('id')->all();
+    expect($visibleIds)->toContain($log1->id);
+    expect($visibleIds)->toHaveCount(1);
 });
 
 it('filters logs by status', function () {

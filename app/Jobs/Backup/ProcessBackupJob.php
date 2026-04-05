@@ -55,6 +55,24 @@ class ProcessBackupJob implements ShouldQueue
             return;
         }
 
+        // Determine if this run should be incremental or full
+        $isIncremental = false;
+        $parentLog = null;
+        $checkpoint = null;
+
+        if ($backupJob->backup_type === 'incremental') {
+            $resolved = $this->resolveIncrementalState($backupJob);
+            $isIncremental = $resolved['is_incremental'];
+            $parentLog = $resolved['parent_log'];
+            $checkpoint = $resolved['checkpoint'];
+        }
+
+        // Update the log with full/incremental flag and parent reference
+        $log->update([
+            'is_full' => ! $isIncremental,
+            'parent_backup_log_id' => $isIncremental && $parentLog ? $parentLog->id : null,
+        ]);
+
         try {
             event(new BackupJobStarted(
                 jobId: $backupJob->id,
@@ -75,6 +93,7 @@ class ProcessBackupJob implements ShouldQueue
             $results = [];
             $totalSize = 0;
             $fileNames = [];
+            $incrementalCheckpoints = [];
 
             if (isset($sourceConfig['mysql'])) {
                 $mysqlDir = $tmpDir . '/mysql';
@@ -83,10 +102,20 @@ class ProcessBackupJob implements ShouldQueue
                 $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mysqlConf, ['database' => $db]);
-                    $r = $mysqlService->dump($singleConf, $mysqlDir, $backupJob->compression);
+                    $mysqlCheckpoint = $checkpoint['mysql'][$db] ?? ($checkpoint['mysql'] ?? null);
+
+                    if ($isIncremental) {
+                        $r = $mysqlService->incrementalDump($singleConf, $mysqlDir, $backupJob->compression, $mysqlCheckpoint);
+                    } else {
+                        $r = $mysqlService->dump($singleConf, $mysqlDir, $backupJob->compression);
+                    }
+
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
                     $fileNames[] = 'mysql/' . ($r['file_name'] ?? 'dump');
+                    if (isset($r['incremental_checkpoint'])) {
+                        $incrementalCheckpoints['mysql'][$db] = $r['incremental_checkpoint'];
+                    }
                 }
             }
 
@@ -97,10 +126,20 @@ class ProcessBackupJob implements ShouldQueue
                 $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mongoConf, ['database' => $db]);
-                    $r = $mongodbService->dump($singleConf, $mongoDir, $backupJob->compression);
+                    $mongoCheckpoint = $checkpoint['mongodb'][$db] ?? ($checkpoint['mongodb'] ?? null);
+
+                    if ($isIncremental) {
+                        $r = $mongodbService->incrementalDump($singleConf, $mongoDir, $backupJob->compression, $mongoCheckpoint);
+                    } else {
+                        $r = $mongodbService->dump($singleConf, $mongoDir, $backupJob->compression);
+                    }
+
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
                     $fileNames[] = 'mongodb/' . ($r['file_name'] ?? 'dump');
+                    if (isset($r['incremental_checkpoint'])) {
+                        $incrementalCheckpoints['mongodb'][$db] = $r['incremental_checkpoint'];
+                    }
                 }
             }
 
@@ -112,10 +151,20 @@ class ProcessBackupJob implements ShouldQueue
                 $excludePatterns = $fsConf['exclude_patterns'] ?? [];
                 foreach ($paths as $path) {
                     $singleConf = ['path' => $path, 'exclude_patterns' => $excludePatterns, 'ssh' => $sharedSsh];
-                    $r = $filesystemService->backup($singleConf, $fsDir, $backupJob->compression);
+                    $fsCheckpoint = $checkpoint['filesystem'][$path] ?? ($checkpoint['filesystem'] ?? null);
+
+                    if ($isIncremental) {
+                        $r = $filesystemService->incrementalBackup($singleConf, $fsDir, $backupJob->compression, $fsCheckpoint);
+                    } else {
+                        $r = $filesystemService->backup($singleConf, $fsDir, $backupJob->compression);
+                    }
+
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
                     $fileNames[] = 'filesystem/' . ($r['file_name'] ?? 'archive');
+                    if (isset($r['incremental_checkpoint'])) {
+                        $incrementalCheckpoints['filesystem'][$path] = $r['incremental_checkpoint'];
+                    }
                 }
             }
 
@@ -193,6 +242,7 @@ class ProcessBackupJob implements ShouldQueue
                 'file_size_bytes' => $result['file_size'],
                 'storage_path' => $remotePath,
                 'meta' => $result['meta'] ?? null,
+                'incremental_checkpoint' => ! empty($incrementalCheckpoints) ? $incrementalCheckpoints : null,
             ]);
 
             // 5. Apply retention policy
@@ -216,7 +266,7 @@ class ProcessBackupJob implements ShouldQueue
             // 8. Record audit log
             AuditLog::record(
                 'backup_completed',
-                "Backup job completed successfully: {$backupJob->name}",
+                "Backup job completed successfully: {$backupJob->name}" . ($isIncremental ? ' (incremental)' : ' (full)'),
                 $backupJob,
                 null,
                 [
@@ -225,6 +275,7 @@ class ProcessBackupJob implements ShouldQueue
                     'file_size_bytes'  => $result['file_size'],
                     'duration_seconds' => $log->duration_seconds,
                     'storage_path'     => $remotePath,
+                    'is_incremental'   => $isIncremental,
                 ],
             );
 
@@ -336,6 +387,64 @@ class ProcessBackupJob implements ShouldQueue
     }
 
     /**
+     * Determine whether this run should be incremental or full.
+     *
+     * Returns full backup when:
+     *  - No prior successful full backup exists
+     *  - full_backup_every threshold is reached (count of incremental runs since last full)
+     *
+     * Otherwise returns incremental with the last checkpoint.
+     */
+    protected function resolveIncrementalState(BackupJob $job): array
+    {
+        // Find the last successful full backup for this job
+        $lastFullLog = BackupLog::where('backup_job_id', $job->id)
+            ->where('status', 'success')
+            ->where('is_full', true)
+            ->orderByDesc('started_at')
+            ->first();
+
+        // No prior full backup: force full
+        if (! $lastFullLog) {
+            return ['is_incremental' => false, 'parent_log' => null, 'checkpoint' => null];
+        }
+
+        // Check if we've reached the full_backup_every threshold
+        if ($job->full_backup_every) {
+            $incrementalCount = BackupLog::where('backup_job_id', $job->id)
+                ->where('status', 'success')
+                ->where('is_full', false)
+                ->where('started_at', '>', $lastFullLog->started_at)
+                ->count();
+
+            if ($incrementalCount >= $job->full_backup_every) {
+                return ['is_incremental' => false, 'parent_log' => null, 'checkpoint' => null];
+            }
+        }
+
+        // Find the most recent successful backup (full or incremental) for checkpoint
+        $lastSuccessLog = BackupLog::where('backup_job_id', $job->id)
+            ->where('status', 'success')
+            ->orderByDesc('started_at')
+            ->first();
+
+        $checkpoint = $lastSuccessLog?->incremental_checkpoint;
+
+        // If no checkpoint data exists on the last log, build one from the timestamp
+        if (! $checkpoint && $lastSuccessLog) {
+            $checkpoint = [
+                'timestamp' => $lastSuccessLog->started_at->toIso8601String(),
+            ];
+        }
+
+        return [
+            'is_incremental' => true,
+            'parent_log' => $lastFullLog,
+            'checkpoint' => $checkpoint,
+        ];
+    }
+
+    /**
      * Build the remote storage path.
      */
     protected function buildRemotePath(BackupJob $job, string $fileName): string
@@ -364,9 +473,16 @@ class ProcessBackupJob implements ShouldQueue
 
     /**
      * Apply retention policy - delete old backups beyond retention_count.
+     * For incremental jobs: retention counts full backup chains (full + its incrementals).
      */
     protected function applyRetention(BackupJob $job, S3StorageService $s3Service, FtpStorageService $ftpService): void
     {
+        if ($job->backup_type === 'incremental') {
+            $this->applyIncrementalRetention($job, $s3Service, $ftpService);
+
+            return;
+        }
+
         $logsToDelete = BackupLog::where('backup_job_id', $job->id)
             ->where('status', 'success')
             ->whereNotNull('storage_path')
@@ -376,23 +492,65 @@ class ProcessBackupJob implements ShouldQueue
             ->get();
 
         foreach ($logsToDelete as $oldLog) {
-            try {
-                match ($job->destination->type) {
-                    's3' => $s3Service->delete($job->destination->config, $oldLog->storage_path),
-                    'ftp' => $ftpService->delete($job->destination->config, $oldLog->storage_path),
-                    'local' => @unlink($oldLog->storage_path),
-                    default => null,
-                };
-            } catch (\Throwable $e) {
-                Log::warning('Failed to delete old backup', [
-                    'log_id' => $oldLog->id,
-                    'path' => $oldLog->storage_path,
-                    'error' => $e->getMessage(),
-                ]);
+            $this->deleteBackupFile($job, $oldLog, $s3Service, $ftpService);
+        }
+    }
+
+    /**
+     * Apply retention for incremental jobs: count full backup chains.
+     * Each chain = 1 full + N incrementals. Keep retention_count chains.
+     */
+    protected function applyIncrementalRetention(BackupJob $job, S3StorageService $s3Service, FtpStorageService $ftpService): void
+    {
+        // Get all full backups ordered by date, skip the ones we want to keep
+        $fullLogsToDelete = BackupLog::where('backup_job_id', $job->id)
+            ->where('status', 'success')
+            ->where('is_full', true)
+            ->whereNotNull('storage_path')
+            ->orderByDesc('started_at')
+            ->skip($job->retention_count)
+            ->take(100)
+            ->get();
+
+        foreach ($fullLogsToDelete as $fullLog) {
+            // Delete all incrementals that belong to this full backup chain
+            $incrementals = BackupLog::where('backup_job_id', $job->id)
+                ->where('status', 'success')
+                ->where('is_full', false)
+                ->where('parent_backup_log_id', $fullLog->id)
+                ->whereNotNull('storage_path')
+                ->get();
+
+            foreach ($incrementals as $incrLog) {
+                $this->deleteBackupFile($job, $incrLog, $s3Service, $ftpService);
             }
 
-            $oldLog->update(['storage_path' => null]);
+            // Delete the full backup itself
+            $this->deleteBackupFile($job, $fullLog, $s3Service, $ftpService);
         }
+    }
+
+    /**
+     * Delete a single backup file from the storage destination.
+     */
+    protected function deleteBackupFile(BackupJob $job, BackupLog $log, S3StorageService $s3Service, FtpStorageService $ftpService): void
+    {
+        try {
+            match ($job->destination->type) {
+                's3' => $s3Service->delete($job->destination->config, $log->storage_path),
+                'ftp' => $ftpService->delete($job->destination->config, $log->storage_path),
+                'local' => @unlink($log->storage_path),
+                default => null,
+            };
+        } catch (\Throwable $e) {
+            Log::warning('Failed to delete old backup', [
+                'log_id' => $log->id,
+                'path' => $log->storage_path,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $log->update(['storage_path' => null]);
     }
 
     /**

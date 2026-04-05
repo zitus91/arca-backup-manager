@@ -16,68 +16,68 @@ it('renders backup source index', function () {
 it('creates a MySQL source', function () {
     Livewire::test(BackupSourceForm::class)
         ->set('name', 'Production MySQL')
-        ->set('type', 'mysql')
+        ->set('enable_mysql', true)
         ->set('mysql_host', '127.0.0.1')
         ->set('mysql_port', 3306)
-        ->set('mysql_database', 'myapp')
+        ->set('mysql_databases', ['myapp'])
         ->set('mysql_username', 'root')
         ->set('mysql_password', 'secret')
         ->call('save')
         ->assertDispatched('source-saved');
 
     $source = BackupSource::first();
-    expect($source->type)->toBe('mysql');
-    expect($source->config['database'])->toBe('myapp');
+    expect($source->hasType('mysql'))->toBeTrue();
+    expect($source->config['mysql']['databases'])->toContain('myapp');
 });
 
 it('creates a MongoDB source', function () {
     Livewire::test(BackupSourceForm::class)
         ->set('name', 'MongoDB Main')
-        ->set('type', 'mongodb')
+        ->set('enable_mongodb', true)
         ->set('mongodb_host', '127.0.0.1')
         ->set('mongodb_port', 27017)
-        ->set('mongodb_database', 'mydb')
+        ->set('mongodb_databases', ['mydb'])
         ->set('mongodb_username', 'admin')
         ->set('mongodb_password', 'mongopass')
         ->call('save')
         ->assertDispatched('source-saved');
 
     $source = BackupSource::first();
-    expect($source->type)->toBe('mongodb');
-    expect($source->config['database'])->toBe('mydb');
+    expect($source->hasType('mongodb'))->toBeTrue();
+    expect($source->config['mongodb']['databases'])->toContain('mydb');
 });
 
 it('creates a Filesystem source', function () {
     Livewire::test(BackupSourceForm::class)
         ->set('name', 'Uploads Folder')
-        ->set('type', 'filesystem')
-        ->set('fs_path', '/var/www/uploads')
+        ->set('enable_filesystem', true)
+        ->set('fs_paths', ['/var/www/uploads'])
         ->set('fs_exclude_patterns', '*.log, *.tmp')
         ->call('save')
         ->assertDispatched('source-saved');
 
     $source = BackupSource::first();
-    expect($source->type)->toBe('filesystem');
-    expect($source->config['path'])->toBe('/var/www/uploads');
-    expect($source->config['exclude_patterns'])->toBe(['*.log', '*.tmp']);
+    expect($source->hasType('filesystem'))->toBeTrue();
+    expect($source->config['filesystem']['paths'])->toContain('/var/www/uploads');
+    expect($source->config['filesystem']['exclude_patterns'])->toBe(['*.log', '*.tmp']);
 });
 
 it('validates required fields for MySQL', function () {
     Livewire::test(BackupSourceForm::class)
-        ->set('type', 'mysql')
+        ->set('enable_mysql', true)
         ->set('name', '')
-        ->set('mysql_database', '')
+        ->set('mysql_databases', [])
         ->call('save')
-        ->assertHasErrors(['name', 'mysql_database']);
+        ->assertHasErrors(['name', 'mysql_databases']);
 });
 
 it('validates required fields for filesystem', function () {
     Livewire::test(BackupSourceForm::class)
-        ->set('type', 'filesystem')
+        ->set('enable_filesystem', true)
         ->set('name', '')
-        ->set('fs_path', '')
+        ->set('fs_paths', [''])
         ->call('save')
-        ->assertHasErrors(['name', 'fs_path']);
+        ->assertHasErrors(['name', 'fs_paths.0']);
 });
 
 it('filters sources by type', function () {
@@ -93,10 +93,10 @@ it('filters sources by type', function () {
 it('encrypts source credentials in database', function () {
     Livewire::test(BackupSourceForm::class)
         ->set('name', 'Encrypted Source')
-        ->set('type', 'mysql')
+        ->set('enable_mysql', true)
         ->set('mysql_host', '127.0.0.1')
         ->set('mysql_port', 3306)
-        ->set('mysql_database', 'testdb')
+        ->set('mysql_databases', ['testdb'])
         ->set('mysql_username', 'root')
         ->set('mysql_password', 'supersecret')
         ->call('save');

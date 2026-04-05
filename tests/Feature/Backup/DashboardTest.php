@@ -11,11 +11,11 @@ it('renders dashboard', function () {
 });
 
 it('shows correct stats', function () {
-    BackupJob::factory()->count(3)->create(['is_active' => true]);
+    $jobs = BackupJob::factory()->count(3)->create(['is_active' => true]);
     BackupJob::factory()->inactive()->create();
 
-    BackupLog::factory()->success()->create(['started_at' => now()]);
-    BackupLog::factory()->failed()->create(['started_at' => now()]);
+    BackupLog::factory()->success()->for($jobs[0], 'job')->create(['started_at' => now()]);
+    BackupLog::factory()->failed()->for($jobs[1], 'job')->create(['started_at' => now()]);
 
     $component = Livewire::test(Dashboard::class);
 
@@ -31,9 +31,9 @@ it('shows recent logs', function () {
     expect($component->get('recentLogs'))->toHaveCount(5);
 });
 
-it('provides chart data for last 7 days', function () {
+it('provides chart data for last 14 days', function () {
     $component = Livewire::test(Dashboard::class);
 
-    expect($component->get('chartData'))->toHaveCount(7);
+    expect($component->get('chartData'))->toHaveCount(14);
     expect($component->get('chartData')[0])->toHaveKeys(['label', 'success', 'failed']);
 });

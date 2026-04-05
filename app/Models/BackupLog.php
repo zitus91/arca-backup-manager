@@ -13,6 +13,8 @@ class BackupLog extends Model
 
     protected $fillable = [
         'backup_job_id',
+        'parent_backup_log_id',
+        'is_full',
         'status',
         'started_at',
         'finished_at',
@@ -22,6 +24,7 @@ class BackupLog extends Model
         'storage_path',
         'error_message',
         'meta',
+        'incremental_checkpoint',
     ];
 
     protected function casts(): array
@@ -31,7 +34,9 @@ class BackupLog extends Model
             'finished_at' => 'datetime',
             'duration_seconds' => 'integer',
             'file_size_bytes' => 'integer',
+            'is_full' => 'boolean',
             'meta' => 'array',
+            'incremental_checkpoint' => 'array',
         ];
     }
 
@@ -40,6 +45,16 @@ class BackupLog extends Model
     public function job(): BelongsTo
     {
         return $this->belongsTo(BackupJob::class, 'backup_job_id');
+    }
+
+    public function parentBackup(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_backup_log_id');
+    }
+
+    public function childBackups(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(self::class, 'parent_backup_log_id');
     }
 
     // ── Scopes ─────────────────────────────────────────────────

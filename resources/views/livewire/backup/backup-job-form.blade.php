@@ -33,21 +33,22 @@
 
         {{-- Schedule Section --}}
         <div class="rounded-xl border border-info/20 bg-info/[0.03] p-5 space-y-4">
-            <div class="flex items-center gap-2 mb-1">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <h4 class="text-sm font-semibold text-info">{{ __('backup-job.schedule_type') }}</h4>
-            </div>
-
-            <div class="form-control">
-                <select wire:model.live="schedule_type" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10">
-                    <option value="manual">{{ __('backup-job.schedule_manual') }}</option>
-                    <option value="hourly">{{ __('backup-job.schedule_hourly') }}</option>
-                    <option value="daily">{{ __('backup-job.schedule_daily') }}</option>
-                    <option value="weekly">{{ __('backup-job.schedule_weekly') }}</option>
-                    <option value="monthly">{{ __('backup-job.schedule_monthly') }}</option>
-                    <option value="custom">{{ __('backup-job.schedule_custom') }}</option>
-                </select>
-                @error('schedule_type') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+            <div class="flex items-center gap-2 mb-1 justify-between">
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <h4 class="text-sm font-semibold text-info">{{ __('backup-job.schedule_type') }}</h4>
+                </div>
+                <div class="form-control">
+                    <select wire:model.live="schedule_type" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 w-50">
+                        <option value="manual">{{ __('backup-job.schedule_manual') }}</option>
+                        <option value="hourly">{{ __('backup-job.schedule_hourly') }}</option>
+                        <option value="daily">{{ __('backup-job.schedule_daily') }}</option>
+                        <option value="weekly">{{ __('backup-job.schedule_weekly') }}</option>
+                        <option value="monthly">{{ __('backup-job.schedule_monthly') }}</option>
+                        <option value="custom">{{ __('backup-job.schedule_custom') }}</option>
+                    </select>
+                    @error('schedule_type') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                </div>
             </div>
 
             @if (in_array($schedule_type, ['daily', 'weekly', 'monthly']))
@@ -116,6 +117,34 @@
                 </select>
                 @error('compression') <span class="text-error text-xs mt-1.5">{{ $message }}</span> @enderror
             </div>
+        </div>
+
+        {{-- Backup Type (Full / Incremental) --}}
+        <div class="rounded-xl border border-accent/20 bg-accent/[0.03] p-5 space-y-4">
+            <div class="flex items-center gap-2 mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125v-3.75" /></svg>
+                <h4 class="text-sm font-semibold text-accent">{{ __('backup-job.backup_type') }}</h4>
+            </div>
+
+            <div class="form-control">
+                <select wire:model.live="backup_type" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10">
+                    <option value="full">{{ __('backup-job.backup_type_full') }}</option>
+                    <option value="incremental">{{ __('backup-job.backup_type_incremental') }}</option>
+                </select>
+                @error('backup_type') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+            </div>
+
+            @if ($backup_type === 'incremental')
+                <div class="rounded-lg bg-accent/5 border border-accent/10 p-3">
+                    <p class="text-xs text-base-content/60 mb-3">{{ __('backup-job.incremental_description') }}</p>
+
+                    <div class="form-control flex justify-around">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-job.full_backup_every') }}</span></label>
+                        <input type="number" wire:model="full_backup_every" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" min="1" max="365" placeholder="{{ __('backup-job.full_backup_every_placeholder') }}" />
+                        @error('full_backup_every') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+            @endif
         </div>
 
         {{-- Notifications --}}
