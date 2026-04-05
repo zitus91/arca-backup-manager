@@ -7,6 +7,12 @@ return [
     'edit' => 'Modifica',
     'delete' => 'Elimina',
     'run_now' => 'Esegui Ora',
+    'cancel_job' => 'Annulla Job',
+    'cancel_not_running' => 'Nessun job in esecuzione o in attesa da annullare.',
+    'cancelled' => 'Job di backup annullato.',
+    'confirm_cancel_title' => 'Annulla Job',
+    'confirm_cancel' => 'Sei sicuro di voler annullare questo job in esecuzione? Il backup corrente verrà interrotto.',
+    'cancel_confirm_btn' => 'Sì, annullalo',
     'filter_status' => 'Stato',
     'filter_schedule' => 'Schedulazione',
     'all' => 'Tutti',
@@ -84,4 +90,5 @@ return [
     'status_running' => 'In Esecuzione',
     'status_pending' => 'In Attesa',
     'status_partial' => 'Parziale',
+    'status_cancelled' => 'Annullato',
 ];

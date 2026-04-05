@@ -46,7 +46,13 @@ class ProcessBackupJob implements ShouldQueue
         $log = BackupLog::findOrFail($this->backupLogId);
 
         // 1. Update status to running
-        $log->update(['status' => 'running']);
+        $log->update(['status' => 'running', 'started_at' => $log->started_at ?? now()]);
+
+        // Early-exit: cancelled before worker even picked up the job
+        $log->refresh();
+        if ($log->status === 'cancelled') {
+            return;
+        }
 
         event(new BackupJobStarted(
             jobId: $backupJob->id,
@@ -112,6 +118,11 @@ class ProcessBackupJob implements ShouldQueue
                 throw new \RuntimeException('No source types configured for this backup source.');
             }
 
+            // Cancellation checkpoint: after source dumps, before packaging/upload
+            if ($log->fresh()->status === 'cancelled') {
+                return;
+            }
+
             // Use first result for single-type sources, or create package archive for multi-type
             if (count($results) === 1) {
                 $result = $results[0];
@@ -139,6 +150,11 @@ class ProcessBackupJob implements ShouldQueue
                         'files' => $fileNames,
                     ],
                 ];
+            }
+
+            // Cancellation checkpoint: before potentially long upload
+            if ($log->fresh()->status === 'cancelled') {
+                return;
             }
 
             // 3. Upload to destination
@@ -194,36 +210,72 @@ class ProcessBackupJob implements ShouldQueue
             }
 
         } catch (\Throwable $e) {
-            Log::error('Backup job failed', [
-                'job_id' => $backupJob->id,
-                'log_id' => $log->id,
-                'error' => $e->getMessage(),
-            ]);
+            // Refresh to avoid overwriting a status already set by cancelJob()
+            $log->refresh();
 
-            $log->update([
-                'status' => 'failed',
-                'finished_at' => now(),
-                'duration_seconds' => now()->diffInSeconds($log->started_at),
-                'error_message' => $e->getMessage(),
-            ]);
+            if ($log->status !== 'cancelled') {
+                Log::error('Backup job failed', [
+                    'job_id' => $backupJob->id,
+                    'log_id' => $log->id,
+                    'error' => $e->getMessage(),
+                ]);
 
-            // Update next run even on failure
-            $schedulerService->updateNextRun($backupJob);
+                $log->update([
+                    'status'           => 'failed',
+                    'finished_at'      => now(),
+                    'duration_seconds' => now()->diffInSeconds($log->started_at),
+                    'error_message'    => $e->getMessage(),
+                ]);
 
-            event(new BackupJobCompleted(
-                jobId: $backupJob->id,
-                logId: $log->id,
-                status: 'failed',
-                jobName: $backupJob->name,
-                errorMessage: $e->getMessage(),
-            ));
+                event(new BackupJobCompleted(
+                    jobId:        $backupJob->id,
+                    logId:        $log->id,
+                    status:       'failed',
+                    jobName:      $backupJob->name,
+                    errorMessage: $e->getMessage(),
+                ));
 
-            if ($backupJob->notify_on_failure && !empty($backupJob->notification_emails)) {
-                $this->sendNotification($backupJob, $log, 'failed');
+                if ($backupJob->notify_on_failure && !empty($backupJob->notification_emails)) {
+                    $this->sendNotification($backupJob, $log, 'failed');
+                }
             }
+
+            // Always update next run regardless of cancellation or failure
+            $schedulerService->updateNextRun($backupJob);
         } finally {
             // Cleanup temp directory
             $this->cleanupTempDir($tmpDir);
+        }
+    }
+
+    /**
+     * Called by Laravel's queue system when the job fails after all retries
+     * or when it times out. Ensures the backup_log is never left in 'running'.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $log = BackupLog::find($this->backupLogId);
+
+        if ($log && in_array($log->status, ['pending', 'running'])) {
+            $log->update([
+                'status'           => 'failed',
+                'finished_at'      => now(),
+                'duration_seconds' => $log->started_at ? now()->diffInSeconds($log->started_at) : null,
+                'error_message'    => 'Job terminated by queue worker: ' . $exception->getMessage(),
+            ]);
+
+            try {
+                $jobName = BackupJob::find($this->backupJobId)?->name ?? 'Unknown';
+                event(new BackupJobCompleted(
+                    jobId:        $this->backupJobId,
+                    logId:        $log->id,
+                    status:       'failed',
+                    jobName:      $jobName,
+                    errorMessage: 'Job terminated by queue worker.',
+                ));
+            } catch (\Throwable) {
+                // Broadcast must never block the failed() handler
+            }
         }
     }
 

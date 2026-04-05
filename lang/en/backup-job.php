@@ -7,6 +7,12 @@ return [
     'edit' => 'Edit',
     'delete' => 'Delete',
     'run_now' => 'Run Now',
+    'cancel_job' => 'Cancel Job',
+    'cancel_not_running' => 'No running or pending job found to cancel.',
+    'cancelled' => 'Backup job cancelled.',
+    'confirm_cancel_title' => 'Cancel Job',
+    'confirm_cancel' => 'Are you sure you want to cancel this running job? The current backup will be interrupted.',
+    'cancel_confirm_btn' => 'Yes, cancel it',
     'filter_status' => 'Status',
     'filter_schedule' => 'Schedule',
     'all' => 'All',
@@ -84,4 +90,5 @@ return [
     'status_running' => 'Running',
     'status_pending' => 'Pending',
     'status_partial' => 'Partial',
+    'status_cancelled' => 'Cancelled',
 ];

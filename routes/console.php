@@ -25,3 +25,6 @@ Schedule::call(function () {
         ProcessBackupJob::dispatch($job->id, $log->id);
     }
 })->everyMinute()->name('backup-scheduler')->withoutOverlapping();
+
+// Recovery - marks jobs stuck in running/pending as failed (handles worker crashes)
+Schedule::command('backup:recover-stale-jobs')->everyFiveMinutes()->name('backup-recover-stale')->withoutOverlapping();

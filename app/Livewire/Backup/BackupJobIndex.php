@@ -56,8 +56,8 @@ class BackupJobIndex extends Component
 
         $log = BackupLog::create([
             'backup_job_id' => $job->id,
-            'status' => 'pending',
-            'started_at' => now(),
+            'status'        => 'pending',
+            'started_at'    => now(),
         ]);
 
         ProcessBackupJob::dispatch($job->id, $log->id);
@@ -65,6 +65,56 @@ class BackupJobIndex extends Component
         AuditLog::record('run', "Manually started backup job: {$job->name}", $job);
 
         session()->flash('message', __('backup-job.dispatched'));
+    }
+
+    // ── Cancel job ─────────────────────────────────────────────
+
+    public ?int $confirmingCancelId = null;
+
+    public function confirmCancelJob(int $id): void
+    {
+        $this->confirmingCancelId = $id;
+    }
+
+    public function dismissCancelConfirm(): void
+    {
+        $this->confirmingCancelId = null;
+    }
+
+    public function cancelJobConfirmed(): void
+    {
+        if ($this->confirmingCancelId === null) {
+            return;
+        }
+        $this->cancelJob($this->confirmingCancelId);
+        $this->confirmingCancelId = null;
+    }
+
+    public function cancelJob(int $id): void
+    {
+        $job = BackupJob::findOrFail($id);
+
+        $log = BackupLog::where('backup_job_id', $id)
+            ->whereIn('status', ['running', 'pending'])
+            ->latest('started_at')
+            ->first();
+
+        if (! $log) {
+            session()->flash('error', __('backup-job.cancel_not_running'));
+
+            return;
+        }
+
+        $log->update([
+            'status'           => 'cancelled',
+            'finished_at'      => now(),
+            'duration_seconds' => now()->diffInSeconds($log->started_at),
+            'error_message'    => 'Cancelled by user.',
+        ]);
+
+        AuditLog::record('cancel', "Cancelled backup job: {$job->name}", $job);
+
+        session()->flash('message', __('backup-job.cancelled'));
     }
 
     public ?int $confirmingDeleteId = null;
