@@ -54,11 +54,15 @@ class ProcessBackupJob implements ShouldQueue
             return;
         }
 
-        event(new BackupJobStarted(
-            jobId: $backupJob->id,
-            logId: $log->id,
-            jobName: $backupJob->name,
-        ));
+        try {
+            event(new BackupJobStarted(
+                jobId: $backupJob->id,
+                logId: $log->id,
+                jobName: $backupJob->name,
+            ));
+        } catch (\Throwable) {
+            // Non-critical: Reverb may be unavailable; do not abort the backup
+        }
 
         $tmpDir = storage_path('app/backups/tmp/' . $log->id);
         @mkdir($tmpDir, 0755, true);
@@ -197,12 +201,16 @@ class ProcessBackupJob implements ShouldQueue
             $schedulerService->updateNextRun($backupJob);
 
             // 7. Dispatch completion event
-            event(new BackupJobCompleted(
-                jobId: $backupJob->id,
-                logId: $log->id,
-                status: 'success',
-                jobName: $backupJob->name,
-            ));
+            try {
+                event(new BackupJobCompleted(
+                    jobId: $backupJob->id,
+                    logId: $log->id,
+                    status: 'success',
+                    jobName: $backupJob->name,
+                ));
+            } catch (\Throwable) {
+                // Non-critical: Reverb may be unavailable
+            }
 
             // 8. Send notification if configured
             if ($backupJob->notify_on_success && !empty($backupJob->notification_emails)) {
@@ -227,13 +235,17 @@ class ProcessBackupJob implements ShouldQueue
                     'error_message'    => $e->getMessage(),
                 ]);
 
-                event(new BackupJobCompleted(
-                    jobId:        $backupJob->id,
-                    logId:        $log->id,
-                    status:       'failed',
-                    jobName:      $backupJob->name,
-                    errorMessage: $e->getMessage(),
-                ));
+                try {
+                    event(new BackupJobCompleted(
+                        jobId:        $backupJob->id,
+                        logId:        $log->id,
+                        status:       'failed',
+                        jobName:      $backupJob->name,
+                        errorMessage: $e->getMessage(),
+                    ));
+                } catch (\Throwable) {
+                    // Non-critical: Reverb may be unavailable
+                }
 
                 if ($backupJob->notify_on_failure && !empty($backupJob->notification_emails)) {
                     $this->sendNotification($backupJob, $log, 'failed');
@@ -257,11 +269,17 @@ class ProcessBackupJob implements ShouldQueue
         $log = BackupLog::find($this->backupLogId);
 
         if ($log && in_array($log->status, ['pending', 'running'])) {
+            // Strip Reverb/Pusher transport errors from the user-visible message
+            $rawMessage = $exception->getMessage();
+            $isBroadcastError = str_contains($rawMessage, 'Pusher error') || str_contains($rawMessage, 'cURL error');
+            $userMessage = $isBroadcastError
+                ? 'Job terminated by queue worker (broadcast transport error — check Reverb).'
+                : 'Job terminated by queue worker: ' . $rawMessage;
             $log->update([
                 'status'           => 'failed',
                 'finished_at'      => now(),
                 'duration_seconds' => $log->started_at ? now()->diffInSeconds($log->started_at) : null,
-                'error_message'    => 'Job terminated by queue worker: ' . $exception->getMessage(),
+                'error_message'    => $userMessage,
             ]);
 
             try {
