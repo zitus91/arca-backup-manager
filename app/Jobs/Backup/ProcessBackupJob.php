@@ -18,6 +18,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\AuditLog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -212,7 +213,22 @@ class ProcessBackupJob implements ShouldQueue
                 // Non-critical: Reverb may be unavailable
             }
 
-            // 8. Send notification if configured
+            // 8. Record audit log
+            AuditLog::record(
+                'backup_completed',
+                "Backup job completed successfully: {$backupJob->name}",
+                $backupJob,
+                null,
+                [
+                    'log_id'           => $log->id,
+                    'file_name'        => $result['file_name'],
+                    'file_size_bytes'  => $result['file_size'],
+                    'duration_seconds' => $log->duration_seconds,
+                    'storage_path'     => $remotePath,
+                ],
+            );
+
+            // 9. Send notification if configured
             if ($backupJob->notify_on_success && !empty($backupJob->notification_emails)) {
                 $this->sendNotification($backupJob, $log, 'success');
             }
@@ -246,6 +262,17 @@ class ProcessBackupJob implements ShouldQueue
                 } catch (\Throwable) {
                     // Non-critical: Reverb may be unavailable
                 }
+
+                AuditLog::record(
+                    'backup_failed',
+                    "Backup job failed: {$backupJob->name}",
+                    $backupJob,
+                    null,
+                    [
+                        'log_id'        => $log->id,
+                        'error_message' => $e->getMessage(),
+                    ],
+                );
 
                 if ($backupJob->notify_on_failure && !empty($backupJob->notification_emails)) {
                     $this->sendNotification($backupJob, $log, 'failed');
@@ -294,6 +321,17 @@ class ProcessBackupJob implements ShouldQueue
             } catch (\Throwable) {
                 // Broadcast must never block the failed() handler
             }
+
+            AuditLog::record(
+                'backup_failed',
+                "Backup job terminated by queue worker: {$jobName}",
+                BackupJob::find($this->backupJobId),
+                null,
+                [
+                    'log_id'        => $log->id,
+                    'error_message' => $exception->getMessage(),
+                ],
+            );
         }
     }
 
