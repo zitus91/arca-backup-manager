@@ -1,402 +1,273 @@
 <p align="center">
-  <img src="public/images/logo.png" alt="Backup Manager Logo" width="200">
+  <img src="public/images/logo.png" alt="Backup Manager Logo" width="160">
 </p>
 
 <h1 align="center">Backup Manager</h1>
 
 <p align="center">
-  <strong>Una soluzione web completa per gestire backup e ripristini di database e filesystem.</strong>
+  <strong>A self-hosted web application to schedule, monitor, and restore backups of MySQL, MongoDB and filesystems.</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/PHP-8.2+-blue?logo=php" alt="PHP">
-  <img src="https://img.shields.io/badge/Laravel-12-red?logo=laravel" alt="Laravel">
-  <img src="https://img.shields.io/badge/Livewire-4-purple" alt="Livewire">
-  <img src="https://img.shields.io/badge/TailwindCSS-4-38bdf8?logo=tailwindcss" alt="Tailwind CSS">
-  <img src="https://img.shields.io/badge/DaisyUI-5-green" alt="DaisyUI">
-  <img src="https://img.shields.io/badge/Version-1.1.0-brightgreen" alt="Version">
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
+  <img src="https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php&logoColor=white" alt="PHP 8.2+">
+  <img src="https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white" alt="Laravel 12">
+  <img src="https://img.shields.io/badge/Livewire-4-4E56A6?logo=livewire&logoColor=white" alt="Livewire 4">
+  <img src="https://img.shields.io/badge/TailwindCSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4">
+  <img src="https://img.shields.io/badge/DaisyUI-5-5A0EF8" alt="DaisyUI 5">
+  <img src="https://img.shields.io/badge/version-1.2.0-22C55E" alt="Version">
+  <img src="https://img.shields.io/badge/license-MIT-F59E0B" alt="MIT License">
 </p>
 
 <p align="center">
-  <img src="docs/images/screenshot-dashboard.png" alt="Dashboard Screenshot" width="800">
+  <img src="docs/images/screenshot-dashboard.png" alt="Backup Manager Dashboard" width="860">
 </p>
 
 ---
 
-## 📋 Indice
+## Table of Contents
 
-- [Panoramica](#-panoramica)
-- [Funzionalità](#-funzionalità)
-- [Screenshots](#-screenshots)
-- [Architettura](#-architettura)
-- [Requisiti](#-requisiti)
-- [Installazione con Docker (consigliato)](#-installazione-con-docker-consigliato)
-- [Installazione su Host](#-installazione-su-host)
-- [Configurazione](#-configurazione)
-- [Utilizzo](#-utilizzo)
-- [Immagini e Asset](#-immagini-e-asset)
+- [Overview](#-overview)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [Production Setup](#-production-setup)
+- [Configuration](#-configuration)
+- [Usage Guide](#-usage-guide)
+- [Security](#-security)
 - [Testing](#-testing)
-- [Struttura del Progetto](#-struttura-del-progetto)
+- [Project Structure](#-project-structure)
+- [Screenshots](#-screenshots)
 - [Changelog](#-changelog)
 - [License](#-license)
 
 ---
 
-## 🎯 Panoramica
+## 🎯 Overview
 
-**Backup Manager** è un'applicazione web costruita con Laravel 12 e Livewire 4 che permette di configurare, schedulare e monitorare backup automatici di database MySQL, MongoDB e filesystem. Supporta destinazioni di storage multiple (locale, S3, FTP) e offre funzionalità di ripristino granulare, audit log e notifiche in tempo reale via WebSocket.
+**Backup Manager** is a self-hosted web application built with **Laravel 12** and **Livewire 4** that lets you configure, schedule, monitor, and restore backups of MySQL databases, MongoDB databases, and filesystem directories — from a single, clean UI.
+
+All backup and restore operations run in the background via queued jobs. The dashboard updates in real time through **Laravel Reverb** WebSockets, so you always know exactly what is happening.
+
+Sensitive configuration (database credentials, storage keys, SSH details) is encrypted at rest using Laravel's built-in encryption layer. Every user action is recorded in a tamper-evident audit log.
 
 ---
 
-## ✨ Funzionalità
+## ✨ Features
 
-### Backup
-- **MySQL** — Dump completi con `mysqldump` (single transaction, routines, triggers)
-- **MongoDB** — Dump con `mongodump`, supporto autenticazione e collections specifiche
-- **Filesystem** — Archiviazione di directory con pattern di esclusione
+### Backup Sources
+
+| Engine | Method | Notes |
+|--------|--------|-------|
+| **MySQL** | `mysqldump` | Single transaction, routines, triggers |
+| **MongoDB** | `mongodump` | Auth support, custom collections |
+| **Filesystem** | `tar` / `gzip` / `zip` | Exclude patterns, rsync over SSH |
+
+One source can combine all three types in a single backup job.
+
+### SSH Tunnel Support
+
+All source types support an optional **SSH tunnel** (key or password auth via `sshpass`) so you can back up databases that are not directly reachable from the backup server.
+
+### Incremental Backups
+
+- **MySQL** — incremental dumps targeted only at tables modified since the last checkpoint (via `information_schema`)
+- **MongoDB** — incremental dumps filtered by `ObjectId` timestamp
+- **Filesystem** — only files modified after the previous run (`find -newer`)
+- Configurable cadence: run a full backup every _N_ runs, incrementals in between
+- Parent/child chain tracked in the database for correct restore ordering
 
 ### Storage Destinations
-- **Locale** — Salvataggio su filesystem locale
-- **Amazon S3** — Compatibile con qualsiasi storage S3 (AWS, MinIO, DigitalOcean Spaces, ecc.)
-- **FTP/SFTP** — Upload su server FTP
+
+| Type | Notes |
+|------|-------|
+| **Local** | Any writable path on the backup server |
+| **Amazon S3** | AWS, MinIO, DigitalOcean Spaces, Backblaze B2, or any S3-compatible endpoint |
+| **FTP** | Standard FTP with optional SSL and passive mode |
+
+Files are uploaded with streaming to avoid out-of-memory errors on large backups.
 
 ### Scheduling
-- Pianificazione: manuale, oraria, giornaliera, settimanale, mensile, CRON custom
-- Calcolo automatico del prossimo run
-- Retention policy configurabile per job
 
-### Ripristino
-- Ripristino selettivo: solo database, solo file, o completo
-- Ripristino in database/directory con suffisso `_restored_<timestamp>` (non distruttivo)
-- Supporto formati compressi (`.gz`, `.zip`, `.tar.gz`)
-- **Ripristino su host remoto** — MySQL, MongoDB e filesystem via SSH/rsync
-- **Nomi target personalizzati** — Nome database o percorso di destinazione editabile per ogni elemento
-- **Override (sovrascrittura)** — Opzione per sovrascrivere database/directory esistenti con avvisi di sicurezza multipli
-- **Disclaimer interattivo** — Riepilogo in tempo reale delle operazioni con tag contestuali (OVERRIDE, DROP IF EXISTS)
-- **Conferma a doppio step** — Step di conferma aggiuntivo con dettagli completi prima dell'esecuzione
+- **Manual** — trigger on demand
+- **Hourly / Daily / Weekly / Monthly** — simple schedule types with time-of-day and day selectors
+- **Custom CRON** — any valid cron expression with a live human-readable preview
+- Next run time is recalculated automatically after each execution
 
-### Monitoraggio & UI
-- **Dashboard real-time** con statistiche, grafici successi/fallimenti, salute dei job
-- **Audit Log** completo di tutte le operazioni
-- **Notifiche WebSocket** (Laravel Reverb) per aggiornamenti live
-- **Notifiche email** configurabili per successo/fallimento
-- Interfaccia responsive con Tailwind CSS 4 + DaisyUI 5
+### Retention Policy
 
-### Gestione Utenti
-- Autenticazione con login/logout
-- Gestione utenti multipli
-- Profilo utente
+Each job has a configurable retention count. After every successful backup, the oldest backups exceeding the limit are deleted from remote storage and from the log database automatically.
+
+### Restore
+
+- **Granular selection** — restore only databases, only files, or everything from a combined backup
+- **Non-destructive by default** — each database / path is restored under a new name with a `_restored_<timestamp>` suffix
+- **Custom target names** — editable per database or per path before executing
+- **Remote host restore** — restore MySQL or MongoDB to a different server, or push a filesystem backup to a remote host via rsync over SSH
+- **Override mode** — optionally drop/overwrite an existing database or directory (requires explicit two-step confirmation with a live disclaimer showing every destructive operation)
+- **Incremental chain restore** — the engine automatically resolves the full backup + all incremental steps and applies them in order
+- Supported archive formats: `.sql`, `.sql.gz`, `.sql.zip`, `.tar.gz`, `.zip`
+
+### Real-time Dashboard
+
+- 14-day success/failure trend chart
+- Active job health overview (last status, last run, next run, storage used)
+- Upcoming scheduled backups
+- Storage breakdown by destination
+- All widgets update live via WebSocket events — no page reload required
+
+### Audit Log
+
+Every user-initiated action (create/update/delete of any entity, backup executions, restore executions, login, logout) is recorded with user identity, IP address, User-Agent, old values, and new values.
+
+### Notifications
+
+- Per-job email notification on success and/or failure
+- Multiple recipient addresses per job
+- Built-in test email to verify SMTP settings without running an actual backup
+
+### Stale Job Recovery
+
+An Artisan command (`backup:recover-stale-jobs`) runs on a schedule to automatically mark as `failed` any job that has been stuck in `running` or `pending` state for more than a configurable number of minutes (default: 70). Useful to recover from unexpected worker crashes.
+
+### Multi-language UI
+
+Full English and Italian translations for every label, description, validation message, and notification. Language files are scoped per component.
 
 ---
 
-## 📸 Screenshots
-
-> Inserisci gli screenshot nella cartella `docs/images/` (vedi sezione [Immagini e Asset](#-immagini-e-asset))
-
-| Dashboard | Backup Jobs | Sorgenti |
-|:---------:|:-----------:|:--------:|
-| ![Dashboard](docs/images/screenshot-dashboard.png) | ![Jobs](docs/images/screenshot-jobs.png) | ![Sources](docs/images/screenshot-sources.png) |
-
-| Destinazioni | Log | Ripristino |
-|:------------:|:---:|:----------:|
-| ![Destinations](docs/images/screenshot-destinations.png) | ![Logs](docs/images/screenshot-logs.png) | ![Restore](docs/images/screenshot-restore.png) |
-
----
-
-## 🏗 Architettura
+## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Browser (UI)                         │
-│              Livewire 4 + DaisyUI 5                     │
-└──────────────┬──────────────────────┬───────────────────┘
-               │ HTTP                 │ WebSocket
-               ▼                     ▼
-┌──────────────────────┐  ┌───────────────────────┐
-│   Laravel 12 App     │  │   Laravel Reverb      │
-│                      │  │   (WebSocket Server)  │
-│  ┌────────────────┐  │  └───────────────────────┘
-│  │  Livewire      │  │
-│  │  Components    │  │
-│  └───────┬────────┘  │
-│          │           │
-│  ┌───────▼────────┐  │
-│  │  Services      │  │
-│  │  (Backup/      │  │
-│  │   Restore)     │  │
-│  └───────┬────────┘  │
-│          │           │
-│  ┌───────▼────────┐  │
-│  │  Queue Jobs    │  │
-│  │  (Background)  │  │
-│  └───────┬────────┘  │
-│          │           │
-└──────────┼───────────┘
-           │
-    ┌──────┼──────────────────┐
-    │      │                  │
-    ▼      ▼                  ▼
-┌──────┐ ┌──────┐   ┌─────────────┐
-│MySQL │ │Mongo │   │ S3/FTP/Local│
-│      │ │DB    │   │  Storage    │
-└──────┘ └──────┘   └─────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                        Browser                                │
+│            Livewire 4  ·  TailwindCSS  ·  DaisyUI            │
+└────────────────────┬──────────────────────┬───────────────────┘
+                     │ HTTP / Livewire wire  │ WebSocket
+                     ▼                       ▼
+        ┌────────────────────┐   ┌─────────────────────┐
+        │    Laravel 12      │   │   Laravel Reverb    │
+        │                    │   │  (WebSocket server) │
+        │  Livewire          │   └─────────────────────┘
+        │  Components        │            ▲
+        │       │            │            │ broadcast
+        │       │ dispatch   │            │
+        │       ▼            │   BackupJobStarted / BackupJobCompleted
+        │  Queue Jobs        │   RestoreJobStarted / RestoreJobCompleted
+        │       │            │
+        │       ▼            │
+        │  Service Layer     │
+        │  ┌──────────────┐  │
+        │  │ Backup       │  │     ┌────────────┐  ┌────────────┐
+        │  │  MySQL       │──┼────►│ mysqldump  │  │ SSH Tunnel │
+        │  │  MongoDB     │──┼────►│ mongodump  │  │ (optional) │
+        │  │  Filesystem  │──┼────►│ tar/rsync  │  └────────────┘
+        │  └──────────────┘  │
+        │  ┌──────────────┐  │     ┌────────────┐
+        │  │ Storage      │  │     │ S3/FTP/    │
+        │  │  S3          │──┼────►│ Local      │
+        │  │  FTP         │  │     └────────────┘
+        │  │  Local       │  │
+        │  └──────────────┘  │
+        └────────────────────┘
+                  │
+        ┌─────────────────────────────┐
+        │  Database (SQLite / MySQL)  │
+        │  BackupJob · BackupLog      │
+        │  RestoreLog · AuditLog      │
+        └─────────────────────────────┘
 ```
 
----
+**Request flow:**
 
-## 📦 Requisiti
-
-### Docker
-- Docker Engine 20.10+
-- Docker Compose v2+
-
-### Host (senza Docker)
-- PHP 8.2+
-- Composer 2.x
-- Node.js 18+ & npm
-- SQLite 3 (o MySQL 8+ se preferito)
-- Estensioni PHP: `pdo_sqlite`, `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `curl`
-- *(Opzionale)* `mysqldump` — per backup MySQL
-- *(Opzionale)* `mongodump` / `mongorestore` — per backup/restore MongoDB
-- *(Opzionale)* `tar`, `gzip`, `zip` — per backup filesystem
+1. A Livewire component action (e.g., "Run now") creates a `BackupLog` record and dispatches `ProcessBackupJob` to the queue.
+2. The queue worker picks up the job, runs the appropriate backup services, uploads to storage, applies retention, and broadcasts `BackupJobCompleted` via Reverb.
+3. The Livewire `Dashboard` component is subscribed to the Reverb channel. On receiving the event it invalidates its computed properties, triggering a reactive re-render with fresh data — no polling, no page reload.
 
 ---
 
-## 🐳 Installazione con Docker (consigliato)
+## 📦 Requirements
 
-### 1. Clona il repository
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| PHP | 8.2+ | Extensions: `pdo_sqlite`, `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `bcmath`, `curl`, `zip` |
+| Composer | 2.x | |
+| Node.js | 18+ | With npm |
+| SQLite | 3 | Or MySQL 8+ |
+| `mysqldump` | any | Only if backing up MySQL sources |
+| `mongodump` / `mongorestore` | any | Only if backing up / restoring MongoDB |
+| `mongosh` | any | Only if using MongoDB override mode |
+| `tar`, `gzip`, `zip` | system | For filesystem archives |
+| `ssh` | system | For SSH tunnels and remote restores |
+| `sshpass` | system | Only for password-based SSH auth |
+| `rsync` | system | Only for remote filesystem restores |
+
+---
+
+## 🚀 Installation
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/zitus91/backup-manager.git
 cd backup-manager
 ```
 
-### 2. Copia il file di configurazione
-
-```bash
-cp .env.example .env
-```
-
-### 3. Configura il `.env`
-
-```dotenv
-APP_NAME="Backup Manager"
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=http://localhost:8080
-
-DB_CONNECTION=sqlite
-
-QUEUE_CONNECTION=database
-BROADCAST_CONNECTION=reverb
-
-REVERB_APP_ID=backup-manager
-REVERB_APP_KEY=backup-manager-key
-REVERB_APP_SECRET=backup-manager-secret
-REVERB_HOST=reverb
-REVERB_PORT=8080
-REVERB_SCHEME=http
-```
-
-### 4. Avvia con Docker Compose
-
-```bash
-docker compose up -d
-```
-
-### 5. Setup iniziale (solo la prima volta)
-
-```bash
-docker compose exec app composer setup
-```
-
-Questo comando esegue automaticamente:
-- Installazione dipendenze PHP e Node.js
-- Generazione APP_KEY
-- Migrazione database
-- Build degli asset frontend
-
-### 6. Accedi all'applicazione
-
-Apri il browser su **http://localhost:8080**
-
-**Credenziali default:**
-| Campo | Valore |
-|-------|--------|
-| Email | `admin@backup.local` |
-| Password | `password` |
-
-> ⚠️ **Cambia la password al primo accesso dalla sezione Profilo.**
-
-### Docker Compose di esempio
-
-Crea un file `docker-compose.yml` nella root del progetto:
-
-```yaml
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup-manager-app
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      - ./storage:/var/www/html/storage
-      - ./.env:/var/www/html/.env
-    depends_on:
-      - reverb
-    environment:
-      - CONTAINER_ROLE=app
-
-  queue:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup-manager-queue
-    restart: unless-stopped
-    volumes:
-      - ./storage:/var/www/html/storage
-      - ./.env:/var/www/html/.env
-    environment:
-      - CONTAINER_ROLE=queue
-    command: php artisan queue:work --tries=1 --timeout=3600
-
-  scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup-manager-scheduler
-    restart: unless-stopped
-    volumes:
-      - ./storage:/var/www/html/storage
-      - ./.env:/var/www/html/.env
-    environment:
-      - CONTAINER_ROLE=scheduler
-    command: php artisan schedule:work
-
-  reverb:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup-manager-reverb
-    restart: unless-stopped
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./.env:/var/www/html/.env
-    environment:
-      - CONTAINER_ROLE=reverb
-    command: php artisan reverb:start --host=0.0.0.0 --port=8080
-```
-
-### Dockerfile di esempio
-
-Crea un file `Dockerfile` nella root del progetto:
-
-```dockerfile
-FROM php:8.2-apache
-
-# Installazione dipendenze di sistema
-RUN apt-get update && apt-get install -y \
-    git curl zip unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
-    libsqlite3-dev default-mysql-client mongodb-database-tools \
-    && docker-php-ext-install pdo_mysql pdo_sqlite mbstring zip xml bcmath \
-    && a2enmod rewrite \
-    && rm -rf /var/lib/apt/lists/*
-
-# Installazione Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Installazione Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
-# Configurazione Apache
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
-    /etc/apache2/sites-available/*.conf \
-    /etc/apache2/apache2.conf
-
-# Copia applicazione
-WORKDIR /var/www/html
-COPY . .
-
-# Installazione dipendenze e build
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
-    && npm ci && npm run build && rm -rf node_modules \
-    && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
-
-# Crea database SQLite
-RUN mkdir -p database && touch database/database.sqlite \
-    && chown www-data:www-data database/database.sqlite
-
-EXPOSE 80
-
-CMD ["apache2-foreground"]
-```
-
----
-
-## 🖥 Installazione su Host
-
-### 1. Clona il repository
-
-```bash
-git clone https://github.com/zitus91/backup-manager.git
-cd backup-manager
-```
-
-### 2. Esegui il setup
+### 2. One-command setup
 
 ```bash
 composer setup
 ```
 
-Questo comando esegue:
-1. `composer install` — Installa le dipendenze PHP
-2. Copia `.env.example` in `.env` (se non esiste)
-3. `php artisan key:generate` — Genera la chiave dell'applicazione
-4. `php artisan migrate --force` — Esegue le migrazioni
-5. `npm install` — Installa le dipendenze Node.js
-6. `npm run build` — Compila gli asset frontend
+This single command:
+1. Runs `composer install`
+2. Copies `.env.example` to `.env` (if not present)
+3. Generates `APP_KEY`
+4. Runs all database migrations
+5. Seeds the admin user
+6. Runs `npm install`
+7. Builds frontend assets (`npm run build`)
 
-### 3. Seed del database (opzionale)
+### 3. Open the app
 
-```bash
-php artisan db:seed
+```
+http://localhost:8000
 ```
 
-Crea l'utente admin con le credenziali:
-- **Email:** `admin@backup.local`
-- **Password:** `password`
+**Default credentials:**
 
-### 4. Avvia l'applicazione in development
+| | |
+|---|---|
+| Email | `admin@backup.local` |
+| Password | `password` |
+
+> **Change the password immediately** from the Profile section after first login.
+
+### Development mode
+
+Start all services concurrently with:
 
 ```bash
 composer dev
 ```
 
-Questo avvia contemporaneamente:
-- 🌐 **Server HTTP** — `php artisan serve` (http://localhost:8000)
-- 📋 **Queue Worker** — `php artisan queue:listen`
-- 📝 **Log Viewer** — `php artisan pail`
-- ⚡ **Vite Dev Server** — `npm run dev`
+This runs in parallel:
+- `php artisan serve` — HTTP server on port 8000
+- `php artisan queue:listen` — queue worker
+- `php artisan pail` — log viewer
+- `npm run dev` — Vite dev server with HMR
+- `php artisan reverb:start` — WebSocket server
 
-### 5. (Produzione) Configura il web server
+---
 
-Per ambienti di produzione, configura Apache o Nginx per puntare alla cartella `public/`.
+## 🖥 Production Setup
 
-**Esempio Nginx:**
+### Web server (Nginx example)
 
 ```nginx
 server {
     listen 80;
-    server_name backup.tuodominio.com;
+    server_name backup.yourdomain.com;
     root /var/www/backup-manager/public;
     index index.php;
 
@@ -416,24 +287,23 @@ server {
 }
 ```
 
-### 6. (Produzione) Configura i servizi in background
-
-Aggiungi al crontab:
+### Laravel scheduler (crontab)
 
 ```bash
 * * * * * cd /var/www/backup-manager && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Avvia il queue worker con Supervisor:
+The scheduler runs every minute and:
+- Dispatches due backup jobs
+- Runs `backup:recover-stale-jobs` to auto-recover stuck workers
+
+### Queue worker (Supervisor)
 
 ```ini
 [program:backup-manager-queue]
-process_name=%(program_name)s_%(process_num)02d
 command=php /var/www/backup-manager/artisan queue:work --tries=1 --timeout=3600
 autostart=true
 autorestart=true
-stopasgroup=true
-killasgroup=true
 user=www-data
 numprocs=1
 redirect_stderr=true
@@ -441,7 +311,7 @@ stdout_logfile=/var/www/backup-manager/storage/logs/queue.log
 stopwaitsecs=3600
 ```
 
-Avvia il server WebSocket:
+### WebSocket server (Supervisor)
 
 ```ini
 [program:backup-manager-reverb]
@@ -453,37 +323,68 @@ redirect_stderr=true
 stdout_logfile=/var/www/backup-manager/storage/logs/reverb.log
 ```
 
+### Docker
+
+A `Dockerfile` and `docker-compose.yml` are included in the repository.
+
+```bash
+# Build and start all containers
+docker compose up -d
+
+# First-time setup (run once after the containers are healthy)
+docker compose exec app composer setup
+```
+
+Open **http://localhost:8080** and log in with `admin@backup.local` / `password`.
+
+The compose file starts four services:
+
+| Service | Role |
+|---------|------|
+| `app` | Laravel + Apache HTTP server (port 8080) |
+| `queue` | Queue worker (`php artisan queue:work`) |
+| `scheduler` | Laravel scheduler (`php artisan schedule:work`) |
+| `reverb` | WebSocket server (port 8081) |
+
+Volumes `./storage` and `./database` are mounted from the host so backup data and the SQLite database survive container restarts.
+
+Override ports via environment variables:
+
+```dotenv
+APP_PORT=8080
+REVERB_PORT=8081
+```
+
 ---
 
-## ⚙️ Configurazione
+## ⚙️ Configuration
 
-### Variabili d'ambiente principali
+### Core environment variables
 
-| Variabile | Descrizione | Default |
-|-----------|-------------|---------|
-| `APP_NAME` | Nome dell'applicazione | `Laravel` |
-| `APP_ENV` | Ambiente (`local`, `production`) | `local` |
-| `APP_DEBUG` | Modalità debug | `true` |
-| `APP_URL` | URL base dell'applicazione | `http://localhost` |
-| `DB_CONNECTION` | Driver database (`sqlite`, `mysql`) | `sqlite` |
-| `QUEUE_CONNECTION` | Driver code (`database`, `redis`) | `database` |
-| `BROADCAST_CONNECTION` | Driver broadcast (`reverb`, `log`) | `log` |
-| `MAIL_MAILER` | Driver email per notifiche | `log` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `APP_KEY` | Encryption key (generated by setup) | — |
+| `APP_ENV` | `local` or `production` | `local` |
+| `APP_URL` | Public URL of the application | `http://localhost` |
+| `DB_CONNECTION` | `sqlite` or `mysql` | `sqlite` |
+| `QUEUE_CONNECTION` | `database` or `redis` | `database` |
+| `BROADCAST_CONNECTION` | `reverb` or `log` | `log` |
+| `MAIL_MAILER` | SMTP driver for notifications | `log` |
 
-### Configurazione Email (per notifiche backup)
+### Email notifications
 
 ```dotenv
 MAIL_MAILER=smtp
-MAIL_HOST=smtp.tuoserver.com
+MAIL_HOST=smtp.example.com
 MAIL_PORT=587
-MAIL_USERNAME=utente@tuoserver.com
-MAIL_PASSWORD=password
+MAIL_USERNAME=user@example.com
+MAIL_PASSWORD=secret
 MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=backup@tuodominio.com
+MAIL_FROM_ADDRESS=backup@example.com
 MAIL_FROM_NAME="Backup Manager"
 ```
 
-### Configurazione WebSocket (real-time updates)
+### WebSocket (real-time dashboard)
 
 ```dotenv
 BROADCAST_CONNECTION=reverb
@@ -501,176 +402,200 @@ VITE_REVERB_PORT="${REVERB_PORT}"
 VITE_REVERB_SCHEME="${REVERB_SCHEME}"
 ```
 
----
-
-## 🚀 Utilizzo
-
-### 1. Configura una Sorgente Backup
-
-Vai su **Sorgenti** e crea una nuova sorgente. Puoi configurare:
-- **MySQL**: host, porta, database, utente, password
-- **MongoDB**: host, porta, database, utente, password, collections
-- **Filesystem**: percorso/i da includere, pattern di esclusione
-
-Una singola sorgente può contenere più tipi (multi-tipo).
-
-### 2. Configura una Destinazione Storage
-
-Vai su **Destinazioni** e crea una nuova destinazione:
-- **Locale**: percorso di salvataggio sul server
-- **S3**: bucket, regione, access key, secret key, endpoint (compatibile MinIO)
-- **FTP**: host, porta, utente, password, percorso remoto
-
-### 3. Crea un Backup Job
-
-Vai su **Backup Jobs** e crea un nuovo job:
-- Scegli sorgente e destinazione
-- Imposta la schedulazione (manuale, oraria, giornaliera, settimanale, mensile, CRON)
-- Configura la retention (numero massimo di backup da conservare)
-- Abilita compressione e notifiche email
-
-### 4. Monitora dalla Dashboard
-
-La dashboard mostra in tempo reale:
-- Statistiche generali (job attivi, successi, fallimenti)
-- Grafico trend ultimi 14 giorni
-- Stato di salute di ogni job
-- Prossimi backup schedulati
-- Breakdown storage per destinazione
-
-### 5. Ripristina un Backup
-
-Vai su **Ripristino**, seleziona un backup log e scegli il tipo di ripristino:
-- **Solo Database** — Ripristina il dump in un nuovo database
-- **Solo File** — Estrae i file in una nuova directory
-- **Completo** — Ripristina tutto
+> Without Reverb configured the application works normally — the dashboard simply will not update in real time.
 
 ---
 
-## 🖼 Immagini e Asset
+## 🚦 Usage Guide
 
-### Immagini da creare
+### 1 — Create a Backup Source
 
-Per completare la presentazione del progetto, crea e posiziona le seguenti immagini:
+Go to **Sources** and click **New Source**. A source can include one or more of:
 
-#### Logo dell'applicazione
+- **MySQL** — host, port, username, password, list of databases. Use the built-in connection test to verify and auto-discover available databases.
+- **MongoDB** — host, port, credentials, list of databases. Connection test included.
+- **Filesystem** — one or more directory paths with optional exclude patterns.
+- **SSH Tunnel** — enable to reach sources that are not directly accessible. Supports key-based or password-based authentication.
 
-| File | Dimensioni | Posizione | Descrizione |
-|------|-----------|-----------|-------------|
-| `logo.png` | 512×512 px | `public/images/logo.png` | Logo principale dell'app (quadrato, trasparente) |
-| `logo-light.png` | 512×512 px | `public/images/logo-light.png` | Logo per sfondo scuro |
-| `favicon.ico` | 32×32 px | `public/favicon.ico` | Favicon del browser (sostituisci quello esistente) |
-| `favicon.svg` | scalabile | `public/favicon.svg` | Favicon SVG per browser moderni |
-| `apple-touch-icon.png` | 180×180 px | `public/apple-touch-icon.png` | Icona per dispositivi Apple |
+### 2 — Create a Storage Destination
 
-#### Screenshot per il README
+Go to **Destinations** and click **New Destination**. Choose:
 
-| File | Dimensioni | Posizione | Descrizione |
-|------|-----------|-----------|-------------|
-| `screenshot-dashboard.png` | 1280×800 px | `docs/images/screenshot-dashboard.png` | Dashboard principale con statistiche e grafici |
-| `screenshot-jobs.png` | 1280×800 px | `docs/images/screenshot-jobs.png` | Lista dei backup job configurati |
-| `screenshot-sources.png` | 1280×800 px | `docs/images/screenshot-sources.png` | Configurazione sorgenti backup |
-| `screenshot-destinations.png` | 1280×800 px | `docs/images/screenshot-destinations.png` | Configurazione destinazioni storage |
-| `screenshot-logs.png` | 1280×800 px | `docs/images/screenshot-logs.png` | Vista log dei backup eseguiti |
-| `screenshot-restore.png` | 1280×800 px | `docs/images/screenshot-restore.png` | Interfaccia di ripristino |
+- **Local** — an absolute path on the server running Backup Manager.
+- **S3** — bucket, region, access key, secret key. Optionally set a custom endpoint for MinIO or other S3-compatible services.
+- **FTP** — host, port, user, password, root path, SSL toggle.
 
-#### Open Graph / Social Preview
+A connection test button is available for all destination types.
 
-| File | Dimensioni | Posizione | Descrizione |
-|------|-----------|-----------|-------------|
-| `og-image.png` | 1200×630 px | `docs/images/og-image.png` | Immagine per condivisione social / GitHub |
+### 3 — Create a Backup Job
 
-### Come creare le cartelle
+Go to **Jobs** and click **New Job**:
 
-```bash
-mkdir -p public/images
-mkdir -p docs/images
-```
+| Setting | Description |
+|---------|-------------|
+| Source | Which source to back up |
+| Destination | Where to upload the archive |
+| Schedule | Manual / Hourly / Daily / Weekly / Monthly / Custom CRON |
+| Backup type | **Full** or **Incremental** (run full every N runs) |
+| Compression | None / Gzip / Zip |
+| Retention | Maximum number of backup files to keep |
+| Notifications | Success and/or failure emails, multiple recipients |
 
-### Suggerimenti per il logo
+Click **Run Now** at any time to trigger a manual backup immediately.
 
-Il logo dovrebbe rappresentare visivamente il concetto di **backup/protezione dati**:
-- Icone suggerite: scudo + database, nuvola + freccia, disco + lucchetto
-- Colori suggeriti: blu (#3B82F6), verde (#10B981) per dare un senso di sicurezza e affidabilità
-- Stile: flat/minimal, coerente con DaisyUI
+### 4 — Monitor from the Dashboard
+
+The dashboard shows:
+- Global stats: active jobs, total storage used, 30-day success rate, average duration
+- 14-day success/failure bar chart
+- Per-job health cards with last/next run times and last status
+- Upcoming scheduled backups
+- Storage usage breakdown by destination
+
+All data refreshes automatically via WebSocket when a backup starts or completes.
+
+### 5 — Restore a Backup
+
+Go to **Restore** and click **Restore** on any backup log entry. Configure:
+
+1. **What to restore** — databases only, files only, or everything
+2. **Target** — same host or a different remote host (MySQL / MongoDB / SSH)
+3. **Target names** — customize the database name or path for each item (default: `original_restored_YYYYMMDD_HHmmss`)
+4. **Override mode** — toggle to overwrite an existing database or directory (requires two-step confirmation with a live disclaimer listing every destructive operation)
+
+For incremental backups the system automatically chains the full backup with all subsequent incrementals and applies them in the correct order.
+
+---
+
+## 🔒 Security
+
+- **Encrypted credentials** — all sensitive configuration (database passwords, S3 keys, SSH keys/passwords, remote host configs) is stored using Laravel's `encrypted:array` cast, which uses AES-256-CBC encryption tied to `APP_KEY`. Guard your `.env` file carefully.
+- **Audit log** — every user action is recorded with IP, User-Agent, and before/after values. The audit log cannot be deleted from the UI.
+- **Non-destructive restores** — restores default to a new name with a timestamp suffix. Override mode (which can drop databases or delete directories) requires explicit opt-in and a two-step confirmation with a prominent warning.
+- **Authentication** — all backup management routes require authentication. There is no guest or API access.
+- **Input validation** — all Livewire component inputs are validated server-side before any operation is executed.
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-# Esegui tutti i test
+# Run the full test suite
 composer test
 
-# Oppure direttamente con Pest
+# Run with Pest directly
 php artisan test
 
-# Con coverage
+# Test coverage report
 php artisan test --coverage
 ```
 
+Tests use **Pest 3.8** with `RefreshDatabase`, an in-memory SQLite database, and array drivers for cache, session, and queue. Services are mocked; actual external tools (`mysqldump`, `mongodump`, etc.) are never invoked during tests.
+
+Feature tests live in `tests/Feature/Backup/`.
+
 ---
 
-## 📁 Struttura del Progetto
+## 📁 Project Structure
 
 ```
 backup-manager/
 ├── app/
+│   ├── Console/Commands/
+│   │   └── RecoverStaleBackupJobs.php       # Auto-recover stuck jobs
 │   ├── Events/
-│   │   ├── Backup/          # BackupJobStarted, BackupJobCompleted
-│   │   └── Restore/         # RestoreJobStarted, RestoreJobCompleted
-│   ├── Http/Controllers/    # BackupLogDownloadController
+│   │   ├── Backup/                          # BackupJobStarted, BackupJobCompleted
+│   │   └── Restore/                         # RestoreJobStarted, RestoreJobCompleted
+│   ├── Http/Controllers/
+│   │   └── BackupLogDownloadController.php  # Streaming file download
 │   ├── Jobs/
-│   │   ├── Backup/          # ProcessBackupJob
-│   │   └── Restore/         # ProcessRestoreJob
+│   │   ├── Backup/ProcessBackupJob.php      # Queued backup orchestrator
+│   │   └── Restore/ProcessRestoreJob.php    # Queued restore orchestrator
 │   ├── Livewire/
-│   │   ├── Admin/           # UserIndex, Profile
-│   │   ├── Auth/            # Login
-│   │   └── Backup/          # Dashboard, Jobs, Sources, Destinations, Logs, Restore, Audit
-│   ├── Models/              # BackupJob, BackupSource, BackupStorageDestination, BackupLog, RestoreLog, AuditLog, User
+│   │   ├── Admin/    # UserIndex, UserForm, Profile
+│   │   ├── Auth/     # Login
+│   │   └── Backup/   # Dashboard, BackupJobIndex/Form, BackupLogIndex,
+│   │                 # BackupSourceIndex/Form, StorageDestinationIndex/Form,
+│   │                 # RestoreIndex, AuditLogIndex
+│   ├── Mail/
+│   │   ├── BackupNotificationMail.php
+│   │   └── BackupTestMail.php
+│   ├── Models/
+│   │   ├── BackupJob.php
+│   │   ├── BackupLog.php
+│   │   ├── BackupSource.php
+│   │   ├── BackupStorageDestination.php
+│   │   ├── RestoreLog.php
+│   │   ├── AuditLog.php
+│   │   └── User.php
 │   ├── Services/
-│   │   ├── Backup/          # MysqlBackupService, MongodbBackupService, FilesystemBackupService,
-│   │   │                    # S3StorageService, FtpStorageService, BackupSchedulerService
-│   │   └── Restore/         # MysqlRestoreService, MongodbRestoreService, FilesystemRestoreService
-│   └── Trait/               # HasCache
-├── config/                  # Configurazioni Laravel
+│   │   ├── Backup/
+│   │   │   ├── MysqlBackupService.php
+│   │   │   ├── MongodbBackupService.php
+│   │   │   ├── FilesystemBackupService.php
+│   │   │   ├── S3StorageService.php
+│   │   │   ├── FtpStorageService.php
+│   │   │   ├── BackupSchedulerService.php
+│   │   │   └── SshTunnelService.php
+│   │   └── Restore/
+│   │       ├── MysqlRestoreService.php
+│   │       ├── MongodbRestoreService.php
+│   │       └── FilesystemRestoreService.php
+│   └── Trait/
+│       └── HasCache.php                     # Tag-based caching for all models
 ├── database/
-│   ├── factories/           # Factory per testing
-│   ├── migrations/          # Schema database
-│   └── seeders/             # DatabaseSeeder (utente admin)
+│   ├── factories/
+│   ├── migrations/
+│   └── seeders/
 ├── lang/
-│   ├── en/                  # Traduzioni inglese
-│   └── it/                  # Traduzioni italiano
+│   ├── en/   # English translations (scoped per component)
+│   └── it/   # Italian translations
 ├── resources/
-│   ├── css/                 # Tailwind CSS
-│   ├── js/                  # JavaScript (Echo, Vite)
+│   ├── css/
+│   ├── js/
 │   └── views/
-│       ├── components/      # Layout admin e guest
-│       └── livewire/        # Viste Livewire
+│       ├── components/layouts/  # admin.blade.php, guest.blade.php
+│       ├── mail/
+│       └── livewire/
 ├── routes/
-│   ├── channels.php         # Canali broadcast
-│   ├── console.php          # Scheduler (verifica job ogni minuto)
-│   └── web.php              # Rotte web
-├── tests/                   # Test con Pest
-├── Dockerfile               # Immagine Docker
-├── docker-compose.yml       # Orchestrazione container
-└── .env.example             # Template configurazione
+│   ├── channels.php    # Reverb broadcast channel definitions
+│   ├── console.php     # Artisan scheduler
+│   └── web.php         # All HTTP routes (prefix: /admin/backup/)
+└── tests/
+    ├── Feature/Backup/
+    └── Unit/
 ```
 
 ---
 
-## � Changelog
+## 📸 Screenshots
 
-Consulta il file [CHANGELOG.md](CHANGELOG.md) per la lista completa delle modifiche per ogni versione.
+| Dashboard | Backup Jobs |
+|:---------:|:-----------:|
+| ![Dashboard](docs/images/screenshot-dashboard.png) | ![Jobs](docs/images/screenshot-jobs.png) |
+
+| Sources | Restore |
+|:-------:|:-------:|
+| ![Sources](docs/images/screenshot-sources.png) | ![Restore](docs/images/screenshot-restore.png) |
+
+| Logs | Audit |
+|:----:|:-----:|
+| ![Logs](docs/images/screenshot-logs.png) | ![Audit](docs/images/screenshot-audit.png) |
 
 ---
 
-## �📄 License
+## 📋 Changelog
 
-Questo progetto è rilasciato sotto licenza [MIT](LICENSE).
+See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+
+---
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
 
 ---
 
 <p align="center">
-  Creato con ❤️ usando <a href="https://laravel.com">Laravel</a>, <a href="https://livewire.laravel.com">Livewire</a> e <a href="https://daisyui.com">DaisyUI</a>
+  Built with ❤️ using <a href="https://laravel.com">Laravel</a>, <a href="https://livewire.laravel.com">Livewire</a> and <a href="https://daisyui.com">DaisyUI</a>
 </p>

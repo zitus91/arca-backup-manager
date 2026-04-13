@@ -9,4 +9,5 @@ uses(
 
 uses(
     Tests\TestCase::class,
+    RefreshDatabase::class,
 )->in('Unit');

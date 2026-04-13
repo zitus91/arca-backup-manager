@@ -84,7 +84,10 @@ class BackupJob extends Model
     {
         return $query->where('is_active', true)
             ->whereNotNull('next_run_at')
-            ->where('next_run_at', '<=', now());
+            ->where('next_run_at', '<=', now())
+            ->whereDoesntHave('logs', function ($q) {
+                $q->whereIn('status', ['pending', 'running']);
+            });
     }
 
     public function scopeOfScheduleType($query, string $type)

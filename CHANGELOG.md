@@ -7,6 +7,44 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ---
 
+## [1.2.0] - 2026-04-13
+
+### Aggiunto
+
+#### Backup Incrementale
+- **Tipo di backup configurabile per job**: ogni job può essere impostato come `full` (sempre completo) o `incremental` (salva solo le modifiche dall'ultima esecuzione).
+- **Cadenza full configurabile**: campo `full_backup_every` per specificare ogni quante esecuzioni effettuare un backup completo (es. ogni 7 run incrementali).
+- **MySQL incrementale**: rileva le tabelle modificate dall'ultimo checkpoint tramite `information_schema` ed esegue un dump limitato a quelle tabelle.
+- **MongoDB incrementale**: dump filtrato per `ObjectId` basato sul timestamp dell'ultimo checkpoint.
+- **Filesystem incrementale**: trova i file modificati dopo l'ultima esecuzione tramite `find -newer` e crea un archivio solo con i file cambiati.
+- **Catena di ripristino**: il motore di restore risolve automaticamente la sequenza full + tutti gli incrementali successivi e li applica nell'ordine corretto.
+- **Tracciamento parent/child**: ogni `BackupLog` incrementale tiene traccia del backup genitore tramite `parent_backup_log_id`.
+- **Stato `cancelled`**: aggiunto nuovo stato ai `BackupLog` per i job annullati manualmente.
+- **Annullamento job in esecuzione**: possibilità di cancellare un job in stato `running` o `pending` direttamente dall'interfaccia Backup Jobs.
+
+#### Notifiche Multi-Destinatario
+- **Array di email per job**: il campo `notification_emails` ora supporta più indirizzi email per job (era un singolo campo).
+- **Gestione indirizzi nell'interfaccia**: UI per aggiungere e rimuovere indirizzi email singolarmente per ogni job.
+- **Email di test**: pulsante per inviare una email di verifica senza dover eseguire un backup reale.
+
+#### Sicurezza
+- **Rate limiting sul login**: protezione brute-force con limite di 5 tentativi al minuto per coppia IP/email. Messaggio localizzato (EN/IT) con countdown in secondi.
+
+### Modificato
+
+- **`BackupJob` model**: `notification_email` (string) rinominato in `notification_emails` (array/json); aggiunto `backup_type` enum (`full`/`incremental`) e `full_backup_every` (integer).
+- **`BackupLog` model**: aggiunto `parent_backup_log_id` FK self-referenziale, `is_full` boolean, `incremental_checkpoint` json; aggiunto valore `cancelled` all'enum `status`.
+- **`ProcessBackupJob`**: aggiunta logica per determinare se eseguire full o incrementale, supporto a `cancelled` status, logica retention aggiornata per catene incrementali.
+- **`Login` Livewire component**: aggiunto rate limiting con `RateLimiter`; rimosso logging di debug esteso (hash, sessione, ambiente) non adatto alla produzione.
+
+### Database
+
+- **Migration** `2026_04_04_091132`: rinomina `notification_email` → `notification_emails` (json array) in `backup_jobs`.
+- **Migration** `2026_04_05_000001`: aggiunge `cancelled` all'enum `status` di `backup_logs`.
+- **Migration** `2026_04_05_100000`: aggiunge `backup_type` enum(`full`,`incremental`) e `full_backup_every` int a `backup_jobs`; aggiunge `parent_backup_log_id` FK, `is_full` boolean, `incremental_checkpoint` json a `backup_logs`.
+
+---
+
 ## [1.1.0] - 2026-03-01
 
 ### Aggiunto

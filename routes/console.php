@@ -13,6 +13,7 @@ Artisan::command('inspire', function () {
 
 // Backup Scheduler - runs every minute, checks for due backup jobs
 Schedule::call(function () {
+    $schedulerService = app(\App\Services\Backup\BackupSchedulerService::class);
     $dueJobs = BackupJob::due()->with(['source', 'destination'])->get();
 
     foreach ($dueJobs as $job) {
@@ -23,6 +24,9 @@ Schedule::call(function () {
         ]);
 
         ProcessBackupJob::dispatch($job->id, $log->id);
+
+        // Aggiorna next_run_at immediatamente per evitare re-dispatch al prossimo tick
+        $schedulerService->updateNextRun($job);
     }
 })->everyMinute()->name('backup-scheduler')->withoutOverlapping();
 

@@ -12,13 +12,18 @@ class FtpStorageService
     public function upload(array $config, string $localPath, string $remotePath): string
     {
         $disk = $this->createDisk($config);
-        $content = file_get_contents($localPath);
 
-        if ($content === false) {
+        $stream = fopen($localPath, 'rb');
+
+        if ($stream === false) {
             throw new \RuntimeException("Cannot read local file: {$localPath}");
         }
 
-        $disk->put($remotePath, $content);
+        try {
+            $disk->writeStream($remotePath, $stream);
+        } finally {
+            fclose($stream);
+        }
 
         return $remotePath;
     }
