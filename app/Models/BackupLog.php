@@ -16,6 +16,9 @@ class BackupLog extends Model
         'parent_backup_log_id',
         'is_full',
         'status',
+        'is_locked',
+        'locked_at',
+        'locked_by',
         'started_at',
         'finished_at',
         'duration_seconds',
@@ -30,13 +33,15 @@ class BackupLog extends Model
     protected function casts(): array
     {
         return [
-            'started_at' => 'datetime',
-            'finished_at' => 'datetime',
-            'duration_seconds' => 'integer',
-            'file_size_bytes' => 'integer',
-            'is_full' => 'boolean',
-            'meta' => 'array',
-            'incremental_checkpoint' => 'array',
+            'started_at'              => 'datetime',
+            'finished_at'             => 'datetime',
+            'locked_at'               => 'datetime',
+            'duration_seconds'        => 'integer',
+            'file_size_bytes'         => 'integer',
+            'is_full'                 => 'boolean',
+            'is_locked'               => 'boolean',
+            'meta'                    => 'array',
+            'incremental_checkpoint'  => 'array',
         ];
     }
 
@@ -57,6 +62,11 @@ class BackupLog extends Model
         return $this->hasMany(self::class, 'parent_backup_log_id');
     }
 
+    public function locker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by');
+    }
+
     // ── Scopes ─────────────────────────────────────────────────
 
     public function scopeOfStatus($query, string $status)
@@ -72,6 +82,16 @@ class BackupLog extends Model
     public function scopeBetweenDates($query, $from, $to)
     {
         return $query->whereBetween('started_at', [$from, $to]);
+    }
+
+    public function scopeLocked($query)
+    {
+        return $query->where('is_locked', true);
+    }
+
+    public function scopeUnlocked($query)
+    {
+        return $query->where('is_locked', false);
     }
 
     // ── Helpers ────────────────────────────────────────────────

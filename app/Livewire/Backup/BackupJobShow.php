@@ -140,6 +140,16 @@ class BackupJobShow extends Component
     }
 
     #[Computed]
+    public function lockedLogs()
+    {
+        return BackupLog::ofJob($this->jobId)
+            ->locked()
+            ->whereNotNull('storage_path')
+            ->latest('started_at')
+            ->get();
+    }
+
+    #[Computed]
     public function restoreLogs()
     {
         $logIds = BackupLog::ofJob($this->jobId)->pluck('id');
@@ -187,9 +197,15 @@ class BackupJobShow extends Component
 
     public function runNow(): void
     {
-        $job = BackupJob::findOrFail($this->jobId);
+        $job = BackupJob::with(['source', 'destination'])->findOrFail($this->jobId);
 
-        ProcessBackupJob::dispatch($job);
+        $log = BackupLog::create([
+            'backup_job_id' => $job->id,
+            'status'        => 'pending',
+            'started_at'    => now(),
+        ]);
+
+        ProcessBackupJob::dispatch($job->id, $log->id);
 
         AuditLog::record('backup_job_run', "Manual run triggered for job: {$job->name}");
 
@@ -223,6 +239,61 @@ class BackupJobShow extends Component
     {
         $this->closeLogDetail();
         $this->openRestoreModal($id);
+    }
+
+    public function toggleLock(int $logId): void
+    {
+        $log = BackupLog::find($logId);
+
+        if (! $log || $log->backup_job_id !== $this->jobId) {
+            return;
+        }
+
+        $locked    = ! $log->is_locked;
+        $now       = $locked ? now() : null;
+        $lockedBy  = $locked ? auth()->id() : null;
+        $lockData  = ['is_locked' => $locked, 'locked_at' => $now, 'locked_by' => $lockedBy];
+
+        // Collect all IDs that need to be toggled
+        $affectedIds = collect([$log->id]);
+
+        if ($log->is_full) {
+            // Full backup: propagate to all child incrementals
+            $childIds = BackupLog::where('backup_job_id', $this->jobId)
+                ->where('parent_backup_log_id', $log->id)
+                ->pluck('id');
+            $affectedIds = $affectedIds->merge($childIds);
+        } else {
+            // Incremental: when locking, also lock the full parent chain up to root
+            //              when unlocking, only unlock itself
+            if ($locked && $log->parent_backup_log_id) {
+                $parentId = $log->parent_backup_log_id;
+                while ($parentId) {
+                    $affectedIds->push($parentId);
+                    $parent   = BackupLog::select('id', 'parent_backup_log_id', 'is_full')->find($parentId);
+                    $parentId = ($parent && ! $parent->is_full) ? $parent->parent_backup_log_id : null;
+                }
+            }
+        }
+
+        BackupLog::whereIn('id', $affectedIds->unique()->values())
+            ->where('backup_job_id', $this->jobId)
+            ->update($lockData);
+
+        AuditLog::record(
+            $locked ? 'backup_log.locked' : 'backup_log.unlocked',
+            "backup_log_id={$logId} affected_ids=".$affectedIds->unique()->values()->implode(','). " backup_job_id={$this->jobId}"
+        );
+
+        $count = $affectedIds->unique()->count();
+        $this->dispatch('notify',
+            type: 'success',
+            message: $locked
+                ? __('backup-job-show.lock_chain_locked', ['count' => $count])
+                : __('backup-job-show.lock_chain_unlocked', ['count' => $count])
+        );
+
+        unset($this->recentLogs, $this->lockedLogs);
     }
 
     // ── Restore modal ─────────────────────────────────────────

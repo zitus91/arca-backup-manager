@@ -485,6 +485,7 @@ class ProcessBackupJob implements ShouldQueue
 
         $logsToDelete = BackupLog::where('backup_job_id', $job->id)
             ->where('status', 'success')
+            ->where('is_locked', false)
             ->whereNotNull('storage_path')
             ->orderByDesc('started_at')
             ->skip($job->retention_count)
@@ -506,6 +507,7 @@ class ProcessBackupJob implements ShouldQueue
         $fullLogsToDelete = BackupLog::where('backup_job_id', $job->id)
             ->where('status', 'success')
             ->where('is_full', true)
+            ->where('is_locked', false)
             ->whereNotNull('storage_path')
             ->orderByDesc('started_at')
             ->skip($job->retention_count)
@@ -517,6 +519,7 @@ class ProcessBackupJob implements ShouldQueue
             $incrementals = BackupLog::where('backup_job_id', $job->id)
                 ->where('status', 'success')
                 ->where('is_full', false)
+                ->where('is_locked', false)
                 ->where('parent_backup_log_id', $fullLog->id)
                 ->whereNotNull('storage_path')
                 ->get();

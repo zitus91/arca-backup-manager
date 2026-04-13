@@ -78,8 +78,14 @@ return [
     'action_detail'      => 'Vedi Dettagli',
     'action_download'    => 'Scarica',
     'action_restore'     => 'Ripristina',
+    'action_lock'        => 'Blocca (escludi dalla retention)',
+    'action_unlock'      => 'Sblocca (permetti cancellazione retention)',
     'action_view_log'    => 'Vedi Log',
     'action_view_restore'=> 'Vedi Ripristini',
+
+    // Lock status
+    'locked_badge'       => 'Bloccato',
+    'locked_by'          => 'Bloccato da :name il :date',
 
     // Empty states
     'empty_backups'      => 'Nessun log di backup per questo job.',
@@ -89,4 +95,10 @@ return [
     'chart_title'        => 'Attività Ultimi 14 Giorni',
     'chart_success'      => 'Successo',
     'chart_failed'       => 'Falliti',
+
+    // Locked backups
+    'locked_backups_title'   => 'Backup Fissati',
+    'locked_backups_empty'   => 'Nessun backup fissato per questo job.',
+    'lock_chain_locked'      => ':count backup nella catena bloccati.',
+    'lock_chain_unlocked'    => ':count backup nella catena sbloccati.',
 ];

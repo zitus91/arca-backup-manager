@@ -78,8 +78,14 @@ return [
     'action_detail'      => 'View Details',
     'action_download'    => 'Download',
     'action_restore'     => 'Restore',
+    'action_lock'        => 'Lock (preserve from retention)',
+    'action_unlock'      => 'Unlock (allow retention deletion)',
     'action_view_log'    => 'View Logs',
     'action_view_restore'=> 'View Restores',
+
+    // Lock status
+    'locked_badge'       => 'Locked',
+    'locked_by'          => 'Locked by :name on :date',
 
     // Empty states
     'empty_backups'      => 'No backup logs yet for this job.',
@@ -89,4 +95,10 @@ return [
     'chart_title'        => 'Last 14 Days Activity',
     'chart_success'      => 'Success',
     'chart_failed'       => 'Failed',
+
+    // Locked backups
+    'locked_backups_title'   => 'Pinned Backups',
+    'locked_backups_empty'   => 'No pinned backups for this job.',
+    'lock_chain_locked'      => ':count backup(s) in the chain locked.',
+    'lock_chain_unlocked'    => ':count backup(s) in the chain unlocked.',
 ];
