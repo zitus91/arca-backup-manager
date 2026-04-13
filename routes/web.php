@@ -3,6 +3,7 @@
 use App\Http\Controllers\Backup\BackupLogDownloadController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Backup\BackupJobIndex;
+use App\Livewire\Backup\BackupJobShow;
 use App\Livewire\Backup\BackupLogIndex;
 use App\Livewire\Backup\BackupSourceIndex;
 use App\Livewire\Backup\Dashboard;
@@ -35,6 +36,7 @@ Route::post('/logout', function () {
 Route::prefix('admin/backup')->name('admin.backup.')->middleware('auth')->group(function () {
     Route::get('/', Dashboard::class)->name('dashboard');
     Route::get('/jobs', BackupJobIndex::class)->name('jobs');
+    Route::get('/jobs/{job}', BackupJobShow::class)->name('jobs.show');
     Route::get('/sources', BackupSourceIndex::class)->name('sources');
     Route::get('/destinations', StorageDestinationIndex::class)->name('destinations');
     Route::get('/logs', BackupLogIndex::class)->name('logs');

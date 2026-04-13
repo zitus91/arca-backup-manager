@@ -9,6 +9,7 @@ use App\Models\BackupSource;
 use App\Models\RestoreLog;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -18,6 +19,7 @@ class RestoreIndex extends Component
     use WithPagination;
 
     // Filters
+    #[Url(as: 'filterJobId')]
     public string $filterJobId = '';
     public string $filterDateFrom = '';
     public string $filterDateTo = '';

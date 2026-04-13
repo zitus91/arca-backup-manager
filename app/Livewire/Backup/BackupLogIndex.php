@@ -6,6 +6,7 @@ use App\Models\BackupJob;
 use App\Models\BackupLog;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -14,6 +15,7 @@ class BackupLogIndex extends Component
 {
     use WithPagination;
 
+    #[Url(as: 'filterJobId')]
     public string $filterJobId = '';
     public string $filterStatus = '';
     public string $filterDateFrom = '';

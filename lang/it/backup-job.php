@@ -6,6 +6,7 @@ return [
     'add' => 'Aggiungi Job',
     'edit' => 'Modifica',
     'delete' => 'Elimina',
+    'view_summary' => 'Vedi Riepilogo',
     'run_now' => 'Esegui Ora',
     'cancel_job' => 'Annulla Job',
     'cancel_not_running' => 'Nessun job in esecuzione o in attesa da annullare.',

@@ -6,6 +6,7 @@ return [
     'add' => 'Add Job',
     'edit' => 'Edit',
     'delete' => 'Delete',
+    'view_summary' => 'View Summary',
     'run_now' => 'Run Now',
     'cancel_job' => 'Cancel Job',
     'cancel_not_running' => 'No running or pending job found to cancel.',
