@@ -1,0 +1,10 @@
+- Backend: PHP ^8.2 (running 8.4), Laravel 12, Livewire 4.1, Reverb 1.x for WS
+- Frontend: Vite 7, Tailwind CSS 4, DaisyUI 5, Laravel Echo + pusher-js (axios in devDeps)
+- Testing: Pest 3 + pest-plugin-laravel, RefreshDatabase, mocks for external CLIs
+- DB/Queue: SQLite (default) or MySQL/Postgres; database/redis queue; database sessions
+- Storage engines: local FS, S3 (league/flysystem-aws-s3-v3), FTP/FTPS/SFTP (dynamic Flysystem)
+- External CLIs required: mysqldump, mongodump/mongorestore/mongosh, tar/gzip/zip, ssh + sshpass (opt), rsync (opt)
+- Docker: php:8.3-fpm base (installs clients + node20), multi-service compose (php, worker, scheduler, reverb, redis:7-alpine, nginx:alpine, sqlite-web)
+- Encryption: Laravel Crypt AES-256 via `encrypted:array` casts on model configs
+- Auth: session + Livewire, rate limited login, AuditLog for actions
+- Other: queued jobs (ProcessBackupJob, ProcessRestoreJob), scheduler, mail notifications (multi-recipient)

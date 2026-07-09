@@ -1,0 +1,10 @@
+- Models: use casts() method (not $casts prop); 'config' => 'encrypted:array' for secrets; fillable explicit; scopes for active.
+- Services: stateless, receive decrypted $config array; use Illuminate\Support\Facades\Process + escapeshellarg on all external inputs (hosts, creds, paths, dbs); build string cmds for pipes (gzip | , | mysql); cleanup with escaped rm.
+- Jobs: handle() orchestrates full/incr + upload + retention + notify; use events for WS; cleanup temp.
+- Livewire: complex forms (e.g. BackupSourceForm) with many $props per section (mysql_*, fs_*, ssh_*), rules(), testConnection methods, wire:model.live; validation server first.
+- AuthZ: route middleware('auth') sufficient; no Gates/Policies visible (flat admin access).
+- Audit: AuditLog::record($action, $description, ?$old, ?$new?) called on login/logout/crud/exec.
+- Lang: per-component files en/it (backup-*.php etc).
+- Commands: string concat for shell with escapes; avoid raw user data.
+- Docker: multi-service reuse of fpm image; volumes mount .env:ro, storage, db; chown www-data.
+- Versioning: semver + Keep a Changelog; badge in README.

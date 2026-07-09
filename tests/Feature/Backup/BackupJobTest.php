@@ -163,6 +163,30 @@ it('dispatches a job for immediate execution', function () {
     expect($log->status)->toBe('pending');
 });
 
+it('supports incremental backup type', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $source = BackupSource::factory()->create();
+    $dest = BackupStorageDestination::factory()->create();
+
+    Livewire::test(BackupJobForm::class)
+        ->set('name', 'Incremental Job')
+        ->set('backup_source_id', (string) $source->id)
+        ->set('backup_storage_destination_id', (string) $dest->id)
+        ->set('schedule_type', 'daily')
+        ->set('schedule_time', '02:00')
+        ->set('backup_type', 'incremental')
+        ->set('full_backup_every', 7)
+        ->set('retention_count', 5)
+        ->call('save')
+        ->assertDispatched('job-saved');
+
+    $job = BackupJob::where('name', 'Incremental Job')->first();
+    expect($job->backup_type)->toBe('incremental');
+    expect($job->full_backup_every)->toBe(7);
+});
+
 it('deletes a backup job', function () {
     $user = User::factory()->create();
     $this->actingAs($user);

@@ -191,7 +191,8 @@ class MongodbBackupService
         if (! empty($config['username'])) {
             $parts[] = '--username=' . escapeshellarg($config['username']);
             $parts[] = '--password=' . escapeshellarg($config['password']);
-            $parts[] = '--authenticationDatabase=admin';
+            $authDb = $config['auth_database'] ?? 'admin';
+            $parts[] = '--authenticationDatabase=' . escapeshellarg($authDb);
         }
 
         if (! empty($config['collections']) && is_array($config['collections'])) {
