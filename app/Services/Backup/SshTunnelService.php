@@ -2,6 +2,8 @@
 
 namespace App\Services\Backup;
 
+use Illuminate\Support\Facades\Process;
+
 class SshTunnelService
 {
     /**
@@ -34,10 +36,10 @@ class SshTunnelService
             $cmd = sprintf('ssh -i %s %s', escapeshellarg($ssh['key_path']), $baseOpts);
         }
 
-        exec($cmd . ' 2>/dev/null', $output, $exitCode);
+        $result = Process::run($cmd . ' 2>/dev/null');
 
-        if ($exitCode !== 0) {
-            throw new \RuntimeException("Failed to open SSH tunnel to {$ssh['host']}: exit code {$exitCode}");
+        if (! $result->successful()) {
+            throw new \RuntimeException("Failed to open SSH tunnel to {$ssh['host']}: " . $result->errorOutput());
         }
 
         // Give the tunnel a moment to establish
@@ -58,7 +60,7 @@ class SshTunnelService
     public function close(int $pid): void
     {
         if ($pid > 0) {
-            exec("kill {$pid} 2>/dev/null");
+            Process::run(['kill', (string)$pid]);
         }
     }
 
@@ -120,8 +122,9 @@ class SshTunnelService
 
     private function findTunnelPid(int $localPort): int
     {
-        exec("lsof -ti tcp:{$localPort} 2>/dev/null", $output);
+        $result = Process::run(['lsof', '-ti', "tcp:{$localPort}"]);
+        $output = trim($result->output());
 
-        return (int) trim($output[0] ?? '0');
+        return (int) explode("\n", $output)[0] ?? 0;
     }
 }

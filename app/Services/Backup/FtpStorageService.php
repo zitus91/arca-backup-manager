@@ -115,8 +115,9 @@ class FtpStorageService
             $diskConfig['ssl'] = $config['ssl'] ?? false;
         }
 
-        config(['filesystems.disks.backup_ftp_temp' => $diskConfig]);
-
-        return Storage::disk('backup_ftp_temp');
+        // Use Storage::build to create an isolated, unique disk instance per call.
+        // This avoids global config mutation and name collisions with concurrent operations
+        // using different FTP/SFTP destinations.
+        return Storage::build($diskConfig);
     }
 }

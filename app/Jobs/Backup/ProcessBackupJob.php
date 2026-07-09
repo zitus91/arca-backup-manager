@@ -21,6 +21,7 @@ use Illuminate\Queue\SerializesModels;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Process;
 
 class ProcessBackupJob implements ShouldQueue
 {
@@ -184,15 +185,13 @@ class ProcessBackupJob implements ShouldQueue
                 // Create a tar archive of the entire tmpDir (package with subdirectories)
                 $packageName = \Illuminate\Support\Str::slug($backupJob->source->name) . '-' . now()->format('Ymd-His') . '.tar.gz';
                 $packagePath = storage_path('app/backups/tmp/' . $packageName);
-                $tarCmd = sprintf(
-                    'tar -czf %s -C %s .',
-                    escapeshellarg($packagePath),
-                    escapeshellarg($tmpDir)
-                );
-                exec($tarCmd, $output, $exitCode);
 
-                if ($exitCode !== 0) {
-                    throw new \RuntimeException('Failed to create backup package archive.');
+                $result = Process::timeout(600)->run([
+                    'tar', '-czf', $packagePath, '-C', $tmpDir, '.'
+                ]);
+
+                if (! $result->successful()) {
+                    throw new \RuntimeException('Failed to create backup package archive: ' . $result->errorOutput());
                 }
 
                 $result = [

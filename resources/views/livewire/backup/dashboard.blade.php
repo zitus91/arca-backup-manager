@@ -1,91 +1,74 @@
-<div class="space-y-6" wire:poll.15s>
+<div class="space-y-8" wire:poll.30s>
 
-    {{-- ═══════════════════════════════════════════════════════════
-         ROW 1: HERO STATS
-    ═══════════════════════════════════════════════════════════ --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+    {{-- Impeccable: Varied layout instead of uniform hero-metric card grid.
+         Primary success rate is prominent. Other metrics in a compact, scannable strip with stronger hierarchy. --}}
+    <div>
+        <div class="flex items-end justify-between mb-3">
+            <div>
+                <div class="text-[10px] font-semibold tracking-[0.08em] text-base-content/50 uppercase">{{ __('backup-dashboard.success_rate') }}</div>
+                <div class="text-[11px] text-base-content/40">{{ __('backup-dashboard.last_30_days') }}</div>
+            </div>
+            <div class="text-[10px] text-base-content/40 tabular-nums">{{ $this->stats['total_backups_ever'] }} total</div>
+        </div>
 
-        {{-- Success Rate --}}
-        <div class="card bg-base-100 border border-base-content/5 hover:border-primary/20 transition-all duration-300 group">
-            <div class="card-body p-4">
-                <div class="flex items-center gap-3">
-                    <div class="relative w-14 h-14 flex-shrink-0">
-                        <svg class="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-                            <circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" stroke-width="4" class="text-base-content/5" />
-                            <circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" stroke-width="4"
-                                class="{{ $this->stats['success_rate'] >= 90 ? 'text-success' : ($this->stats['success_rate'] >= 70 ? 'text-warning' : 'text-error') }}"
-                                stroke-dasharray="{{ 2 * 3.14159 * 24 }}"
-                                stroke-dashoffset="{{ 2 * 3.14159 * 24 * (1 - $this->stats['success_rate'] / 100) }}"
-                                stroke-linecap="round"
-                                style="transition: stroke-dashoffset 1s ease-in-out" />
-                        </svg>
-                        <span class="absolute inset-0 flex items-center justify-center text-xs font-bold tabular-nums">{{ $this->stats['success_rate'] }}%</span>
+        {{-- Primary metric - larger, deliberate visual weight --}}
+        <div class="flex items-center gap-6 rounded-2xl bg-base-200/60 px-6 py-5 border border-base-content/5">
+            <div class="relative w-20 h-20 flex-shrink-0">
+                <svg class="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" stroke-width="5" class="text-base-content/8" />
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" stroke-width="5"
+                        class="{{ $this->stats['success_rate'] >= 90 ? 'text-success' : ($this->stats['success_rate'] >= 70 ? 'text-warning' : 'text-error') }}"
+                        stroke-dasharray="{{ 2 * 3.14159 * 34 }}"
+                        stroke-dashoffset="{{ 2 * 3.14159 * 34 * (1 - $this->stats['success_rate'] / 100) }}"
+                        stroke-linecap="round"
+                        style="transition: stroke-dashoffset 800ms cubic-bezier(0.25, 0.1, 0.25, 1)" />
+                </svg>
+                <span class="absolute inset-0 flex items-center justify-center text-3xl font-semibold tabular-nums tracking-tighter">{{ $this->stats['success_rate'] }}</span>
+                <span class="absolute inset-0 flex items-end justify-center pb-1 text-[10px] font-medium text-base-content/50">%</span>
+            </div>
+
+            <div class="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+                <div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide">TODAY</div>
+                    <div class="font-semibold tabular-nums mt-0.5">
+                        <span class="text-success">{{ $this->stats['today_success'] }}</span>
+                        @if ($this->stats['today_failed'] > 0)
+                            <span class="text-error">/{{ $this->stats['today_failed'] }}</span>
+                        @endif
+                        <span class="text-base-content/30"> / {{ $this->stats['today_count'] }}</span>
                     </div>
-                    <div>
-                        <p class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-dashboard.success_rate') }}</p>
-                        <p class="text-[11px] text-base-content/50 mt-0.5">{{ __('backup-dashboard.last_30_days') }}</p>
+                </div>
+
+                <div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide">RUNNING</div>
+                    <div class="font-semibold tabular-nums mt-0.5 flex items-center gap-1.5">
+                        @if ($this->stats['running'] > 0)
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
+                        @endif
+                        {{ $this->stats['running'] }}
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- Today's Backups --}}
-        <div class="card bg-base-100 border border-base-content/5 hover:border-success/20 transition-all duration-300">
-            <div class="card-body p-4">
-                <p class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-dashboard.today') }}</p>
-                <div class="flex items-baseline gap-1.5 mt-1">
-                    <span class="text-2xl font-bold tabular-nums text-success">{{ $this->stats['today_success'] }}</span>
-                    @if ($this->stats['today_failed'] > 0)
-                        <span class="text-sm font-semibold text-error tabular-nums">/{{ $this->stats['today_failed'] }}</span>
-                    @endif
-                    <span class="text-xs text-base-content/30 ml-1">/ {{ $this->stats['today_count'] }}</span>
+                <div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide">ACTIVE JOBS</div>
+                    <div class="font-semibold tabular-nums mt-0.5">{{ $this->stats['active_jobs'] }} <span class="font-normal text-base-content/30">/ {{ $this->stats['total_jobs'] }}</span></div>
                 </div>
-                @if ($this->stats['running'] > 0)
-                    <div class="mt-1.5 flex items-center gap-1.5 text-warning text-[11px] font-medium">
-                        <span class="loading loading-spinner loading-xs"></span>
-                        {{ $this->stats['running'] }} {{ __('backup-dashboard.running') }}
-                    </div>
-                @endif
-            </div>
-        </div>
 
-        {{-- Active Jobs --}}
-        <div class="card bg-base-100 border border-base-content/5 hover:border-info/20 transition-all duration-300">
-            <div class="card-body p-4">
-                <p class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-dashboard.active_jobs') }}</p>
-                <div class="flex items-baseline gap-1.5 mt-1">
-                    <span class="text-2xl font-bold tabular-nums">{{ $this->stats['active_jobs'] }}</span>
-                    <span class="text-xs text-base-content/30">/ {{ $this->stats['total_jobs'] }}</span>
-                </div>
-                <div class="mt-1.5 flex items-center gap-3 text-[11px] text-base-content/40">
-                    <span>{{ $this->stats['total_sources'] }} {{ __('backup-dashboard.sources') }}</span>
-                    <span>&middot;</span>
-                    <span>{{ $this->stats['total_destinations'] }} {{ __('backup-dashboard.destinations') }}</span>
+                <div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide">STORAGE</div>
+                    <div class="font-semibold tabular-nums mt-0.5">{{ $this->formatBytes($this->stats['total_storage_bytes']) }}</div>
+                    <div class="text-[10px] text-base-content/40">{{ $this->stats['total_sources'] }} sources · {{ $this->stats['total_destinations'] }} dests</div>
                 </div>
             </div>
-        </div>
 
-        {{-- Total Storage --}}
-        <div class="card bg-base-100 border border-base-content/5 hover:border-secondary/20 transition-all duration-300">
-            <div class="card-body p-4">
-                <p class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-dashboard.total_storage') }}</p>
-                <p class="text-2xl font-bold tabular-nums mt-1">{{ $this->formatBytes($this->stats['total_storage_bytes']) }}</p>
-                <p class="text-[11px] text-base-content/40 mt-1.5">{{ $this->stats['total_backups_ever'] }} {{ __('backup-dashboard.total_backups') }}</p>
-            </div>
-        </div>
-
-        {{-- Avg Duration --}}
-        <div class="col-span-2 lg:col-span-1 card bg-base-100 border border-base-content/5 hover:border-warning/20 transition-all duration-300">
-            <div class="card-body p-4">
-                <p class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider">{{ __('backup-dashboard.avg_duration') }}</p>
-                <p class="text-2xl font-bold tabular-nums mt-1">
+            <div class="hidden lg:block text-right pl-4 border-l border-base-content/10">
+                <div class="text-[10px] text-base-content/50">AVG DURATION</div>
+                <div class="font-semibold tabular-nums mt-0.5 text-lg tracking-tight">
                     @if ($this->stats['avg_duration'])
                         {{ $this->formatDuration($this->stats['avg_duration']) }}
-                    @else
-                        <span class="text-base-content/20">&mdash;</span>
-                    @endif
-                </p>
-                <p class="text-[11px] text-base-content/40 mt-1.5">{{ __('backup-dashboard.last_30_days') }}</p>
+                    @else — @endif
+                </div>
+                <div class="text-[10px] text-base-content/40">last 30d</div>
             </div>
         </div>
     </div>
@@ -184,92 +167,64 @@
         </div>
     </div>
 
-    {{-- ═══════════════════════════════════════════════════════════
-         ROW 3: JOBS HEALTH GRID
-    ═══════════════════════════════════════════════════════════ --}}
-    <div class="card bg-base-100 border border-base-content/5">
-        <div class="card-body p-5">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-sm font-semibold">{{ __('backup-dashboard.jobs_health') }}</h2>
-                <a href="{{ route('admin.backup.jobs') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.manage') }}</a>
-            </div>
+    {{-- Impeccable: Avoided repeated card grid. Jobs health now uses a clean, scannable list with left status accent and better rhythm. --}}
+    <div>
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h2 class="text-sm font-semibold tracking-tight">{{ __('backup-dashboard.jobs_health') }}</h2>
+            <a href="{{ route('admin.backup.jobs') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.manage') }}</a>
+        </div>
 
-            @if ($this->jobsHealth->isEmpty())
-                <div class="text-center py-8">
-                    <p class="text-sm text-base-content/30">{{ __('backup-dashboard.no_jobs') }}</p>
-                </div>
-            @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                    @foreach ($this->jobsHealth as $job)
-                        @php
-                            $lastLog = $job->latestLog;
-                            $statusColor = match($lastLog?->status) {
-                                'success' => 'success',
-                                'failed' => 'error',
-                                'running' => 'warning',
-                                'partial' => 'warning',
-                                default => 'base-content/20',
-                            };
-                            $statusBg = match($lastLog?->status) {
-                                'success' => 'bg-success/5 border-success/10 hover:border-success/25',
-                                'failed' => 'bg-error/5 border-error/10 hover:border-error/25',
-                                'running' => 'bg-warning/5 border-warning/10 hover:border-warning/25',
-                                default => 'bg-base-content/[0.01] border-base-content/5 hover:border-base-content/10',
-                            };
-                        @endphp
-                        <div class="p-3.5 rounded-xl border transition-all duration-200 {{ $statusBg }} {{ !$job->is_active ? 'opacity-40' : '' }}">
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2">
-                                        {{-- Status dot --}}
-                                        @if ($lastLog?->status === 'running')
-                                            <span class="relative flex h-2 w-2 flex-shrink-0">
-                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75"></span>
-                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-warning"></span>
-                                            </span>
-                                        @else
-                                            <div class="w-2 h-2 rounded-full bg-{{ $statusColor }} flex-shrink-0"></div>
-                                        @endif
-                                        <p class="text-sm font-medium truncate">{{ $job->name }}</p>
-                                    </div>
-                                </div>
-                                @if (!$job->is_active)
-                                    <span class="text-[9px] font-semibold uppercase tracking-wider text-base-content/30 flex-shrink-0 bg-base-content/5 px-1.5 py-0.5 rounded">OFF</span>
-                                @endif
-                            </div>
-                            <div class="mt-2 flex items-center gap-2 text-[10px] text-base-content/40">
+        @if ($this->jobsHealth->isEmpty())
+            <div class="text-center py-8 text-sm text-base-content/30">
+                {{ __('backup-dashboard.no_jobs') }}
+            </div>
+        @else
+            <div class="divide-y divide-base-content/5 rounded-2xl border border-base-content/5 bg-base-100 overflow-hidden">
+                @foreach ($this->jobsHealth as $job)
+                    @php
+                        $lastLog = $job->latestLog;
+                        $status = $lastLog?->status ?? 'unknown';
+                    @endphp
+                    <a href="{{ route('admin.backup.jobs.show', $job) }}" class="flex items-center gap-4 px-4 py-3 hover:bg-base-200/40 transition-colors group {{ !$job->is_active ? 'opacity-50' : '' }}">
+                        <div class="flex-shrink-0">
+                            @if ($status === 'running')
+                                <span class="relative flex h-2.5 w-2.5">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-70"></span>
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-warning"></span>
+                                </span>
+                            @else
+                                <span class="block w-2.5 h-2.5 rounded-full {{ $status === 'success' ? 'bg-success' : ($status === 'failed' ? 'bg-error' : 'bg-base-content/25') }}"></span>
+                            @endif
+                        </div>
+
+                        <div class="flex-1 min-w-0 flex items-baseline justify-between gap-3">
+                            <div class="min-w-0">
+                                <span class="font-medium text-[13px] group-hover:text-primary transition-colors">{{ $job->name }}</span>
                                 @if ($job->source)
-                                    <span class="truncate max-w-[45%]">{{ $job->source->name }}</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-base-content/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                                    </svg>
-                                    <span class="truncate max-w-[45%]">{{ $job->destination->name ?? '-' }}</span>
+                                    <span class="ml-2 text-[10px] text-base-content/40">{{ $job->source->name }}</span>
                                 @endif
                             </div>
-                            <div class="mt-2 flex items-center justify-between text-[10px]">
+
+                            <div class="text-right text-[10px] tabular-nums text-base-content/40 shrink-0">
                                 @if ($lastLog)
-                                    <span class="text-base-content/40">
-                                        {{ $lastLog->started_at->diffForHumans() }}
-                                        @if ($lastLog->formatted_size && $lastLog->formatted_size !== '-')
-                                            &middot; {{ $lastLog->formatted_size }}
-                                        @endif
-                                    </span>
+                                    {{ $lastLog->finished_at?->diffForHumans() ?? '—' }}
                                 @else
-                                    <span class="text-base-content/25">{{ __('backup-dashboard.never_run') }}</span>
-                                @endif
-                                @if ($job->next_run_at && $job->is_active)
-                                    <span class="text-base-content/30 tabular-nums">{{ __('backup-dashboard.next') }}: {{ $job->next_run_at->format('H:i') }}</span>
+                                    never
                                 @endif
                             </div>
                         </div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
+
+                        @if (!$job->is_active)
+                            <span class="text-[9px] font-medium px-2 py-px rounded bg-base-content/5 text-base-content/40">OFF</span>
+                        @endif
+                    </a>
+                @endforeach
+            </div>
+        @endif
     </div>
 
     {{-- ═══════════════════════════════════════════════════════════
-         ROW 4: STORAGE BREAKDOWN + ACTIVITY FEED
+         STORAGE BREAKDOWN + ACTIVITY FEED
     ═══════════════════════════════════════════════════════════ --}}
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
