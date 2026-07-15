@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment (NEVER include in image)
+.env
+.env.*
+!.env.example
+
+# Dependencies (rebuilt inside container)
+node_modules
+vendor
+
+# Local data / runtime
+storage/*
+!storage/app/public/.gitkeep
+database/*.sqlite
+database/*.sqlite-shm
+database/*.sqlite-wal
+
+# Logs and caches
+*.log
+storage/logs/*
+bootstrap/cache/*
+
+# IDE / OS
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker files (not needed in context for build)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Docs and tests (optional but reduces context size)
+docs
+tests
+CHANGELOG.md
+README.md
+
+# Misc
+.phpunit.result.cache
+phpunit.xml
+*.md

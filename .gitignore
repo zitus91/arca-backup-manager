@@ -3,6 +3,10 @@
 .env
 .env.backup
 .env.production
+
+# Deploy configuration (contains server host/path, never secrets)
+scripts/.env.deploy
+scripts/.env.deploy.*
 .phpactor.json
 .phpunit.result.cache
 /.fleet
