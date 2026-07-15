@@ -10,11 +10,11 @@ class MongodbRestoreService
     /**
      * Restore a MongoDB dump archive into a database.
      *
-     * @param  array       $config           MongoDB connection config (host, port, database, username, password)
-     * @param  string      $archivePath      Path to the .tar.gz / .zip / .tar archive
-     * @param  string|null $targetDbName     Custom target database name (default: originalDb_restored_TIMESTAMP)
-     * @param  bool        $overrideExisting If true, DROP existing database before restoring
-     * @return array   Result with restored_db_name and meta
+     * @param  array  $config  MongoDB connection config (host, port, database, username, password)
+     * @param  string  $archivePath  Path to the .tar.gz / .zip / .tar archive
+     * @param  string|null  $targetDbName  Custom target database name (default: originalDb_restored_TIMESTAMP)
+     * @param  bool  $overrideExisting  If true, DROP existing database before restoring
+     * @return array Result with restored_db_name and meta
      */
     public function restore(array $config, string $archivePath, ?string $targetDbName = null, bool $overrideExisting = false): array
     {
@@ -27,6 +27,7 @@ class MongodbRestoreService
                 (int) ($config['port'] ?? 27017),
                 function (int $localPort) use ($config, $archivePath, $targetDbName, $overrideExisting): array {
                     $tunnelConfig = array_merge($config, ['host' => '127.0.0.1', 'port' => $localPort]);
+
                     return $this->executeRestore($tunnelConfig, $archivePath, $targetDbName, $overrideExisting);
                 }
             );
@@ -38,7 +39,7 @@ class MongodbRestoreService
     protected function executeRestore(array $config, string $archivePath, ?string $targetDbName, bool $overrideExisting): array
     {
         $originalDb = $config['database'];
-        $restoredDb = $targetDbName ?? ($originalDb . '_restored_' . now()->format('Ymd_His'));
+        $restoredDb = $targetDbName ?? ($originalDb.'_restored_'.now()->format('Ymd_His'));
 
         // 1. If override, drop existing database first
         if ($overrideExisting) {
@@ -46,7 +47,7 @@ class MongodbRestoreService
         }
 
         // 2. Extract the archive to a temp directory
-        $extractDir = dirname($archivePath) . '/mongorestore_' . uniqid();
+        $extractDir = dirname($archivePath).'/mongorestore_'.uniqid();
         @mkdir($extractDir, 0755, true);
 
         $this->extractArchive($archivePath, $extractDir);
@@ -60,11 +61,11 @@ class MongodbRestoreService
         $result = Process::timeout(3600)->run($cmd);
 
         if (! $result->successful()) {
-            Process::run('rm -rf ' . escapeshellarg($extractDir));
-            throw new \RuntimeException('MongoDB restore failed: ' . $result->errorOutput());
+            Process::run('rm -rf '.escapeshellarg($extractDir));
+            throw new \RuntimeException('MongoDB restore failed: '.$result->errorOutput());
         }
 
-        Process::run('rm -rf ' . escapeshellarg($extractDir));
+        Process::run('rm -rf '.escapeshellarg($extractDir));
 
         return [
             'restored_db_name' => $restoredDb,
@@ -86,17 +87,17 @@ class MongodbRestoreService
         ];
 
         if (! empty($config['username'])) {
-            $parts[] = '--username ' . escapeshellarg($config['username']);
-            $parts[] = '--password ' . escapeshellarg($config['password']);
-            $parts[] = '--authenticationDatabase ' . escapeshellarg($config['auth_database'] ?? 'admin');
+            $parts[] = '--username '.escapeshellarg($config['username']);
+            $parts[] = '--password '.escapeshellarg($config['password']);
+            $parts[] = '--authenticationDatabase '.escapeshellarg($config['auth_database'] ?? 'admin');
         }
 
-        $parts[] = '--eval ' . escapeshellarg("db.getSiblingDB('{$dbName}').dropDatabase()");
+        $parts[] = '--eval '.escapeshellarg("db.getSiblingDB('{$dbName}').dropDatabase()");
 
         $result = Process::timeout(30)->run(implode(' ', $parts));
 
         if (! $result->successful()) {
-            throw new \RuntimeException("Failed to drop MongoDB database '{$dbName}': " . $result->errorOutput());
+            throw new \RuntimeException("Failed to drop MongoDB database '{$dbName}': ".$result->errorOutput());
         }
     }
 
@@ -106,11 +107,11 @@ class MongodbRestoreService
     protected function extractArchive(string $archivePath, string $extractDir): void
     {
         if (str_ends_with($archivePath, '.tar.gz') || str_ends_with($archivePath, '.tgz')) {
-            $cmd = 'tar -xzf ' . escapeshellarg($archivePath) . ' -C ' . escapeshellarg($extractDir);
+            $cmd = 'tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($extractDir);
         } elseif (str_ends_with($archivePath, '.zip')) {
-            $cmd = 'unzip -o ' . escapeshellarg($archivePath) . ' -d ' . escapeshellarg($extractDir);
+            $cmd = 'unzip -o '.escapeshellarg($archivePath).' -d '.escapeshellarg($extractDir);
         } elseif (str_ends_with($archivePath, '.tar')) {
-            $cmd = 'tar -xf ' . escapeshellarg($archivePath) . ' -C ' . escapeshellarg($extractDir);
+            $cmd = 'tar -xf '.escapeshellarg($archivePath).' -C '.escapeshellarg($extractDir);
         } else {
             throw new \RuntimeException("Unsupported archive format: {$archivePath}");
         }
@@ -118,7 +119,7 @@ class MongodbRestoreService
         $result = Process::timeout(300)->run($cmd);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('Failed to extract MongoDB archive: ' . $result->errorOutput());
+            throw new \RuntimeException('Failed to extract MongoDB archive: '.$result->errorOutput());
         }
     }
 
@@ -150,17 +151,17 @@ class MongodbRestoreService
     {
         $parts = [
             'mongorestore',
-            '--host=' . escapeshellarg($config['host']),
-            '--port=' . escapeshellarg((string) ($config['port'] ?? 27017)),
-            '--nsFrom=' . escapeshellarg("{$fromDb}.*"),
-            '--nsTo=' . escapeshellarg("{$toDb}.*"),
+            '--host='.escapeshellarg($config['host']),
+            '--port='.escapeshellarg((string) ($config['port'] ?? 27017)),
+            '--nsFrom='.escapeshellarg("{$fromDb}.*"),
+            '--nsTo='.escapeshellarg("{$toDb}.*"),
             '--drop',
         ];
 
         if (! empty($config['username'])) {
-            $parts[] = '--username=' . escapeshellarg($config['username']);
-            $parts[] = '--password=' . escapeshellarg($config['password']);
-            $parts[] = '--authenticationDatabase=' . escapeshellarg($config['auth_database'] ?? 'admin');
+            $parts[] = '--username='.escapeshellarg($config['username']);
+            $parts[] = '--password='.escapeshellarg($config['password']);
+            $parts[] = '--authenticationDatabase='.escapeshellarg($config['auth_database'] ?? 'admin');
         }
 
         $parts[] = escapeshellarg($dumpPath);

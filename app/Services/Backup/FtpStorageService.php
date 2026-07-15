@@ -90,7 +90,7 @@ class FtpStorageService
         }, 200, [
             'Content-Type' => 'application/octet-stream',
             'Content-Length' => $size,
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
         ]);
     }
 

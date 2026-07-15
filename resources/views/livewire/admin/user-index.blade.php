@@ -60,9 +60,12 @@
                                     </div>
                                     <div>
                                         <p class="text-sm font-medium">{{ $user->name }}</p>
-                                        @if ($user->id === auth()->id())
-                                            <span class="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{{ __('users.you') }}</span>
-                                        @endif
+                                        <div class="flex items-center gap-1 mt-0.5">
+                                            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded {{ $user->role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-base-content/5 text-base-content/50' }}">{{ $user->role === 'admin' ? __('users.role_admin') : __('users.role_standard') }}</span>
+                                            @if ($user->id === auth()->id())
+                                                <span class="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{{ __('users.you') }}</span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </td>

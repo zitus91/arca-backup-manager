@@ -55,6 +55,11 @@ class BackupJob extends Model
 
     // ── Relationships ──────────────────────────────────────────
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(BackupSource::class, 'backup_source_id');

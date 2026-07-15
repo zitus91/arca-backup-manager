@@ -3,7 +3,6 @@
 use App\Models\BackupSource;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -16,7 +15,7 @@ return new class extends Migration
                 $rawType = $source->getAttributes()['type'] ?? null;
                 $config = $source->config;
 
-                if ($rawType && is_array($config) && !isset($config['mysql']) && !isset($config['mongodb']) && !isset($config['filesystem'])) {
+                if ($rawType && is_array($config) && ! isset($config['mysql']) && ! isset($config['mongodb']) && ! isset($config['filesystem'])) {
                     $source->forceFill(['config' => [$rawType => $config]])->saveQuietly();
                 }
             }
@@ -30,7 +29,7 @@ return new class extends Migration
         $indexes = Schema::getIndexes('backup_sources');
         $hasUnique = collect($indexes)->contains(fn ($idx) => $idx['columns'] === ['name'] && $idx['unique']);
 
-        if (!$hasUnique) {
+        if (! $hasUnique) {
             Schema::table('backup_sources', function (Blueprint $table) {
                 $table->unique('name');
             });

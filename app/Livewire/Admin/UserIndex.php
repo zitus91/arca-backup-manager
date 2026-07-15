@@ -15,7 +15,9 @@ class UserIndex extends Component
     use WithPagination;
 
     public string $search = '';
+
     public bool $showForm = false;
+
     public ?int $editId = null;
 
     public function updatedSearch(): void
@@ -73,6 +75,7 @@ class UserIndex extends Component
     {
         if ($id === auth()->id()) {
             session()->flash('error', __('users.cannot_delete_self'));
+
             return;
         }
 
@@ -89,7 +92,7 @@ class UserIndex extends Component
         if ($this->search) {
             $query->where(function ($q) {
                 $q->where('name', 'like', "%{$this->search}%")
-                  ->orWhere('email', 'like', "%{$this->search}%");
+                    ->orWhere('email', 'like', "%{$this->search}%");
             });
         }
 

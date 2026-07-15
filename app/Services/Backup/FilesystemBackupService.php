@@ -25,14 +25,14 @@ class FilesystemBackupService
         }
 
         $fileName = $this->generateFileName(basename($sourcePath), $compression);
-        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $command = $this->buildCommand($sourcePath, $fullPath, $compression, $excludePatterns);
 
         $result = Process::timeout(3600)->run($command);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('Filesystem backup failed: ' . $result->errorOutput());
+            throw new \RuntimeException('Filesystem backup failed: '.$result->errorOutput());
         }
 
         $fileCount = $this->countFiles($sourcePath, $excludePatterns);
@@ -70,25 +70,25 @@ class FilesystemBackupService
 
         $since = $checkpoint['timestamp'] ?? null;
         $baseName = basename($sourcePath);
-        $fileName = $this->generateFileName($baseName . '_incr', $compression);
-        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+        $fileName = $this->generateFileName($baseName.'_incr', $compression);
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         // Create a reference timestamp file to use with find -newer
-        $refFile = rtrim($outputPath, '/') . '/.incr_reference';
+        $refFile = rtrim($outputPath, '/').'/.incr_reference';
         if ($since) {
             touch($refFile, strtotime($since));
         }
 
         // Build a file list of changed files since checkpoint
-        $fileListPath = rtrim($outputPath, '/') . '/.incr_filelist.txt';
-        $findCmd = 'find ' . escapeshellarg($sourcePath) . ' -type f';
+        $fileListPath = rtrim($outputPath, '/').'/.incr_filelist.txt';
+        $findCmd = 'find '.escapeshellarg($sourcePath).' -type f';
         if ($since && file_exists($refFile)) {
-            $findCmd .= ' -newer ' . escapeshellarg($refFile);
+            $findCmd .= ' -newer '.escapeshellarg($refFile);
         }
         foreach ($excludePatterns as $pattern) {
-            $findCmd .= ' ! -path ' . escapeshellarg($pattern);
+            $findCmd .= ' ! -path '.escapeshellarg($pattern);
         }
-        $findCmd .= ' > ' . escapeshellarg($fileListPath);
+        $findCmd .= ' > '.escapeshellarg($fileListPath);
 
         Process::timeout(300)->run($findCmd);
 
@@ -100,9 +100,9 @@ class FilesystemBackupService
             // No changes: create a minimal marker archive
             file_put_contents($fileListPath, '');
             $cmd = match ($compression) {
-                'gzip' => 'tar -czf ' . escapeshellarg($fullPath) . ' -T /dev/null --files-from=/dev/null 2>/dev/null; touch ' . escapeshellarg($fullPath),
-                'zip'  => 'echo "no changes" | zip ' . escapeshellarg($fullPath) . ' -',
-                default => 'tar -cf ' . escapeshellarg($fullPath) . ' -T /dev/null --files-from=/dev/null 2>/dev/null; touch ' . escapeshellarg($fullPath),
+                'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -T /dev/null --files-from=/dev/null 2>/dev/null; touch '.escapeshellarg($fullPath),
+                'zip' => 'echo "no changes" | zip '.escapeshellarg($fullPath).' -',
+                default => 'tar -cf '.escapeshellarg($fullPath).' -T /dev/null --files-from=/dev/null 2>/dev/null; touch '.escapeshellarg($fullPath),
             };
             Process::run($cmd);
             @unlink($fileListPath);
@@ -128,16 +128,16 @@ class FilesystemBackupService
 
         // Archive only changed files
         $cmd = match ($compression) {
-            'gzip' => 'tar -czf ' . escapeshellarg($fullPath) . ' -T ' . escapeshellarg($fileListPath),
-            'zip'  => 'cat ' . escapeshellarg($fileListPath) . ' | zip ' . escapeshellarg($fullPath) . ' -@',
-            default => 'tar -cf ' . escapeshellarg($fullPath) . ' -T ' . escapeshellarg($fileListPath),
+            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -T '.escapeshellarg($fileListPath),
+            'zip' => 'cat '.escapeshellarg($fileListPath).' | zip '.escapeshellarg($fullPath).' -@',
+            default => 'tar -cf '.escapeshellarg($fullPath).' -T '.escapeshellarg($fileListPath),
         };
 
         $result = Process::timeout(3600)->run($cmd);
         @unlink($fileListPath);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('Incremental filesystem backup failed: ' . $result->errorOutput());
+            throw new \RuntimeException('Incremental filesystem backup failed: '.$result->errorOutput());
         }
 
         return [
@@ -166,27 +166,27 @@ class FilesystemBackupService
         $tunnelService = app(SshTunnelService::class);
         $sshOptions = $tunnelService->buildSshOptions($ssh);
 
-        $localRsyncDir = rtrim($outputPath, '/') . '/rsync_incr_' . now()->format('Ymd_His');
+        $localRsyncDir = rtrim($outputPath, '/').'/rsync_incr_'.now()->format('Ymd_His');
         @mkdir($localRsyncDir, 0755, true);
 
         // Build exclude flags for rsync
         $excludes = '';
         foreach ($excludePatterns as $pattern) {
-            $excludes .= ' --exclude=' . escapeshellarg($pattern);
+            $excludes .= ' --exclude='.escapeshellarg($pattern);
         }
 
         $remoteSource = sprintf(
             '%s@%s:%s',
             escapeshellarg($ssh['user']),
             escapeshellarg($ssh['host']),
-            escapeshellarg(rtrim($remotePath, '/') . '/')
+            escapeshellarg(rtrim($remotePath, '/').'/')
         );
 
         // For incremental: only transfer files newer than checkpoint
         $since = $checkpoint['timestamp'] ?? null;
         $newerFilter = '';
         if ($since) {
-            $refFile = rtrim($outputPath, '/') . '/.incr_ssh_reference';
+            $refFile = rtrim($outputPath, '/').'/.incr_ssh_reference';
             touch($refFile, strtotime($since));
             // rsync doesn't have a native --newer flag, but we can use --update combined
             // with a filter. The simplest approach: rsync with --update to get only changed files.
@@ -209,8 +209,8 @@ class FilesystemBackupService
         $rsyncWarnings = null;
 
         if (! $result->successful() && ! in_array($exitCode, [23, 24])) {
-            Process::run('rm -rf ' . escapeshellarg($localRsyncDir));
-            throw new \RuntimeException('SSH incremental filesystem backup (rsync) failed: ' . $result->errorOutput());
+            Process::run('rm -rf '.escapeshellarg($localRsyncDir));
+            throw new \RuntimeException('SSH incremental filesystem backup (rsync) failed: '.$result->errorOutput());
         }
 
         if (in_array($exitCode, [23, 24])) {
@@ -218,20 +218,20 @@ class FilesystemBackupService
         }
 
         $baseName = basename(rtrim($remotePath, '/'));
-        $fileName = $this->generateFileName($baseName . '_ssh_incr', $compression);
-        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+        $fileName = $this->generateFileName($baseName.'_ssh_incr', $compression);
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $archiveCmd = match ($compression) {
-            'gzip' => 'tar -czf ' . escapeshellarg($fullPath) . ' -C ' . escapeshellarg(dirname($localRsyncDir)) . ' ' . escapeshellarg(basename($localRsyncDir)),
-            'zip'  => 'cd ' . escapeshellarg(dirname($localRsyncDir)) . ' && zip -r ' . escapeshellarg($fullPath) . ' ' . escapeshellarg(basename($localRsyncDir)),
-            default => 'tar -cf ' . escapeshellarg($fullPath) . ' -C ' . escapeshellarg(dirname($localRsyncDir)) . ' ' . escapeshellarg(basename($localRsyncDir)),
+            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
+            'zip' => 'cd '.escapeshellarg(dirname($localRsyncDir)).' && zip -r '.escapeshellarg($fullPath).' '.escapeshellarg(basename($localRsyncDir)),
+            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
         };
 
         $archiveResult = Process::timeout(3600)->run($archiveCmd);
-        Process::run('rm -rf ' . escapeshellarg($localRsyncDir));
+        Process::run('rm -rf '.escapeshellarg($localRsyncDir));
 
         if (! $archiveResult->successful()) {
-            throw new \RuntimeException('SSH incremental backup archiving failed: ' . $archiveResult->errorOutput());
+            throw new \RuntimeException('SSH incremental backup archiving failed: '.$archiveResult->errorOutput());
         }
 
         return [
@@ -262,20 +262,20 @@ class FilesystemBackupService
         $tunnelService = app(SshTunnelService::class);
         $sshOptions = $tunnelService->buildSshOptions($ssh);
 
-        $localRsyncDir = rtrim($outputPath, '/') . '/rsync_' . now()->format('Ymd_His');
+        $localRsyncDir = rtrim($outputPath, '/').'/rsync_'.now()->format('Ymd_His');
         @mkdir($localRsyncDir, 0755, true);
 
         // Build exclude flags for rsync
         $excludes = '';
         foreach ($excludePatterns as $pattern) {
-            $excludes .= ' --exclude=' . escapeshellarg($pattern);
+            $excludes .= ' --exclude='.escapeshellarg($pattern);
         }
 
         $remoteSource = sprintf(
             '%s@%s:%s',
             escapeshellarg($ssh['user']),
             escapeshellarg($ssh['host']),
-            escapeshellarg(rtrim($remotePath, '/') . '/')
+            escapeshellarg(rtrim($remotePath, '/').'/')
         );
 
         $rsyncCmd = sprintf(
@@ -294,8 +294,8 @@ class FilesystemBackupService
         $rsyncWarnings = null;
 
         if (! $result->successful() && ! in_array($exitCode, [23, 24])) {
-            Process::run('rm -rf ' . escapeshellarg($localRsyncDir));
-            throw new \RuntimeException('SSH filesystem backup (rsync) failed: ' . $result->errorOutput());
+            Process::run('rm -rf '.escapeshellarg($localRsyncDir));
+            throw new \RuntimeException('SSH filesystem backup (rsync) failed: '.$result->errorOutput());
         }
 
         if (in_array($exitCode, [23, 24])) {
@@ -303,20 +303,20 @@ class FilesystemBackupService
         }
 
         $baseName = basename(rtrim($remotePath, '/'));
-        $fileName = $this->generateFileName($baseName . '_ssh', $compression);
-        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+        $fileName = $this->generateFileName($baseName.'_ssh', $compression);
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $archiveCmd = match ($compression) {
-            'gzip' => 'tar -czf ' . escapeshellarg($fullPath) . ' -C ' . escapeshellarg(dirname($localRsyncDir)) . ' ' . escapeshellarg(basename($localRsyncDir)),
-            'zip'  => 'cd ' . escapeshellarg(dirname($localRsyncDir)) . ' && zip -r ' . escapeshellarg($fullPath) . ' ' . escapeshellarg(basename($localRsyncDir)),
-            default => 'tar -cf ' . escapeshellarg($fullPath) . ' -C ' . escapeshellarg(dirname($localRsyncDir)) . ' ' . escapeshellarg(basename($localRsyncDir)),
+            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
+            'zip' => 'cd '.escapeshellarg(dirname($localRsyncDir)).' && zip -r '.escapeshellarg($fullPath).' '.escapeshellarg(basename($localRsyncDir)),
+            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
         };
 
         $archiveResult = Process::timeout(3600)->run($archiveCmd);
-        Process::run('rm -rf ' . escapeshellarg($localRsyncDir));
+        Process::run('rm -rf '.escapeshellarg($localRsyncDir));
 
         if (! $archiveResult->successful()) {
-            throw new \RuntimeException('SSH filesystem backup archiving failed: ' . $archiveResult->errorOutput());
+            throw new \RuntimeException('SSH filesystem backup archiving failed: '.$archiveResult->errorOutput());
         }
 
         $meta = [
@@ -342,13 +342,13 @@ class FilesystemBackupService
     {
         $excludes = '';
         foreach ($excludePatterns as $pattern) {
-            $excludes .= ' --exclude=' . escapeshellarg($pattern);
+            $excludes .= ' --exclude='.escapeshellarg($pattern);
         }
 
         return match ($compression) {
-            'gzip' => 'tar -czf ' . escapeshellarg($outputPath) . $excludes . ' -C ' . escapeshellarg(dirname($sourcePath)) . ' ' . escapeshellarg(basename($sourcePath)),
-            'zip' => 'cd ' . escapeshellarg(dirname($sourcePath)) . ' && zip -r ' . escapeshellarg($outputPath) . ' ' . escapeshellarg(basename($sourcePath)) . $this->zipExcludes($excludePatterns),
-            default => 'tar -cf ' . escapeshellarg($outputPath) . $excludes . ' -C ' . escapeshellarg(dirname($sourcePath)) . ' ' . escapeshellarg(basename($sourcePath)),
+            'gzip' => 'tar -czf '.escapeshellarg($outputPath).$excludes.' -C '.escapeshellarg(dirname($sourcePath)).' '.escapeshellarg(basename($sourcePath)),
+            'zip' => 'cd '.escapeshellarg(dirname($sourcePath)).' && zip -r '.escapeshellarg($outputPath).' '.escapeshellarg(basename($sourcePath)).$this->zipExcludes($excludePatterns),
+            default => 'tar -cf '.escapeshellarg($outputPath).$excludes.' -C '.escapeshellarg(dirname($sourcePath)).' '.escapeshellarg(basename($sourcePath)),
         };
     }
 
@@ -363,7 +363,7 @@ class FilesystemBackupService
 
         $excludes = ' -x';
         foreach ($patterns as $pattern) {
-            $excludes .= ' ' . escapeshellarg($pattern);
+            $excludes .= ' '.escapeshellarg($pattern);
         }
 
         return $excludes;
@@ -375,7 +375,7 @@ class FilesystemBackupService
     protected function countFiles(string $path, array $excludePatterns): int
     {
         try {
-            $result = Process::run('find ' . escapeshellarg($path) . ' -type f | wc -l');
+            $result = Process::run('find '.escapeshellarg($path).' -type f | wc -l');
 
             return (int) trim($result->output());
         } catch (\Throwable) {

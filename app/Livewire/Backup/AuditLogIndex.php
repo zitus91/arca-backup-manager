@@ -14,8 +14,11 @@ class AuditLogIndex extends Component
     use WithPagination;
 
     public string $filterAction = '';
+
     public string $filterUserId = '';
+
     public string $filterDateFrom = '';
+
     public string $filterDateTo = '';
 
     public function updatedFilterAction(): void
@@ -55,7 +58,7 @@ class AuditLogIndex extends Component
         }
 
         if ($this->filterDateTo) {
-            $query->where('created_at', '<=', $this->filterDateTo . ' 23:59:59');
+            $query->where('created_at', '<=', $this->filterDateTo.' 23:59:59');
         }
 
         return view('livewire.backup.audit-log-index', [

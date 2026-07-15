@@ -14,7 +14,7 @@ class BackupStorageDestinationFactory extends Factory
         $type = $this->faker->randomElement(['s3', 'ftp']);
 
         return [
-            'name' => $this->faker->company() . ' ' . strtoupper($type),
+            'name' => $this->faker->company().' '.strtoupper($type),
             'type' => $type,
             'config' => $type === 's3' ? $this->s3Config() : $this->ftpConfig(),
             'is_active' => true,
@@ -47,7 +47,7 @@ class BackupStorageDestinationFactory extends Factory
         return [
             'bucket' => $this->faker->slug(2),
             'region' => $this->faker->randomElement(['us-east-1', 'eu-west-1', 'ap-southeast-1']),
-            'access_key' => 'AKIA' . strtoupper($this->faker->bothify('################')),
+            'access_key' => 'AKIA'.strtoupper($this->faker->bothify('################')),
             'secret_key' => $this->faker->sha256(),
             'endpoint' => null,
         ];

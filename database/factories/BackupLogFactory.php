@@ -23,9 +23,9 @@ class BackupLogFactory extends Factory
             'started_at' => $startedAt,
             'finished_at' => (clone $startedAt)->modify("+{$duration} seconds"),
             'duration_seconds' => $duration,
-            'file_name' => 'backup_' . date('Ymd_His', $startedAt->getTimestamp()) . '.sql.gz',
+            'file_name' => 'backup_'.date('Ymd_His', $startedAt->getTimestamp()).'.sql.gz',
             'file_size_bytes' => $this->faker->numberBetween(1024, 1024 * 1024 * 500),
-            'storage_path' => '/backups/' . date('Y/m', $startedAt->getTimestamp()),
+            'storage_path' => '/backups/'.date('Y/m', $startedAt->getTimestamp()),
             'error_message' => null,
             'meta' => ['tables_dumped' => $this->faker->numberBetween(5, 50)],
         ];
@@ -75,7 +75,7 @@ class BackupLogFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => 'partial',
-            'error_message' => 'Some tables could not be dumped: ' . $this->faker->word(),
+            'error_message' => 'Some tables could not be dumped: '.$this->faker->word(),
         ]);
     }
 

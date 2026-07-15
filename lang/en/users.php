@@ -3,6 +3,19 @@
 return [
     // Navigation
     'nav_section' => 'Users',
+    'admin_section' => 'Administration',
+    'account_section' => 'Account',
+
+    // Role
+    'role' => 'Role',
+    'role_admin' => 'Administrator',
+    'role_standard' => 'Standard',
+    'cannot_demote_self' => 'You cannot remove your own administrator role',
+
+    // Language
+    'language' => 'Language',
+    'lang_it' => 'Italian',
+    'lang_en' => 'English',
 
     // Index page
     'title' => 'Users',

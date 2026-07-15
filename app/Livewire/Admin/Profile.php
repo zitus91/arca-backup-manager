@@ -12,13 +12,19 @@ use Livewire\Component;
 class Profile extends Component
 {
     public string $name = '';
+
     public string $email = '';
 
+    public string $locale = '';
+
     public string $current_password = '';
+
     public string $new_password = '';
+
     public string $new_password_confirmation = '';
 
     public bool $profileSaved = false;
+
     public bool $passwordChanged = false;
 
     public function mount(): void
@@ -26,24 +32,30 @@ class Profile extends Component
         $user = Auth::user();
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->locale = $user->locale ?? app()->getLocale();
     }
 
     public function updateProfile(): void
     {
         $this->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . Auth::id(),
+            'email' => 'required|email|max:255|unique:users,email,'.Auth::id(),
+            'locale' => 'required|in:it,en',
         ]);
 
         $user = Auth::user();
-        $oldValues = ['name' => $user->name, 'email' => $user->email];
+        $oldValues = ['name' => $user->name, 'email' => $user->email, 'locale' => $user->locale];
 
         $user->update([
             'name' => $this->name,
             'email' => $this->email,
+            'locale' => $this->locale,
         ]);
 
-        AuditLog::record('updated', "Updated own profile", $user, $oldValues, [
+        session()->put('locale', $this->locale);
+        app()->setLocale($this->locale);
+
+        AuditLog::record('updated', 'Updated own profile', $user, $oldValues, [
             'name' => $this->name,
             'email' => $this->email,
         ]);
@@ -61,8 +73,9 @@ class Profile extends Component
 
         $user = Auth::user();
 
-        if (!Hash::check($this->current_password, $user->password)) {
+        if (! Hash::check($this->current_password, $user->password)) {
             $this->addError('current_password', __('users.current_password_wrong'));
+
             return;
         }
 
@@ -70,7 +83,7 @@ class Profile extends Component
             'password' => bcrypt($this->new_password),
         ]);
 
-        AuditLog::record('updated', "Changed own password", $user);
+        AuditLog::record('updated', 'Changed own password', $user);
 
         $this->current_password = '';
         $this->new_password = '';

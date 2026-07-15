@@ -13,8 +13,13 @@ class UserForm extends Component
     public ?int $userId = null;
 
     public string $name = '';
+
     public string $email = '';
+
+    public string $role = 'standard';
+
     public string $password = '';
+
     public string $password_confirmation = '';
 
     public function mount(?int $userId = null): void
@@ -24,6 +29,7 @@ class UserForm extends Component
             $user = User::findOrFail($userId);
             $this->name = $user->name;
             $this->email = $user->email;
+            $this->role = $user->role;
         }
     }
 
@@ -35,6 +41,7 @@ class UserForm extends Component
                 'required', 'email', 'max:255',
                 Rule::unique('users', 'email')->ignore($this->userId),
             ],
+            'role' => ['required', Rule::in(['standard', 'admin'])],
         ];
 
         if ($this->userId) {
@@ -52,9 +59,17 @@ class UserForm extends Component
     {
         $this->validate();
 
+        // Prevent an admin from demoting themselves out of the last foothold.
+        if ($this->userId === auth()->id() && $this->role !== 'admin') {
+            $this->addError('role', __('users.cannot_demote_self'));
+
+            return;
+        }
+
         $data = [
             'name' => $this->name,
             'email' => $this->email,
+            'role' => $this->role,
         ];
 
         if ($this->password) {

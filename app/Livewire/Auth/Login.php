@@ -27,11 +27,12 @@ class Login extends Component
     {
         $this->errorMessage = '';
 
-        $throttleKey = 'login:' . str()->lower($this->email) . '|' . request()->ip();
+        $throttleKey = 'login:'.str()->lower($this->email).'|'.request()->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
             $this->addError('email', __('auth.throttle', ['seconds' => $seconds, 'minutes' => ceil($seconds / 60)]));
+
             return;
         }
 
@@ -48,13 +49,14 @@ class Login extends Component
             Log::warning('[Login] Failed attempt', ['email' => $this->email, 'ip' => request()->ip()]);
 
             $this->addError('email', __('auth.failed'));
+
             return;
         }
 
         RateLimiter::clear($throttleKey);
         session()->regenerate();
 
-        AuditLog::record('login', 'User logged in: ' . $this->email);
+        AuditLog::record('login', 'User logged in: '.$this->email);
 
         Log::info('[Login] Successful login', ['email' => $this->email]);
 
@@ -66,4 +68,3 @@ class Login extends Component
         return view('livewire.auth.login');
     }
 }
-

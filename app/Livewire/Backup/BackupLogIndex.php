@@ -17,11 +17,15 @@ class BackupLogIndex extends Component
 
     #[Url(as: 'filterJobId')]
     public string $filterJobId = '';
+
     public string $filterStatus = '';
+
     public string $filterDateFrom = '';
+
     public string $filterDateTo = '';
 
     public bool $showDetail = false;
+
     public ?int $detailLogId = null;
 
     public function updatedFilterJobId(): void
@@ -85,7 +89,7 @@ class BackupLogIndex extends Component
         }
 
         if ($this->filterDateTo) {
-            $query->where('started_at', '<=', $this->filterDateTo . ' 23:59:59');
+            $query->where('started_at', '<=', $this->filterDateTo.' 23:59:59');
         }
 
         $detailLog = null;

@@ -130,9 +130,17 @@ Every user-initiated action (create/update/delete of any entity, backup executio
 
 An Artisan command (`backup:recover-stale-jobs`) runs on a schedule to automatically mark as `failed` any job that has been stuck in `running` or `pending` state for more than a configurable number of minutes (default: 70). Useful to recover from unexpected worker crashes.
 
+### Users & Access Control
+
+- **Per-user ownership** — every backup source, destination, job, and log belongs to the user who created it. Each user sees and manages only their own resources; the ownership filter is enforced globally at the query layer and automatically bypassed for background workers (scheduler, queue) so scheduled backups keep running regardless of who is logged in.
+- **Two roles** — `standard` and `admin`. Standard users get the full backup workflow scoped to their own data. Admins additionally see:
+  - a **Users** section to create, edit, delete users and assign roles (an admin cannot demote their own account);
+  - a **System** dashboard — a global overview across *all* users (totals, success rate, storage, a per-user breakdown, and recent activity), with no ownership filter applied.
+- **Audit log** — a cross-user trail (filterable by user) available to authenticated users; it is never scoped away.
+
 ### Multi-language UI
 
-Full English and Italian translations for every label, description, validation message, and notification. Language files are scoped per component.
+Full English and Italian translations for every label, description, validation message, and notification. Language files are scoped per component. Users switch language instantly from the sidebar toggle, and each user's preferred locale is stored on their profile and re-applied on every request.
 
 ---
 
@@ -527,7 +535,7 @@ The dashboard shows:
 - Upcoming scheduled backups
 - Storage usage breakdown by destination
 
-All data refreshes automatically via WebSocket when a backup starts or completes.
+All data refreshes automatically via WebSocket when a backup starts or completes. Admins additionally get a **System** dashboard with the same metrics aggregated across every user, plus a per-user breakdown.
 
 ### 5 — Restore a Backup
 
@@ -547,7 +555,8 @@ For incremental backups the system automatically chains the full backup with all
 - **Encrypted credentials** — all sensitive configuration (database passwords, S3 keys, SSH keys/passwords, remote host configs) is stored using Laravel's `encrypted:array` cast, which uses AES-256-CBC encryption tied to `APP_KEY`. Guard your `.env` file carefully.
 - **Audit log** — every user action is recorded with IP, User-Agent, and before/after values. The audit log cannot be deleted from the UI.
 - **Non-destructive restores** — restores default to a new name with a timestamp suffix. Override mode (which can drop databases or delete directories) requires explicit opt-in and a two-step confirmation with a prominent warning.
-- **Authentication** — all backup management routes require authentication. There is no guest or API access.
+- **Authentication & isolation** — all backup management routes require authentication; there is no guest or API access. Resources are isolated per user, so one user can never see, edit, download, or restore another user's backups (enforced globally, including on direct show/download URLs).
+- **Role-based access** — administrative pages (user management and the system-wide dashboard) are gated behind an `admin` role via dedicated middleware. The first (seeded) user is the admin; new users default to `standard`.
 - **Input validation** — all Livewire component inputs are validated server-side before any operation is executed.
 
 ---
@@ -587,7 +596,7 @@ backup-manager/
 │   │   ├── Backup/ProcessBackupJob.php      # Queued backup orchestrator
 │   │   └── Restore/ProcessRestoreJob.php    # Queued restore orchestrator
 │   ├── Livewire/
-│   │   ├── Admin/    # UserIndex, UserForm, Profile
+│   │   ├── Admin/    # UserIndex, UserForm, Profile, SystemDashboard
 │   │   ├── Auth/     # Login
 │   │   └── Backup/   # Dashboard, BackupJobIndex/Form, BackupLogIndex,
 │   │                 # BackupSourceIndex/Form, StorageDestinationIndex/Form,

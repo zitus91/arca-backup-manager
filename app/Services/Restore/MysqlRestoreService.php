@@ -10,11 +10,11 @@ class MysqlRestoreService
     /**
      * Restore a MySQL dump file into a database.
      *
-     * @param  array   $config           MySQL connection config (host, port, username, password, database)
-     * @param  string  $dumpFilePath     Path to the .sql / .sql.gz / .sql.zip file
-     * @param  string|null $targetDbName Custom target database name (default: originalDb_restored_TIMESTAMP)
-     * @param  bool    $overrideExisting If true, DROP existing database before restoring
-     * @return array   Result with restored_db_name and meta
+     * @param  array  $config  MySQL connection config (host, port, username, password, database)
+     * @param  string  $dumpFilePath  Path to the .sql / .sql.gz / .sql.zip file
+     * @param  string|null  $targetDbName  Custom target database name (default: originalDb_restored_TIMESTAMP)
+     * @param  bool  $overrideExisting  If true, DROP existing database before restoring
+     * @return array Result with restored_db_name and meta
      */
     public function restore(array $config, string $dumpFilePath, ?string $targetDbName = null, bool $overrideExisting = false): array
     {
@@ -27,6 +27,7 @@ class MysqlRestoreService
                 (int) ($config['port'] ?? 3306),
                 function (int $localPort) use ($config, $dumpFilePath, $targetDbName, $overrideExisting): array {
                     $tunnelConfig = array_merge($config, ['host' => '127.0.0.1', 'port' => $localPort]);
+
                     return $this->executeRestore($tunnelConfig, $dumpFilePath, $targetDbName, $overrideExisting);
                 }
             );
@@ -38,7 +39,7 @@ class MysqlRestoreService
     protected function executeRestore(array $config, string $dumpFilePath, ?string $targetDbName, bool $overrideExisting): array
     {
         $originalDb = $config['database'];
-        $restoredDb = $targetDbName ?? ($originalDb . '_restored_' . now()->format('Ymd_His'));
+        $restoredDb = $targetDbName ?? ($originalDb.'_restored_'.now()->format('Ymd_His'));
 
         // 1. If override, drop existing database first
         if ($overrideExisting) {
@@ -54,7 +55,7 @@ class MysqlRestoreService
         $result = Process::timeout(3600)->run($importCmd);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('MySQL restore failed: ' . $result->errorOutput());
+            throw new \RuntimeException('MySQL restore failed: '.$result->errorOutput());
         }
 
         return [
@@ -82,7 +83,7 @@ class MysqlRestoreService
         $result = Process::timeout(30)->run($cmd);
 
         if (! $result->successful()) {
-            throw new \RuntimeException("Failed to drop database '{$dbName}': " . $result->errorOutput());
+            throw new \RuntimeException("Failed to drop database '{$dbName}': ".$result->errorOutput());
         }
     }
 
@@ -103,7 +104,7 @@ class MysqlRestoreService
         $result = Process::timeout(30)->run($cmd);
 
         if (! $result->successful()) {
-            throw new \RuntimeException("Failed to create database '{$dbName}': " . $result->errorOutput());
+            throw new \RuntimeException("Failed to create database '{$dbName}': ".$result->errorOutput());
         }
     }
 
@@ -122,15 +123,15 @@ class MysqlRestoreService
         );
 
         if (str_ends_with($filePath, '.sql.gz') || str_ends_with($filePath, '.gz')) {
-            return 'gunzip -c ' . escapeshellarg($filePath) . ' | ' . $mysqlCmd;
+            return 'gunzip -c '.escapeshellarg($filePath).' | '.$mysqlCmd;
         }
 
         if (str_ends_with($filePath, '.sql.zip') || str_ends_with($filePath, '.zip')) {
             // Extract to stdout and pipe to mysql
-            return 'unzip -p ' . escapeshellarg($filePath) . ' | ' . $mysqlCmd;
+            return 'unzip -p '.escapeshellarg($filePath).' | '.$mysqlCmd;
         }
 
         // Plain .sql file
-        return $mysqlCmd . ' < ' . escapeshellarg($filePath);
+        return $mysqlCmd.' < '.escapeshellarg($filePath);
     }
 }

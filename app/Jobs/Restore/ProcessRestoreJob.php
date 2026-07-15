@@ -67,13 +67,13 @@ class ProcessRestoreJob implements ShouldQueue
             backupJobName: $backupJob->name,
         ));
 
-        $tmpDir = storage_path('app/restores/tmp/' . $restoreLog->id);
+        $tmpDir = storage_path('app/restores/tmp/'.$restoreLog->id);
         @mkdir($tmpDir, 0755, true);
 
         try {
             // 2. Download and restore each backup in the chain (full first, then incrementals)
             $sourceConfig = $source->config;
-            $sharedSsh    = $sourceConfig['ssh'] ?? ['enabled' => false];
+            $sharedSsh = $sourceConfig['ssh'] ?? ['enabled' => false];
             $restoreType = $restoreLog->restore_type;
             $selectedItems = $restoreLog->selected_items;
             $results = [];
@@ -84,7 +84,7 @@ class ProcessRestoreJob implements ShouldQueue
                 $isFirstInChain = $chainIndex === 0;
 
                 // Download this backup file
-                $chainTmpDir = $tmpDir . '/chain_' . $chainLog->id;
+                $chainTmpDir = $tmpDir.'/chain_'.$chainLog->id;
                 @mkdir($chainTmpDir, 0755, true);
 
                 $localFilePath = $this->downloadBackupFile(
@@ -99,7 +99,7 @@ class ProcessRestoreJob implements ShouldQueue
                 $isPackage = $this->isPackageArchive($chainLog, $sourceConfig);
 
                 if ($isPackage) {
-                    $extractedDir = $chainTmpDir . '/extracted';
+                    $extractedDir = $chainTmpDir.'/extracted';
                     @mkdir($extractedDir, 0755, true);
                     $this->extractPackage($localFilePath, $extractedDir);
                 }
@@ -108,106 +108,106 @@ class ProcessRestoreJob implements ShouldQueue
                 // because we're applying deltas on top of the base
                 $stepOverride = $isFirstInChain ? $overrideExisting : true;
 
-            // 4. Restore MySQL if applicable
-            if (in_array($restoreType, ['db_only', 'full']) && isset($sourceConfig['mysql'])) {
-                $mysqlConf = $sourceConfig['mysql'];
-                $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
+                // 4. Restore MySQL if applicable
+                if (in_array($restoreType, ['db_only', 'full']) && isset($sourceConfig['mysql'])) {
+                    $mysqlConf = $sourceConfig['mysql'];
+                    $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
 
-                // Filter by selected items if specified
-                if (! empty($selectedItems['mysql_databases'])) {
-                    $databases = array_intersect($databases, $selectedItems['mysql_databases']);
-                }
-
-                foreach ($databases as $db) {
-                    $singleConf = array_merge($mysqlConf, ['database' => $db]);
-
-                    // Apply remote host config if restoring to a different server
-                    if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mysql'])) {
-                        $singleConf = array_merge($singleConf, $remoteHostConfig['mysql']);
-                    } elseif ($restoreTarget === 'same_host') {
-                        // Inject source SSH so the tunnel is used to reach the DB server
-                        $singleConf['ssh'] = $sharedSsh;
+                    // Filter by selected items if specified
+                    if (! empty($selectedItems['mysql_databases'])) {
+                        $databases = array_intersect($databases, $selectedItems['mysql_databases']);
                     }
 
-                    // Get custom target name if specified
-                    $targetDbName = $customNames['databases'][$db] ?? null;
+                    foreach ($databases as $db) {
+                        $singleConf = array_merge($mysqlConf, ['database' => $db]);
 
-                    $dumpFile = $this->findMysqlDump($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+                        // Apply remote host config if restoring to a different server
+                        if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mysql'])) {
+                            $singleConf = array_merge($singleConf, $remoteHostConfig['mysql']);
+                        } elseif ($restoreTarget === 'same_host') {
+                            // Inject source SSH so the tunnel is used to reach the DB server
+                            $singleConf['ssh'] = $sharedSsh;
+                        }
 
-                    if ($dumpFile) {
-                        $r = $mysqlRestore->restore($singleConf, $dumpFile, $targetDbName, $stepOverride);
-                        $results[] = $r;
-                        $restoredDbNames[] = $r['restored_db_name'];
+                        // Get custom target name if specified
+                        $targetDbName = $customNames['databases'][$db] ?? null;
+
+                        $dumpFile = $this->findMysqlDump($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+
+                        if ($dumpFile) {
+                            $r = $mysqlRestore->restore($singleConf, $dumpFile, $targetDbName, $stepOverride);
+                            $results[] = $r;
+                            $restoredDbNames[] = $r['restored_db_name'];
+                        }
                     }
                 }
-            }
 
-            // 5. Restore MongoDB if applicable
-            if (in_array($restoreType, ['db_only', 'full']) && isset($sourceConfig['mongodb'])) {
-                $mongoConf = $sourceConfig['mongodb'];
-                $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
+                // 5. Restore MongoDB if applicable
+                if (in_array($restoreType, ['db_only', 'full']) && isset($sourceConfig['mongodb'])) {
+                    $mongoConf = $sourceConfig['mongodb'];
+                    $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
 
-                // Filter by selected items if specified
-                if (! empty($selectedItems['mongodb_databases'])) {
-                    $databases = array_intersect($databases, $selectedItems['mongodb_databases']);
-                }
-
-                foreach ($databases as $db) {
-                    $singleConf = array_merge($mongoConf, ['database' => $db]);
-
-                    // Apply remote host config if restoring to a different server
-                    if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mongodb'])) {
-                        $singleConf = array_merge($singleConf, $remoteHostConfig['mongodb']);
-                    } elseif ($restoreTarget === 'same_host') {
-                        // Inject source SSH so the tunnel is used to reach the DB server
-                        $singleConf['ssh'] = $sharedSsh;
+                    // Filter by selected items if specified
+                    if (! empty($selectedItems['mongodb_databases'])) {
+                        $databases = array_intersect($databases, $selectedItems['mongodb_databases']);
                     }
 
-                    // Get custom target name if specified
-                    $targetDbName = $customNames['databases'][$db] ?? null;
+                    foreach ($databases as $db) {
+                        $singleConf = array_merge($mongoConf, ['database' => $db]);
 
-                    $archiveFile = $this->findMongoArchive($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+                        // Apply remote host config if restoring to a different server
+                        if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mongodb'])) {
+                            $singleConf = array_merge($singleConf, $remoteHostConfig['mongodb']);
+                        } elseif ($restoreTarget === 'same_host') {
+                            // Inject source SSH so the tunnel is used to reach the DB server
+                            $singleConf['ssh'] = $sharedSsh;
+                        }
 
-                    if ($archiveFile) {
-                        $r = $mongodbRestore->restore($singleConf, $archiveFile, $targetDbName, $stepOverride);
-                        $results[] = $r;
-                        $restoredDbNames[] = $r['restored_db_name'];
+                        // Get custom target name if specified
+                        $targetDbName = $customNames['databases'][$db] ?? null;
+
+                        $archiveFile = $this->findMongoArchive($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+
+                        if ($archiveFile) {
+                            $r = $mongodbRestore->restore($singleConf, $archiveFile, $targetDbName, $stepOverride);
+                            $results[] = $r;
+                            $restoredDbNames[] = $r['restored_db_name'];
+                        }
                     }
                 }
-            }
 
-            // 6. Restore Filesystem if applicable
-            if (in_array($restoreType, ['files_only', 'full']) && isset($sourceConfig['filesystem'])) {
-                $fsConf = $sourceConfig['filesystem'];
-                $paths = $fsConf['paths'] ?? (isset($fsConf['path']) ? [$fsConf['path']] : []);
+                // 6. Restore Filesystem if applicable
+                if (in_array($restoreType, ['files_only', 'full']) && isset($sourceConfig['filesystem'])) {
+                    $fsConf = $sourceConfig['filesystem'];
+                    $paths = $fsConf['paths'] ?? (isset($fsConf['path']) ? [$fsConf['path']] : []);
 
-                // Filter by selected items if specified
-                if (! empty($selectedItems['filesystem_paths'])) {
-                    $paths = array_intersect($paths, $selectedItems['filesystem_paths']);
-                }
-
-                foreach ($paths as $path) {
-                    $singleConf = ['path' => $path, 'exclude_patterns' => $fsConf['exclude_patterns'] ?? []];
-
-                    // Apply SSH config: source SSH for same_host, custom remote config for remote_host
-                    if ($restoreTarget === 'same_host') {
-                        $singleConf['ssh'] = $sharedSsh;
-                    } elseif ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['filesystem'])) {
-                        $singleConf['ssh'] = $remoteHostConfig['filesystem'];
+                    // Filter by selected items if specified
+                    if (! empty($selectedItems['filesystem_paths'])) {
+                        $paths = array_intersect($paths, $selectedItems['filesystem_paths']);
                     }
 
-                    // Get custom target path if specified
-                    $targetPath = $customNames['paths'][$path] ?? null;
+                    foreach ($paths as $path) {
+                        $singleConf = ['path' => $path, 'exclude_patterns' => $fsConf['exclude_patterns'] ?? []];
 
-                    $archiveFile = $this->findFilesystemArchive($isPackage ? $extractedDir : $chainTmpDir, basename($path), $isPackage);
+                        // Apply SSH config: source SSH for same_host, custom remote config for remote_host
+                        if ($restoreTarget === 'same_host') {
+                            $singleConf['ssh'] = $sharedSsh;
+                        } elseif ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['filesystem'])) {
+                            $singleConf['ssh'] = $remoteHostConfig['filesystem'];
+                        }
 
-                    if ($archiveFile) {
-                        $r = $filesystemRestore->restore($singleConf, $archiveFile, $targetPath, $stepOverride);
-                        $results[] = $r;
-                        $restoredPaths[] = $r['restored_path'];
+                        // Get custom target path if specified
+                        $targetPath = $customNames['paths'][$path] ?? null;
+
+                        $archiveFile = $this->findFilesystemArchive($isPackage ? $extractedDir : $chainTmpDir, basename($path), $isPackage);
+
+                        if ($archiveFile) {
+                            $r = $filesystemRestore->restore($singleConf, $archiveFile, $targetPath, $stepOverride);
+                            $results[] = $r;
+                            $restoredPaths[] = $r['restored_path'];
+                        }
                     }
                 }
-            }
 
             } // end foreach backupChain
 
@@ -311,7 +311,7 @@ class ProcessRestoreJob implements ShouldQueue
     ): string {
         $remotePath = $backupLog->storage_path;
         $fileName = $backupLog->file_name ?? basename($remotePath);
-        $localPath = $tmpDir . '/' . $fileName;
+        $localPath = $tmpDir.'/'.$fileName;
 
         match ($destination->type) {
             's3' => $this->downloadFromS3($s3Service, $destination->config, $remotePath, $localPath),
@@ -400,7 +400,7 @@ class ProcessRestoreJob implements ShouldQueue
     protected function downloadFromLocal(array $config, string $remotePath, string $localPath): void
     {
         $basePath = rtrim($config['path'] ?? '', '/');
-        $fullPath = $basePath . '/' . $remotePath;
+        $fullPath = $basePath.'/'.$remotePath;
 
         if (! file_exists($fullPath)) {
             throw new \RuntimeException("Backup file not found: {$fullPath}");
@@ -425,17 +425,17 @@ class ProcessRestoreJob implements ShouldQueue
     protected function extractPackage(string $archivePath, string $extractDir): void
     {
         if (str_ends_with($archivePath, '.tar.gz') || str_ends_with($archivePath, '.tgz')) {
-            $cmd = 'tar -xzf ' . escapeshellarg($archivePath) . ' -C ' . escapeshellarg($extractDir);
+            $cmd = 'tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($extractDir);
         } elseif (str_ends_with($archivePath, '.zip')) {
-            $cmd = 'unzip -o ' . escapeshellarg($archivePath) . ' -d ' . escapeshellarg($extractDir);
+            $cmd = 'unzip -o '.escapeshellarg($archivePath).' -d '.escapeshellarg($extractDir);
         } else {
-            $cmd = 'tar -xf ' . escapeshellarg($archivePath) . ' -C ' . escapeshellarg($extractDir);
+            $cmd = 'tar -xf '.escapeshellarg($archivePath).' -C '.escapeshellarg($extractDir);
         }
 
         $result = Process::timeout(600)->run($cmd);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('Failed to extract backup package: ' . $result->errorOutput());
+            throw new \RuntimeException('Failed to extract backup package: '.$result->errorOutput());
         }
     }
 
@@ -445,7 +445,7 @@ class ProcessRestoreJob implements ShouldQueue
     protected function findMysqlDump(string $dir, string $dbName, bool $isPackage): ?string
     {
         // In package: look under mysql/ subdirectory
-        $searchDir = $isPackage ? $dir . '/mysql' : $dir;
+        $searchDir = $isPackage ? $dir.'/mysql' : $dir;
 
         if (! is_dir($searchDir)) {
             return null;
@@ -476,7 +476,7 @@ class ProcessRestoreJob implements ShouldQueue
      */
     protected function findMongoArchive(string $dir, string $dbName, bool $isPackage): ?string
     {
-        $searchDir = $isPackage ? $dir . '/mongodb' : $dir;
+        $searchDir = $isPackage ? $dir.'/mongodb' : $dir;
 
         if (! is_dir($searchDir)) {
             return null;
@@ -505,7 +505,7 @@ class ProcessRestoreJob implements ShouldQueue
      */
     protected function findFilesystemArchive(string $dir, string $sourceName, bool $isPackage): ?string
     {
-        $searchDir = $isPackage ? $dir . '/filesystem' : $dir;
+        $searchDir = $isPackage ? $dir.'/filesystem' : $dir;
 
         if (! is_dir($searchDir)) {
             return null;

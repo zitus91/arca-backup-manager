@@ -17,9 +17,11 @@ class BackupJobIndex extends Component
     use WithPagination;
 
     public string $filterStatus = '';
+
     public string $filterScheduleType = '';
 
     public bool $showForm = false;
+
     public ?int $editId = null;
 
     public function updatedFilterStatus(): void
@@ -56,8 +58,8 @@ class BackupJobIndex extends Component
 
         $log = BackupLog::create([
             'backup_job_id' => $job->id,
-            'status'        => 'pending',
-            'started_at'    => now(),
+            'status' => 'pending',
+            'started_at' => now(),
         ]);
 
         ProcessBackupJob::dispatch($job->id, $log->id);
@@ -106,10 +108,10 @@ class BackupJobIndex extends Component
         }
 
         $log->update([
-            'status'           => 'cancelled',
-            'finished_at'      => now(),
+            'status' => 'cancelled',
+            'finished_at' => now(),
             'duration_seconds' => now()->diffInSeconds($log->started_at),
-            'error_message'    => 'Cancelled by user.',
+            'error_message' => 'Cancelled by user.',
         ]);
 
         AuditLog::record('cancel', "Cancelled backup job: {$job->name}", $job);

@@ -16,7 +16,7 @@ class BackupJobFactory extends Factory
         $scheduleType = $this->faker->randomElement(['manual', 'hourly', 'daily', 'weekly', 'monthly']);
 
         return [
-            'name' => 'Backup ' . $this->faker->words(2, true),
+            'name' => 'Backup '.$this->faker->words(2, true),
             'backup_source_id' => BackupSource::factory(),
             'backup_storage_destination_id' => BackupStorageDestination::factory(),
             'schedule_type' => $scheduleType,

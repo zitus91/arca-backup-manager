@@ -18,9 +18,9 @@ class SshTunnelService
      */
     public function open(array $ssh, string $remoteHost, int $remotePort): array
     {
-        $localPort   = $this->findFreePort();
-        $authMethod  = $ssh['auth_method'] ?? 'key';
-        $baseOpts    = sprintf(
+        $localPort = $this->findFreePort();
+        $authMethod = $ssh['auth_method'] ?? 'key';
+        $baseOpts = sprintf(
             '-N -f -L %d:%s:%d -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p %d %s@%s',
             $localPort,
             escapeshellarg($remoteHost),
@@ -36,10 +36,10 @@ class SshTunnelService
             $cmd = sprintf('ssh -i %s %s', escapeshellarg($ssh['key_path']), $baseOpts);
         }
 
-        $result = Process::run($cmd . ' 2>/dev/null');
+        $result = Process::run($cmd.' 2>/dev/null');
 
         if (! $result->successful()) {
-            throw new \RuntimeException("Failed to open SSH tunnel to {$ssh['host']}: " . $result->errorOutput());
+            throw new \RuntimeException("Failed to open SSH tunnel to {$ssh['host']}: ".$result->errorOutput());
         }
 
         // Give the tunnel a moment to establish
@@ -60,7 +60,7 @@ class SshTunnelService
     public function close(int $pid): void
     {
         if ($pid > 0) {
-            Process::run(['kill', (string)$pid]);
+            Process::run(['kill', (string) $pid]);
         }
     }
 
@@ -71,7 +71,6 @@ class SshTunnelService
      * @param  string  $remoteHost  Remote host on the SSH server side
      * @param  int  $remotePort  Remote port to forward
      * @param  callable  $callback  Receives (int $localPort): mixed
-     * @return mixed
      *
      * @throws \RuntimeException
      */
@@ -92,7 +91,7 @@ class SshTunnelService
     public function buildSshOptions(array $ssh): string
     {
         $authMethod = $ssh['auth_method'] ?? 'key';
-        $baseOpts   = sprintf(
+        $baseOpts = sprintf(
             'ssh -p %d -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR',
             (int) ($ssh['port'] ?? 22)
         );
