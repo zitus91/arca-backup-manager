@@ -666,6 +666,12 @@ backup-manager/
 |:----:|:-----:|
 | ![Logs](docs/images/screenshot-logs.png) | ![Audit](docs/images/screenshot-audit.png) |
 
+### Create forms
+
+| New Source | New Destination | New Job |
+|:----------:|:---------------:|:-------:|
+| ![New Source](docs/images/screenshot-new-source.png) | ![New Destination](docs/images/screenshot-new-destination.png) | ![New Job](docs/images/screenshot-new-job.png) |
+
 ---
 
 ## 📋 Changelog
