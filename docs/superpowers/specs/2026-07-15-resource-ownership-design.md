@@ -48,7 +48,12 @@ them; other users start with an empty workspace.
 
 A single `OwnedByUserScope` (Eloquent global scope) applied via an
 `OwnedByUser` trait to: `BackupSource`, `BackupStorageDestination`,
-`BackupJob`, `BackupLog`, `RestoreLog`, `AuditLog`.
+`BackupJob`, `BackupLog`, `RestoreLog`.
+
+`AuditLog` is intentionally **not** scoped. It is a cross-user audit trail
+(the `AuditLogIndex` already exposes a filter-by-user control), so it stays
+global. It keeps its existing `user_id` (the actor), unfiltered by the current
+viewer.
 
 Behavior:
 

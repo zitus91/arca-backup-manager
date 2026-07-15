@@ -19,6 +19,7 @@ Schedule::call(function () {
     foreach ($dueJobs as $job) {
         $log = BackupLog::create([
             'backup_job_id' => $job->id,
+            'user_id' => $job->user_id,
             'status' => 'pending',
             'started_at' => now(),
         ]);

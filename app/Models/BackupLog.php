@@ -3,15 +3,17 @@
 namespace App\Models;
 
 use App\Trait\HasCache;
+use App\Trait\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BackupLog extends Model
 {
-    use HasCache, HasFactory;
+    use HasCache, HasFactory, OwnedByUser;
 
     protected $fillable = [
+        'user_id',
         'backup_job_id',
         'parent_backup_log_id',
         'is_full',
@@ -33,15 +35,15 @@ class BackupLog extends Model
     protected function casts(): array
     {
         return [
-            'started_at'              => 'datetime',
-            'finished_at'             => 'datetime',
-            'locked_at'               => 'datetime',
-            'duration_seconds'        => 'integer',
-            'file_size_bytes'         => 'integer',
-            'is_full'                 => 'boolean',
-            'is_locked'               => 'boolean',
-            'meta'                    => 'array',
-            'incremental_checkpoint'  => 'array',
+            'started_at' => 'datetime',
+            'finished_at' => 'datetime',
+            'locked_at' => 'datetime',
+            'duration_seconds' => 'integer',
+            'file_size_bytes' => 'integer',
+            'is_full' => 'boolean',
+            'is_locked' => 'boolean',
+            'meta' => 'array',
+            'incremental_checkpoint' => 'array',
         ];
     }
 
@@ -111,7 +113,7 @@ class BackupLog extends Model
             $i++;
         }
 
-        return round($size, 2) . ' ' . $units[$i];
+        return round($size, 2).' '.$units[$i];
     }
 
     public function getFormattedDurationAttribute(): string
@@ -121,7 +123,7 @@ class BackupLog extends Model
         }
 
         if ($this->duration_seconds < 60) {
-            return $this->duration_seconds . 's';
+            return $this->duration_seconds.'s';
         }
 
         $minutes = floor($this->duration_seconds / 60);
