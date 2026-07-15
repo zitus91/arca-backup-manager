@@ -52,4 +52,7 @@ return [
     'col_size' => 'Dimensione',
     'col_duration' => 'Durata',
     'col_time' => 'Quando',
+    'label_today' => 'Oggi',
+    'off' => 'Off',
+    'never_short' => 'mai',
 ];
