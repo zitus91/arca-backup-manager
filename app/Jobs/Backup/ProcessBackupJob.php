@@ -601,7 +601,10 @@ class ProcessBackupJob implements ShouldQueue
                 continue;
             }
             [$key, $val] = explode('=', $line, 2);
-            $vars[trim($key)] = trim($val, '"\'');
+            $val = trim($val, '"\'');
+            // Resolve ${VAR} references against vars parsed earlier (dotenv interpolation)
+            $val = preg_replace_callback('/\$\{([A-Z0-9_]+)\}/', fn ($m) => $vars[$m[1]] ?? $m[0], $val);
+            $vars[trim($key)] = $val;
         }
 
         $overrides = array_filter([
