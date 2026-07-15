@@ -47,7 +47,7 @@ class BackupLogDownloadController extends Controller
     protected function downloadLocal(array $config, string $remotePath, string $fileName): BinaryFileResponse
     {
         $basePath = rtrim($config['path'] ?? '', '/');
-        $fullPath = $basePath . '/' . $remotePath;
+        $fullPath = $basePath.'/'.$remotePath;
 
         if (! file_exists($fullPath)) {
             abort(404, "File not found: {$fullPath}");

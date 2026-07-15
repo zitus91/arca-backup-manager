@@ -79,7 +79,7 @@ class BackupSourceFactory extends Factory
     private function filesystemConfig(): array
     {
         return [
-            'path' => '/var/www/' . $this->faker->slug(2),
+            'path' => '/var/www/'.$this->faker->slug(2),
             'exclude_patterns' => ['*.log', '*.tmp', 'node_modules'],
         ];
     }

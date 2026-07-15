@@ -13,6 +13,16 @@
         @error('email') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
     </div>
 
+    {{-- Role --}}
+    <div class="form-control">
+        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('users.role') }}</span></label>
+        <select wire:model="role" class="select select-bordered rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+            <option value="standard">{{ __('users.role_standard') }}</option>
+            <option value="admin">{{ __('users.role_admin') }}</option>
+        </select>
+        @error('role') <p class="text-error text-xs mt-1">{{ $message }}</p> @enderror
+    </div>
+
     {{-- Password --}}
     <div class="form-control">
         <label class="label pb-1">

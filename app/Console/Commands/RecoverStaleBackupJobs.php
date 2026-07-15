@@ -33,18 +33,18 @@ class RecoverStaleBackupJobs extends Command
             $duration = now()->diffInSeconds($log->started_at);
 
             $log->update([
-                'status'           => 'failed',
-                'finished_at'      => now(),
+                'status' => 'failed',
+                'finished_at' => now(),
                 'duration_seconds' => $duration,
-                'error_message'    => 'Job terminated: worker crashed or timed out after recovery check.',
+                'error_message' => 'Job terminated: worker crashed or timed out after recovery check.',
             ]);
 
             try {
                 event(new BackupJobCompleted(
-                    jobId:        $log->backup_job_id,
-                    logId:        $log->id,
-                    status:       'failed',
-                    jobName:      $log->job?->name ?? 'Unknown',
+                    jobId: $log->backup_job_id,
+                    logId: $log->id,
+                    status: 'failed',
+                    jobName: $log->job?->name ?? 'Unknown',
                     errorMessage: 'Job terminated: worker crashed or timed out.',
                 ));
             } catch (\Throwable) {

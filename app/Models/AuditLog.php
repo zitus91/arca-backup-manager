@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class AuditLog extends Model
 {
     use HasFactory;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -66,7 +67,7 @@ class AuditLog extends Model
             return '-';
         }
 
-        return class_basename($this->model_type) . ' #' . $this->model_id;
+        return class_basename($this->model_type).' #'.$this->model_id;
     }
 
     /**

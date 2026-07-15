@@ -19,22 +19,38 @@ class BackupJobForm extends Component
     public ?int $jobId = null;
 
     public string $name = '';
+
     public string $backup_source_id = '';
+
     public string $backup_storage_destination_id = '';
+
     public string $schedule_type = 'manual';
+
     public string $schedule_cron = '';
+
     public string $schedule_time = '03:00';
+
     public string $schedule_day_of_week = '';
+
     public string $schedule_day_of_month = '';
+
     public int $retention_count = 7;
+
     public string $compression = 'gzip';
+
     public string $backup_type = 'full';
+
     public string $full_backup_every = '';
+
     public bool $notify_on_success = false;
+
     public bool $notify_on_failure = true;
+
     /** @var string[] */
     public array $notification_emails = [];
+
     public string $newEmail = '';
+
     public bool $is_active = true;
 
     public string $cronPreview = '';

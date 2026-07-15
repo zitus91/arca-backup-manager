@@ -18,7 +18,7 @@ it('renders restore index', function () {
 });
 
 it('shows restore logs', function () {
-    RestoreLog::factory()->success()->count(3)->create();
+    RestoreLog::factory()->success()->count(3)->create(['user_id' => auth()->id()]);
 
     $component = Livewire::test(RestoreIndex::class);
 

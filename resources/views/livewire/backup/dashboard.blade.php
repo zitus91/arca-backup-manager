@@ -8,7 +8,7 @@
                 <div class="text-[10px] font-semibold tracking-[0.08em] text-base-content/50 uppercase">{{ __('backup-dashboard.success_rate') }}</div>
                 <div class="text-[11px] text-base-content/40">{{ __('backup-dashboard.last_30_days') }}</div>
             </div>
-            <div class="text-[10px] text-base-content/40 tabular-nums">{{ $this->stats['total_backups_ever'] }} total</div>
+            <div class="text-[10px] text-base-content/40 tabular-nums">{{ $this->stats['total_backups_ever'] }} {{ __('backup-dashboard.total_backups') }}</div>
         </div>
 
         {{-- Primary metric - larger, deliberate visual weight --}}
@@ -29,7 +29,7 @@
 
             <div class="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm">
                 <div>
-                    <div class="text-[10px] text-base-content/50 tracking-wide">TODAY</div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide uppercase">{{ __('backup-dashboard.label_today') }}</div>
                     <div class="font-semibold tabular-nums mt-0.5">
                         <span class="text-success">{{ $this->stats['today_success'] }}</span>
                         @if ($this->stats['today_failed'] > 0)
@@ -40,7 +40,7 @@
                 </div>
 
                 <div>
-                    <div class="text-[10px] text-base-content/50 tracking-wide">RUNNING</div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide uppercase">{{ __('backup-dashboard.status_running') }}</div>
                     <div class="font-semibold tabular-nums mt-0.5 flex items-center gap-1.5">
                         @if ($this->stats['running'] > 0)
                             <span class="inline-block w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
@@ -50,25 +50,25 @@
                 </div>
 
                 <div>
-                    <div class="text-[10px] text-base-content/50 tracking-wide">ACTIVE JOBS</div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide uppercase">{{ __('backup-dashboard.active_jobs') }}</div>
                     <div class="font-semibold tabular-nums mt-0.5">{{ $this->stats['active_jobs'] }} <span class="font-normal text-base-content/30">/ {{ $this->stats['total_jobs'] }}</span></div>
                 </div>
 
                 <div>
-                    <div class="text-[10px] text-base-content/50 tracking-wide">STORAGE</div>
+                    <div class="text-[10px] text-base-content/50 tracking-wide uppercase">{{ __('backup-dashboard.total_storage') }}</div>
                     <div class="font-semibold tabular-nums mt-0.5">{{ $this->formatBytes($this->stats['total_storage_bytes']) }}</div>
-                    <div class="text-[10px] text-base-content/40">{{ $this->stats['total_sources'] }} sources · {{ $this->stats['total_destinations'] }} dests</div>
+                    <div class="text-[10px] text-base-content/40">{{ $this->stats['total_sources'] }} {{ __('backup-dashboard.sources') }} · {{ $this->stats['total_destinations'] }} {{ __('backup-dashboard.destinations') }}</div>
                 </div>
             </div>
 
             <div class="hidden lg:block text-right pl-4 border-l border-base-content/10">
-                <div class="text-[10px] text-base-content/50">AVG DURATION</div>
+                <div class="text-[10px] text-base-content/50 uppercase">{{ __('backup-dashboard.avg_duration') }}</div>
                 <div class="font-semibold tabular-nums mt-0.5 text-lg tracking-tight">
                     @if ($this->stats['avg_duration'])
                         {{ $this->formatDuration($this->stats['avg_duration']) }}
                     @else — @endif
                 </div>
-                <div class="text-[10px] text-base-content/40">last 30d</div>
+                <div class="text-[10px] text-base-content/40">{{ __('backup-dashboard.last_30_days') }}</div>
             </div>
         </div>
     </div>
@@ -209,13 +209,13 @@
                                 @if ($lastLog)
                                     {{ $lastLog->finished_at?->diffForHumans() ?? '—' }}
                                 @else
-                                    never
+                                    {{ __('backup-dashboard.never_short') }}
                                 @endif
                             </div>
                         </div>
 
                         @if (!$job->is_active)
-                            <span class="text-[9px] font-medium px-2 py-px rounded bg-base-content/5 text-base-content/40">OFF</span>
+                            <span class="text-[9px] font-medium px-2 py-px rounded bg-base-content/5 text-base-content/40 uppercase">{{ __('backup-dashboard.off') }}</span>
                         @endif
                     </a>
                 @endforeach

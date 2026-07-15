@@ -147,7 +147,7 @@ class Dashboard extends Component
         }
 
         // Sort by bytes descending
-        usort($breakdown, fn($a, $b) => $b['bytes'] <=> $a['bytes']);
+        usort($breakdown, fn ($a, $b) => $b['bytes'] <=> $a['bytes']);
 
         return $breakdown;
     }
@@ -167,26 +167,26 @@ class Dashboard extends Component
             $i++;
         }
 
-        return round($size, 1) . ' ' . $units[$i];
+        return round($size, 1).' '.$units[$i];
     }
 
     public function formatDuration(int $seconds): string
     {
         if ($seconds < 60) {
-            return $seconds . 's';
+            return $seconds.'s';
         }
 
         $minutes = floor($seconds / 60);
         $secs = $seconds % 60;
 
         if ($minutes < 60) {
-            return $minutes . 'm ' . $secs . 's';
+            return $minutes.'m '.$secs.'s';
         }
 
         $hours = floor($minutes / 60);
         $mins = $minutes % 60;
 
-        return $hours . 'h ' . $mins . 'm';
+        return $hours.'h '.$mins.'m';
     }
 
     public function render()

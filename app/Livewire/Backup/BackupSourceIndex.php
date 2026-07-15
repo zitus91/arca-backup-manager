@@ -15,9 +15,11 @@ class BackupSourceIndex extends Component
     use WithPagination;
 
     public string $filterType = '';
+
     public string $filterStatus = '';
 
     public bool $showForm = false;
+
     public ?int $editId = null;
 
     public function updatedFilterType(): void

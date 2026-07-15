@@ -20,7 +20,7 @@ class BackupTestMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '[Backup Manager] ' . __('backup-job.test_email_subject', ['name' => $this->jobName]),
+            subject: '[Backup Manager] '.__('backup-job.test_email_subject', ['name' => $this->jobName]),
         );
     }
 

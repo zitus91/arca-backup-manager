@@ -16,7 +16,7 @@ class RestoreLogFactory extends Factory
         $status = $this->faker->randomElement(['pending', 'running', 'success', 'failed']);
         $startedAt = $this->faker->dateTimeBetween('-30 days', 'now');
         $finishedAt = $status === 'success' || $status === 'failed'
-            ? (clone $startedAt)->modify('+' . rand(10, 600) . ' seconds')
+            ? (clone $startedAt)->modify('+'.rand(10, 600).' seconds')
             : null;
 
         return [
@@ -29,8 +29,8 @@ class RestoreLogFactory extends Factory
             'duration_seconds' => $finishedAt
                 ? $finishedAt->getTimestamp() - $startedAt->getTimestamp()
                 : null,
-            'restored_db_name' => $status === 'success' ? $this->faker->word() . '_restored' : null,
-            'restored_path' => $status === 'success' ? '/data/' . $this->faker->word() . '_restored' : null,
+            'restored_db_name' => $status === 'success' ? $this->faker->word().'_restored' : null,
+            'restored_path' => $status === 'success' ? '/data/'.$this->faker->word().'_restored' : null,
             'error_message' => $status === 'failed' ? $this->faker->sentence() : null,
             'meta' => null,
         ];

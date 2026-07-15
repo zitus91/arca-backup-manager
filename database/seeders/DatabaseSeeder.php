@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Admin',
                 'password' => 'password', // Il cast 'hashed' nel model User lo cripta automaticamente
+                'role' => 'admin',
             ]
         );
     }

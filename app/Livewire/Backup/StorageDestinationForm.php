@@ -13,32 +13,50 @@ class StorageDestinationForm extends Component
     public ?int $destinationId = null;
 
     public string $name = '';
+
     public string $type = 's3';
+
     public bool $is_active = true;
 
     // S3 fields
     public string $s3_bucket = '';
+
     public string $s3_region = '';
+
     public string $s3_access_key = '';
+
     public string $s3_secret_key = '';
+
     public string $s3_endpoint = '';
+
     public ?string $s3_connection_status = null;
+
     public string $s3_connection_message = '';
 
     // FTP fields
     public string $ftp_host = '';
+
     public int $ftp_port = 21;
+
     public string $ftp_username = '';
+
     public string $ftp_password = '';
+
     public string $ftp_root_path = '/';
+
     public bool $ftp_passive = true;
+
     public bool $ftp_ssl = true;
+
     public ?string $ftp_connection_status = null;
+
     public string $ftp_connection_message = '';
 
     // Local fields
     public string $local_path = '';
+
     public ?string $local_path_status = null;
+
     public string $local_path_message = '';
 
     public function mount(?int $destinationId = null): void
@@ -191,6 +209,7 @@ class StorageDestinationForm extends Component
         if (empty($path)) {
             $this->local_path_status = 'failed';
             $this->local_path_message = __('backup-storage-destination.local_path_empty');
+
             return;
         }
 
@@ -218,7 +237,7 @@ class StorageDestinationForm extends Component
         $pow = min($pow, count($units) - 1);
         $bytes /= (1 << (10 * $pow));
 
-        return round($bytes, $precision) . ' ' . $units[$pow];
+        return round($bytes, $precision).' '.$units[$pow];
     }
 
     // ── Save ───────────────────────────────────────────────────

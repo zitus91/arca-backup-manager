@@ -21,26 +21,35 @@ class RestoreIndex extends Component
     // Filters
     #[Url(as: 'filterJobId')]
     public string $filterJobId = '';
+
     public string $filterDateFrom = '';
+
     public string $filterDateTo = '';
 
     // Restore modal
     public bool $showRestoreModal = false;
+
     public ?int $selectedBackupLogId = null;
+
     public string $restoreType = 'full'; // full, db_only, files_only
+
     public array $selectedBackupInfo = [];
 
     // Granular selection
     public array $selectedDatabases = [];
+
     public array $selectedPaths = [];
 
     // Custom names (editable target names)
     public array $customDbNames = [];  // [['original' => 'db', 'target' => 'db_restored_...', 'type' => 'mysql'], ...]
+
     public array $customPaths = [];    // [['original' => '/path', 'target' => '/path_restored_...'], ...]
 
     // Restore target
     public string $restoreTarget = 'same_host';
+
     public ?int $knownSourceId = null;
+
     public array $remoteConfig = [];
 
     // Override existing
@@ -48,6 +57,7 @@ class RestoreIndex extends Component
 
     // Detail modal
     public bool $showDetail = false;
+
     public ?int $detailRestoreLogId = null;
 
     // Confirmation
@@ -80,6 +90,7 @@ class RestoreIndex extends Component
 
         if (! $log || $log->status !== 'success' || ! $log->storage_path) {
             $this->dispatch('notify', type: 'error', message: __('restore.backup_not_available'));
+
             return;
         }
 
@@ -135,7 +146,7 @@ class RestoreIndex extends Component
         foreach ($this->selectedBackupInfo['mysql_databases'] ?? [] as $db) {
             $this->customDbNames[] = [
                 'original' => $db,
-                'target' => $db . '_restored_' . $timestamp,
+                'target' => $db.'_restored_'.$timestamp,
                 'type' => 'mysql',
             ];
         }
@@ -143,7 +154,7 @@ class RestoreIndex extends Component
         foreach ($this->selectedBackupInfo['mongodb_databases'] ?? [] as $db) {
             $this->customDbNames[] = [
                 'original' => $db,
-                'target' => $db . '_restored_' . $timestamp,
+                'target' => $db.'_restored_'.$timestamp,
                 'type' => 'mongodb',
             ];
         }
@@ -151,7 +162,7 @@ class RestoreIndex extends Component
         foreach ($this->selectedBackupInfo['filesystem_paths'] ?? [] as $path) {
             $this->customPaths[] = [
                 'original' => $path,
-                'target' => rtrim($path, '/') . '_restored_' . $timestamp,
+                'target' => rtrim($path, '/').'_restored_'.$timestamp,
             ];
         }
 
@@ -257,11 +268,11 @@ class RestoreIndex extends Component
         $timestamp = now()->format('Ymd_His');
 
         foreach ($this->customDbNames as $index => $item) {
-            $this->customDbNames[$index]['target'] = $item['original'] . '_restored_' . $timestamp;
+            $this->customDbNames[$index]['target'] = $item['original'].'_restored_'.$timestamp;
         }
 
         foreach ($this->customPaths as $index => $item) {
-            $this->customPaths[$index]['target'] = rtrim($item['original'], '/') . '_restored_' . $timestamp;
+            $this->customPaths[$index]['target'] = rtrim($item['original'], '/').'_restored_'.$timestamp;
         }
     }
 
@@ -366,8 +377,8 @@ class RestoreIndex extends Component
 
         if (isset($cfg['mysql'])) {
             $this->remoteConfig['mysql'] = [
-                'host'     => $cfg['mysql']['host'] ?? '',
-                'port'     => (string) ($cfg['mysql']['port'] ?? 3306),
+                'host' => $cfg['mysql']['host'] ?? '',
+                'port' => (string) ($cfg['mysql']['port'] ?? 3306),
                 'username' => $cfg['mysql']['username'] ?? '',
                 'password' => $cfg['mysql']['password'] ?? '',
             ];
@@ -375,10 +386,10 @@ class RestoreIndex extends Component
 
         if (isset($cfg['mongodb'])) {
             $this->remoteConfig['mongodb'] = [
-                'host'          => $cfg['mongodb']['host'] ?? '',
-                'port'          => (string) ($cfg['mongodb']['port'] ?? 27017),
-                'username'      => $cfg['mongodb']['username'] ?? '',
-                'password'      => $cfg['mongodb']['password'] ?? '',
+                'host' => $cfg['mongodb']['host'] ?? '',
+                'port' => (string) ($cfg['mongodb']['port'] ?? 27017),
+                'username' => $cfg['mongodb']['username'] ?? '',
+                'password' => $cfg['mongodb']['password'] ?? '',
                 'auth_database' => 'admin',
             ];
         }
@@ -386,9 +397,9 @@ class RestoreIndex extends Component
         if (isset($cfg['filesystem'])) {
             $ssh = $cfg['filesystem']['ssh'] ?? [];
             $this->remoteConfig['filesystem'] = [
-                'ssh_host'     => $ssh['host'] ?? '',
-                'ssh_port'     => (string) ($ssh['port'] ?? 22),
-                'ssh_user'     => $ssh['user'] ?? '',
+                'ssh_host' => $ssh['host'] ?? '',
+                'ssh_port' => (string) ($ssh['port'] ?? 22),
+                'ssh_user' => $ssh['user'] ?? '',
                 'ssh_key_path' => $ssh['key_path'] ?? '',
             ];
         }
@@ -451,7 +462,7 @@ class RestoreIndex extends Component
         }
 
         if ($this->filterDateTo) {
-            $backupsQuery->where('started_at', '<=', $this->filterDateTo . ' 23:59:59');
+            $backupsQuery->where('started_at', '<=', $this->filterDateTo.' 23:59:59');
         }
 
         // Restore history

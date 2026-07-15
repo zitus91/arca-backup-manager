@@ -130,9 +130,17 @@ Every user-initiated action (create/update/delete of any entity, backup executio
 
 An Artisan command (`backup:recover-stale-jobs`) runs on a schedule to automatically mark as `failed` any job that has been stuck in `running` or `pending` state for more than a configurable number of minutes (default: 70). Useful to recover from unexpected worker crashes.
 
+### Users & Access Control
+
+- **Per-user ownership** — every backup source, destination, job, and log belongs to the user who created it. Each user sees and manages only their own resources; the ownership filter is enforced globally at the query layer and automatically bypassed for background workers (scheduler, queue) so scheduled backups keep running regardless of who is logged in.
+- **Two roles** — `standard` and `admin`. Standard users get the full backup workflow scoped to their own data. Admins additionally see:
+  - a **Users** section to create, edit, delete users and assign roles (an admin cannot demote their own account);
+  - a **System** dashboard — a global overview across *all* users (totals, success rate, storage, a per-user breakdown, and recent activity), with no ownership filter applied.
+- **Audit log** — a cross-user trail (filterable by user) available to authenticated users; it is never scoped away.
+
 ### Multi-language UI
 
-Full English and Italian translations for every label, description, validation message, and notification. Language files are scoped per component.
+Full English and Italian translations for every label, description, validation message, and notification. Language files are scoped per component. Users switch language instantly from the sidebar toggle, and each user's preferred locale is stored on their profile and re-applied on every request.
 
 ---
 
@@ -325,35 +333,110 @@ stdout_logfile=/var/www/backup-manager/storage/logs/reverb.log
 
 ### Docker
 
-A `Dockerfile` and `docker-compose.yml` are included in the repository.
+A `Dockerfile` and `docker-compose.yml` are included.
+
+**Local development / quick start:**
 
 ```bash
-# Build and start all containers
 docker compose up -d
 
-# First-time setup (run once after the containers are healthy)
-docker compose exec app composer setup
+# One-time initialization (first run only)
+docker compose exec php-fpm php artisan key:generate
+docker compose exec php-fpm php artisan migrate --force
+# (optional) docker compose exec php-fpm php artisan db:seed
 ```
 
-Open **http://localhost:8080** and log in with `admin@backup.local` / `password`.
+Open **http://localhost:8080**.
 
-The compose file starts four services:
+The default `docker-compose.yml` also starts `sqlite-web` (database browser) on port 8082 for convenience during development.
 
-| Service | Role |
-|---------|------|
-| `app` | Laravel + Apache HTTP server (port 8080) |
-| `queue` | Queue worker (`php artisan queue:work`) |
-| `scheduler` | Laravel scheduler (`php artisan schedule:work`) |
-| `reverb` | WebSocket server (port 8081) |
+### Production Docker Deployment (Portainer)
 
-Volumes `./storage` and `./database` are mounted from the host so backup data and the SQLite database survive container restarts.
+You are using **Portainer** with persistent data volumes at `/var/www/backup`.
 
-Override ports via environment variables:
+**Key points:**
+- Code lives in `REMOTE_PATH` (example: `/var/www/backup-manager`)
+- Data (storage + database) lives at `DATA_PATH=/var/www/backup`
+- Use `docker-compose.prod.yml` which maps volumes correctly.
 
-```dotenv
-APP_PORT=8080
-REVERB_PORT=8081
+**One-time server setup:**
+
+1. Clone the code on the server (example path):
+
+```bash
+git clone git@github.com:zitus91/backup-manager.git /var/www/backup-manager
+cd /var/www/backup-manager
 ```
+
+2. Create `/var/www/backup-manager/.env` **on the server** with your production values.
+
+3. Make sure the data directories exist:
+
+```bash
+mkdir -p /var/www/backup/storage/app/public /var/www/backup/database
+```
+
+4. Initial start (you can do this from CLI or via Portainer stack):
+
+```bash
+DATA_PATH=/var/www/backup \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+DATA_PATH=/var/www/backup \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec php-fpm \
+  php artisan migrate --force
+```
+
+**Normal workflow going forward:**
+
+- `git push`
+- Run the deploy script from your laptop (it does `git pull` on server + rebuild)
+- If Portainer manages the stack → after the script, go to Portainer and click **Redeploy the stack** (recommended when using Portainer)
+
+**Workflow (recommended):**
+
+1. Make changes locally
+2. `git push`
+3. Run the deploy script from your machine — it will SSH to the server and do `git pull` + Docker rebuild
+
+**Subsequent deploys (from your machine):**
+
+```bash
+cp scripts/.env.deploy.example scripts/.env.deploy
+# Edit with your values (REMOTE_PATH for code, DATA_PATH=/var/www/backup)
+
+source scripts/.env.deploy
+./scripts/deploy.sh
+```
+
+The script will:
+- SSH to the server
+- `git pull` the latest code
+- Rebuild the Docker image(s)
+- Run `docker compose up -d`
+- Run migrations + cache
+
+**Because you use Portainer**, after running the script it is often best to also:
+1. Open Portainer
+2. Go to your stack
+3. Click **Redeploy the stack**
+
+This ensures Portainer properly tracks the new containers.
+
+Useful one-liners:
+```bash
+./scripts/deploy.sh --dry-run
+./scripts/deploy.sh --no-build
+PORTAINER_MODE=true ./scripts/deploy.sh     # recommended with Portainer
+DATA_PATH=/var/www/backup ./scripts/deploy.sh
+```
+
+**Important security notes:**
+- The production `.env` (with real database credentials, storage keys, etc.) must **never** leave the server.
+- `sqlite-web` is **not** started in production (`docker-compose.prod.yml` removes it).
+- Consider putting a reverse proxy (Caddy, Nginx Proxy Manager, Traefik) in front of the nginx container for TLS.
+
+See `scripts/deploy.sh` for full details and customization.
 
 ---
 
@@ -452,7 +535,7 @@ The dashboard shows:
 - Upcoming scheduled backups
 - Storage usage breakdown by destination
 
-All data refreshes automatically via WebSocket when a backup starts or completes.
+All data refreshes automatically via WebSocket when a backup starts or completes. Admins additionally get a **System** dashboard with the same metrics aggregated across every user, plus a per-user breakdown.
 
 ### 5 — Restore a Backup
 
@@ -472,7 +555,8 @@ For incremental backups the system automatically chains the full backup with all
 - **Encrypted credentials** — all sensitive configuration (database passwords, S3 keys, SSH keys/passwords, remote host configs) is stored using Laravel's `encrypted:array` cast, which uses AES-256-CBC encryption tied to `APP_KEY`. Guard your `.env` file carefully.
 - **Audit log** — every user action is recorded with IP, User-Agent, and before/after values. The audit log cannot be deleted from the UI.
 - **Non-destructive restores** — restores default to a new name with a timestamp suffix. Override mode (which can drop databases or delete directories) requires explicit opt-in and a two-step confirmation with a prominent warning.
-- **Authentication** — all backup management routes require authentication. There is no guest or API access.
+- **Authentication & isolation** — all backup management routes require authentication; there is no guest or API access. Resources are isolated per user, so one user can never see, edit, download, or restore another user's backups (enforced globally, including on direct show/download URLs).
+- **Role-based access** — administrative pages (user management and the system-wide dashboard) are gated behind an `admin` role via dedicated middleware. The first (seeded) user is the admin; new users default to `standard`.
 - **Input validation** — all Livewire component inputs are validated server-side before any operation is executed.
 
 ---
@@ -512,7 +596,7 @@ backup-manager/
 │   │   ├── Backup/ProcessBackupJob.php      # Queued backup orchestrator
 │   │   └── Restore/ProcessRestoreJob.php    # Queued restore orchestrator
 │   ├── Livewire/
-│   │   ├── Admin/    # UserIndex, UserForm, Profile
+│   │   ├── Admin/    # UserIndex, UserForm, Profile, SystemDashboard
 │   │   ├── Auth/     # Login
 │   │   └── Backup/   # Dashboard, BackupJobIndex/Form, BackupLogIndex,
 │   │                 # BackupSourceIndex/Form, StorageDestinationIndex/Form,

@@ -15,12 +15,17 @@ use Livewire\WithPagination;
 class StorageDestinationIndex extends Component
 {
     use WithPagination;
+
     public string $filterType = '';
+
     public string $filterStatus = '';
+
     public ?int $testingId = null;
+
     public ?string $testResult = null;
 
     public bool $showForm = false;
+
     public ?int $editId = null;
 
     public function openCreate(): void

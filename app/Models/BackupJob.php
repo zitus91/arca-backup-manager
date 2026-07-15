@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Trait\HasCache;
+use App\Trait\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,9 +12,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class BackupJob extends Model
 {
-    use HasCache, HasFactory;
+    use HasCache, HasFactory, OwnedByUser;
 
     protected $fillable = [
+        'user_id',
         'name',
         'backup_source_id',
         'backup_storage_destination_id',
@@ -52,6 +54,11 @@ class BackupJob extends Model
     }
 
     // ── Relationships ──────────────────────────────────────────
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function source(): BelongsTo
     {

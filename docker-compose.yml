@@ -21,8 +21,7 @@ services:
     container_name: backup_manager_scheduler
     restart: unless-stopped
     working_dir: /var/www/html
-    command: >
-      sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    command: php artisan schedule:work --verbose --no-interaction
     volumes:
       - ./storage:/var/www/html/storage
       - ./database:/var/www/html/database
@@ -39,7 +38,7 @@ services:
     container_name: backup_manager_worker
     restart: unless-stopped
     working_dir: /var/www/html
-    command: php artisan queue:work --verbose --tries=3 --timeout=90 --sleep=3 --max-time=3600
+    command: php artisan queue:work --verbose --tries=1 --timeout=3600 --sleep=3 --max-time=0 --memory=512
     volumes:
       - ./storage:/var/www/html/storage
       - ./database:/var/www/html/database

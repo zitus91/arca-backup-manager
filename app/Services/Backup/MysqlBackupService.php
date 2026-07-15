@@ -2,7 +2,6 @@
 
 namespace App\Services\Backup;
 
-use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Support\Facades\Process;
 
 class MysqlBackupService
@@ -76,8 +75,8 @@ class MysqlBackupService
         // If no tables changed, create an empty marker file
         if (empty($changedTables)) {
             $fileName = $this->generateFileName($config['database'], $compression, true);
-            $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
-            file_put_contents($fullPath, '-- incremental: no changes since ' . ($since ?? 'unknown'));
+            $fullPath = rtrim($outputPath, '/').'/'.$fileName;
+            file_put_contents($fullPath, '-- incremental: no changes since '.($since ?? 'unknown'));
 
             return [
                 'file_name' => $fileName,
@@ -129,10 +128,10 @@ class MysqlBackupService
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
             escapeshellarg(
-                "SELECT TABLE_NAME FROM information_schema.TABLES "
-                . "WHERE TABLE_SCHEMA = '{$config['database']}' "
-                . "AND TABLE_TYPE = 'BASE TABLE' "
-                . "AND (UPDATE_TIME IS NULL OR UPDATE_TIME >= '{$since}')"
+                'SELECT TABLE_NAME FROM information_schema.TABLES '
+                ."WHERE TABLE_SCHEMA = '{$config['database']}' "
+                ."AND TABLE_TYPE = 'BASE TABLE' "
+                ."AND (UPDATE_TIME IS NULL OR UPDATE_TIME >= '{$since}')"
             )
         );
 
@@ -153,31 +152,31 @@ class MysqlBackupService
     {
         $command = $this->buildCommand($config);
         $fileName = $this->generateFileName($config['database'], $compression, $isIncremental);
-        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $cmd = $command;
 
         if ($compression === 'gzip') {
-            $cmd .= ' | gzip > ' . escapeshellarg($fullPath);
+            $cmd .= ' | gzip > '.escapeshellarg($fullPath);
         } elseif ($compression === 'zip') {
-            $rawPath = rtrim($outputPath, '/') . '/' . $this->generateFileName($config['database'], 'none');
-            $cmd .= ' > ' . escapeshellarg($rawPath);
+            $rawPath = rtrim($outputPath, '/').'/'.$this->generateFileName($config['database'], 'none');
+            $cmd .= ' > '.escapeshellarg($rawPath);
         } else {
-            $cmd .= ' > ' . escapeshellarg($fullPath);
+            $cmd .= ' > '.escapeshellarg($fullPath);
         }
 
         $result = Process::timeout(3600)->run($cmd);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('mysqldump failed: ' . $result->errorOutput());
+            throw new \RuntimeException('mysqldump failed: '.$result->errorOutput());
         }
 
         // Handle zip compression as second step
         if ($compression === 'zip') {
-            $rawPath = rtrim($outputPath, '/') . '/' . $this->generateFileName($config['database'], 'none');
-            $zipResult = Process::run('zip -j ' . escapeshellarg($fullPath) . ' ' . escapeshellarg($rawPath));
+            $rawPath = rtrim($outputPath, '/').'/'.$this->generateFileName($config['database'], 'none');
+            $zipResult = Process::run('zip -j '.escapeshellarg($fullPath).' '.escapeshellarg($rawPath));
             if (! $zipResult->successful()) {
-                throw new \RuntimeException('zip compression failed: ' . $zipResult->errorOutput());
+                throw new \RuntimeException('zip compression failed: '.$zipResult->errorOutput());
             }
             @unlink($rawPath);
         }
@@ -196,7 +195,6 @@ class MysqlBackupService
         ];
     }
 
-
     /**
      * Build the mysqldump command with properly escaped arguments.
      */
@@ -204,10 +202,10 @@ class MysqlBackupService
     {
         $parts = [
             'mysqldump',
-            '--host=' . escapeshellarg($config['host']),
-            '--port=' . escapeshellarg((string) ($config['port'] ?? 3306)),
-            '--user=' . escapeshellarg($config['username']),
-            '--password=' . escapeshellarg($config['password']),
+            '--host='.escapeshellarg($config['host']),
+            '--port='.escapeshellarg((string) ($config['port'] ?? 3306)),
+            '--user='.escapeshellarg($config['username']),
+            '--password='.escapeshellarg($config['password']),
             '--single-transaction',
             '--routines',
             '--triggers',

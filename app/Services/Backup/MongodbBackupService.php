@@ -77,33 +77,33 @@ class MongodbBackupService
             $unixTime = strtotime($sinceTimestamp);
             if ($unixTime) {
                 $hexTimestamp = dechex($unixTime);
-                $objectIdPrefix = str_pad($hexTimestamp, 8, '0', STR_PAD_LEFT) . '0000000000000000';
-                $query = '{"_id":{"\$gt":{"\$oid":"' . $objectIdPrefix . '"}}}';
+                $objectIdPrefix = str_pad($hexTimestamp, 8, '0', STR_PAD_LEFT).'0000000000000000';
+                $query = '{"_id":{"\$gt":{"\$oid":"'.$objectIdPrefix.'"}}}';
             }
         }
 
-        $dumpDir = rtrim($outputPath, '/') . '/mongodump_incr_' . now()->format('Ymd_His');
+        $dumpDir = rtrim($outputPath, '/').'/mongodump_incr_'.now()->format('Ymd_His');
         $command = $this->buildCommand($config, $dumpDir);
 
         if ($query) {
-            $command .= ' --queryFile=' . escapeshellarg($this->writeQueryFile($query, $outputPath));
+            $command .= ' --queryFile='.escapeshellarg($this->writeQueryFile($query, $outputPath));
         }
 
         $result = Process::timeout(3600)->run($command);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('mongodump incremental failed: ' . $result->errorOutput());
+            throw new \RuntimeException('mongodump incremental failed: '.$result->errorOutput());
         }
 
         $fileName = $this->generateFileName($config['database'], $compression, true);
-        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $this->compressDirectory($dumpDir, $fullPath, $compression);
 
-        Process::run('rm -rf ' . escapeshellarg($dumpDir));
+        Process::run('rm -rf '.escapeshellarg($dumpDir));
 
         // Cleanup query file
-        $queryFile = rtrim($outputPath, '/') . '/.mongodump_query.json';
+        $queryFile = rtrim($outputPath, '/').'/.mongodump_query.json';
         @unlink($queryFile);
 
         $meta = [
@@ -132,7 +132,7 @@ class MongodbBackupService
      */
     protected function writeQueryFile(string $query, string $dir): string
     {
-        $path = rtrim($dir, '/') . '/.mongodump_query.json';
+        $path = rtrim($dir, '/').'/.mongodump_query.json';
         file_put_contents($path, $query);
 
         return $path;
@@ -143,23 +143,23 @@ class MongodbBackupService
      */
     protected function executeDump(array $config, string $outputPath, string $compression): array
     {
-        $dumpDir = rtrim($outputPath, '/') . '/mongodump_' . now()->format('Ymd_His');
+        $dumpDir = rtrim($outputPath, '/').'/mongodump_'.now()->format('Ymd_His');
         $command = $this->buildCommand($config, $dumpDir);
 
         $result = Process::timeout(3600)->run($command);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('mongodump failed: ' . $result->errorOutput());
+            throw new \RuntimeException('mongodump failed: '.$result->errorOutput());
         }
 
         $fileName = $this->generateFileName($config['database'], $compression);
-        $fullPath = rtrim($outputPath, '/') . '/' . $fileName;
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         // Compress the dump directory
         $this->compressDirectory($dumpDir, $fullPath, $compression);
 
         // Clean up raw dump directory
-        Process::run('rm -rf ' . escapeshellarg($dumpDir));
+        Process::run('rm -rf '.escapeshellarg($dumpDir));
 
         $meta = [
             'database' => $config['database'],
@@ -182,17 +182,17 @@ class MongodbBackupService
     {
         $parts = [
             'mongodump',
-            '--host=' . escapeshellarg($config['host']),
-            '--port=' . escapeshellarg((string) ($config['port'] ?? 27017)),
-            '--db=' . escapeshellarg($config['database']),
-            '--out=' . escapeshellarg($outputDir),
+            '--host='.escapeshellarg($config['host']),
+            '--port='.escapeshellarg((string) ($config['port'] ?? 27017)),
+            '--db='.escapeshellarg($config['database']),
+            '--out='.escapeshellarg($outputDir),
         ];
 
         if (! empty($config['username'])) {
-            $parts[] = '--username=' . escapeshellarg($config['username']);
-            $parts[] = '--password=' . escapeshellarg($config['password']);
+            $parts[] = '--username='.escapeshellarg($config['username']);
+            $parts[] = '--password='.escapeshellarg($config['password']);
             $authDb = $config['auth_database'] ?? 'admin';
-            $parts[] = '--authenticationDatabase=' . escapeshellarg($authDb);
+            $parts[] = '--authenticationDatabase='.escapeshellarg($authDb);
         }
 
         if (! empty($config['collections']) && is_array($config['collections'])) {
@@ -213,15 +213,15 @@ class MongodbBackupService
     protected function compressDirectory(string $sourceDir, string $outputPath, string $compression): void
     {
         $cmd = match ($compression) {
-            'gzip' => 'tar -czf ' . escapeshellarg($outputPath) . ' -C ' . escapeshellarg(dirname($sourceDir)) . ' ' . escapeshellarg(basename($sourceDir)),
-            'zip' => 'cd ' . escapeshellarg(dirname($sourceDir)) . ' && zip -r ' . escapeshellarg($outputPath) . ' ' . escapeshellarg(basename($sourceDir)),
-            default => 'tar -cf ' . escapeshellarg($outputPath) . ' -C ' . escapeshellarg(dirname($sourceDir)) . ' ' . escapeshellarg(basename($sourceDir)),
+            'gzip' => 'tar -czf '.escapeshellarg($outputPath).' -C '.escapeshellarg(dirname($sourceDir)).' '.escapeshellarg(basename($sourceDir)),
+            'zip' => 'cd '.escapeshellarg(dirname($sourceDir)).' && zip -r '.escapeshellarg($outputPath).' '.escapeshellarg(basename($sourceDir)),
+            default => 'tar -cf '.escapeshellarg($outputPath).' -C '.escapeshellarg(dirname($sourceDir)).' '.escapeshellarg(basename($sourceDir)),
         };
 
         $result = Process::run($cmd);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('Compression failed: ' . $result->errorOutput());
+            throw new \RuntimeException('Compression failed: '.$result->errorOutput());
         }
     }
 

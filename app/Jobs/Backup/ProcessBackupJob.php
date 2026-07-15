@@ -5,6 +5,7 @@ namespace App\Jobs\Backup;
 use App\Events\Backup\BackupJobCompleted;
 use App\Events\Backup\BackupJobStarted;
 use App\Mail\BackupNotificationMail;
+use App\Models\AuditLog;
 use App\Models\BackupJob;
 use App\Models\BackupLog;
 use App\Services\Backup\BackupSchedulerService;
@@ -18,7 +19,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Models\AuditLog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Process;
@@ -84,7 +84,7 @@ class ProcessBackupJob implements ShouldQueue
             // Non-critical: Reverb may be unavailable; do not abort the backup
         }
 
-        $tmpDir = storage_path('app/backups/tmp/' . $log->id);
+        $tmpDir = storage_path('app/backups/tmp/'.$log->id);
         @mkdir($tmpDir, 0755, true);
 
         try {
@@ -97,7 +97,7 @@ class ProcessBackupJob implements ShouldQueue
             $incrementalCheckpoints = [];
 
             if (isset($sourceConfig['mysql'])) {
-                $mysqlDir = $tmpDir . '/mysql';
+                $mysqlDir = $tmpDir.'/mysql';
                 @mkdir($mysqlDir, 0755, true);
                 $mysqlConf = array_merge($sourceConfig['mysql'], ['ssh' => $sharedSsh]);
                 $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
@@ -113,7 +113,7 @@ class ProcessBackupJob implements ShouldQueue
 
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
-                    $fileNames[] = 'mysql/' . ($r['file_name'] ?? 'dump');
+                    $fileNames[] = 'mysql/'.($r['file_name'] ?? 'dump');
                     if (isset($r['incremental_checkpoint'])) {
                         $incrementalCheckpoints['mysql'][$db] = $r['incremental_checkpoint'];
                     }
@@ -121,7 +121,7 @@ class ProcessBackupJob implements ShouldQueue
             }
 
             if (isset($sourceConfig['mongodb'])) {
-                $mongoDir = $tmpDir . '/mongodb';
+                $mongoDir = $tmpDir.'/mongodb';
                 @mkdir($mongoDir, 0755, true);
                 $mongoConf = array_merge($sourceConfig['mongodb'], ['ssh' => $sharedSsh]);
                 $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
@@ -137,7 +137,7 @@ class ProcessBackupJob implements ShouldQueue
 
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
-                    $fileNames[] = 'mongodb/' . ($r['file_name'] ?? 'dump');
+                    $fileNames[] = 'mongodb/'.($r['file_name'] ?? 'dump');
                     if (isset($r['incremental_checkpoint'])) {
                         $incrementalCheckpoints['mongodb'][$db] = $r['incremental_checkpoint'];
                     }
@@ -145,7 +145,7 @@ class ProcessBackupJob implements ShouldQueue
             }
 
             if (isset($sourceConfig['filesystem'])) {
-                $fsDir = $tmpDir . '/filesystem';
+                $fsDir = $tmpDir.'/filesystem';
                 @mkdir($fsDir, 0755, true);
                 $fsConf = $sourceConfig['filesystem'];
                 $paths = $fsConf['paths'] ?? (isset($fsConf['path']) ? [$fsConf['path']] : []);
@@ -162,7 +162,7 @@ class ProcessBackupJob implements ShouldQueue
 
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
-                    $fileNames[] = 'filesystem/' . ($r['file_name'] ?? 'archive');
+                    $fileNames[] = 'filesystem/'.($r['file_name'] ?? 'archive');
                     if (isset($r['incremental_checkpoint'])) {
                         $incrementalCheckpoints['filesystem'][$path] = $r['incremental_checkpoint'];
                     }
@@ -183,15 +183,15 @@ class ProcessBackupJob implements ShouldQueue
                 $result = $results[0];
             } else {
                 // Create a tar archive of the entire tmpDir (package with subdirectories)
-                $packageName = \Illuminate\Support\Str::slug($backupJob->source->name) . '-' . now()->format('Ymd-His') . '.tar.gz';
-                $packagePath = storage_path('app/backups/tmp/' . $packageName);
+                $packageName = \Illuminate\Support\Str::slug($backupJob->source->name).'-'.now()->format('Ymd-His').'.tar.gz';
+                $packagePath = storage_path('app/backups/tmp/'.$packageName);
 
                 $result = Process::timeout(600)->run([
-                    'tar', '-czf', $packagePath, '-C', $tmpDir, '.'
+                    'tar', '-czf', $packagePath, '-C', $tmpDir, '.',
                 ]);
 
                 if (! $result->successful()) {
-                    throw new \RuntimeException('Failed to create backup package archive: ' . $result->errorOutput());
+                    throw new \RuntimeException('Failed to create backup package archive: '.$result->errorOutput());
                 }
 
                 $result = [
@@ -265,21 +265,21 @@ class ProcessBackupJob implements ShouldQueue
             // 8. Record audit log
             AuditLog::record(
                 'backup_completed',
-                "Backup job completed successfully: {$backupJob->name}" . ($isIncremental ? ' (incremental)' : ' (full)'),
+                "Backup job completed successfully: {$backupJob->name}".($isIncremental ? ' (incremental)' : ' (full)'),
                 $backupJob,
                 null,
                 [
-                    'log_id'           => $log->id,
-                    'file_name'        => $result['file_name'],
-                    'file_size_bytes'  => $result['file_size'],
+                    'log_id' => $log->id,
+                    'file_name' => $result['file_name'],
+                    'file_size_bytes' => $result['file_size'],
                     'duration_seconds' => $log->duration_seconds,
-                    'storage_path'     => $remotePath,
-                    'is_incremental'   => $isIncremental,
+                    'storage_path' => $remotePath,
+                    'is_incremental' => $isIncremental,
                 ],
             );
 
             // 9. Send notification if configured
-            if ($backupJob->notify_on_success && !empty($backupJob->notification_emails)) {
+            if ($backupJob->notify_on_success && ! empty($backupJob->notification_emails)) {
                 $this->sendNotification($backupJob, $log, 'success');
             }
 
@@ -295,18 +295,18 @@ class ProcessBackupJob implements ShouldQueue
                 ]);
 
                 $log->update([
-                    'status'           => 'failed',
-                    'finished_at'      => now(),
+                    'status' => 'failed',
+                    'finished_at' => now(),
                     'duration_seconds' => now()->diffInSeconds($log->started_at),
-                    'error_message'    => $e->getMessage(),
+                    'error_message' => $e->getMessage(),
                 ]);
 
                 try {
                     event(new BackupJobCompleted(
-                        jobId:        $backupJob->id,
-                        logId:        $log->id,
-                        status:       'failed',
-                        jobName:      $backupJob->name,
+                        jobId: $backupJob->id,
+                        logId: $log->id,
+                        status: 'failed',
+                        jobName: $backupJob->name,
                         errorMessage: $e->getMessage(),
                     ));
                 } catch (\Throwable) {
@@ -319,12 +319,12 @@ class ProcessBackupJob implements ShouldQueue
                     $backupJob,
                     null,
                     [
-                        'log_id'        => $log->id,
+                        'log_id' => $log->id,
                         'error_message' => $e->getMessage(),
                     ],
                 );
 
-                if ($backupJob->notify_on_failure && !empty($backupJob->notification_emails)) {
+                if ($backupJob->notify_on_failure && ! empty($backupJob->notification_emails)) {
                     $this->sendNotification($backupJob, $log, 'failed');
                 }
             }
@@ -351,21 +351,21 @@ class ProcessBackupJob implements ShouldQueue
             $isBroadcastError = str_contains($rawMessage, 'Pusher error') || str_contains($rawMessage, 'cURL error');
             $userMessage = $isBroadcastError
                 ? 'Job terminated by queue worker (broadcast transport error — check Reverb).'
-                : 'Job terminated by queue worker: ' . $rawMessage;
+                : 'Job terminated by queue worker: '.$rawMessage;
             $log->update([
-                'status'           => 'failed',
-                'finished_at'      => now(),
+                'status' => 'failed',
+                'finished_at' => now(),
                 'duration_seconds' => $log->started_at ? now()->diffInSeconds($log->started_at) : null,
-                'error_message'    => $userMessage,
+                'error_message' => $userMessage,
             ]);
 
             try {
                 $jobName = BackupJob::find($this->backupJobId)?->name ?? 'Unknown';
                 event(new BackupJobCompleted(
-                    jobId:        $this->backupJobId,
-                    logId:        $log->id,
-                    status:       'failed',
-                    jobName:      $jobName,
+                    jobId: $this->backupJobId,
+                    logId: $log->id,
+                    status: 'failed',
+                    jobName: $jobName,
                     errorMessage: 'Job terminated by queue worker.',
                 ));
             } catch (\Throwable) {
@@ -378,7 +378,7 @@ class ProcessBackupJob implements ShouldQueue
                 BackupJob::find($this->backupJobId),
                 null,
                 [
-                    'log_id'        => $log->id,
+                    'log_id' => $log->id,
                     'error_message' => $exception->getMessage(),
                 ],
             );
@@ -460,7 +460,7 @@ class ProcessBackupJob implements ShouldQueue
     protected function uploadLocal(array $config, string $filePath, string $remotePath): bool
     {
         $basePath = rtrim($config['path'] ?? '', '/');
-        $destPath = $basePath . '/' . $remotePath;
+        $destPath = $basePath.'/'.$remotePath;
         $destDir = dirname($destPath);
 
         if (! is_dir($destDir)) {
@@ -605,13 +605,13 @@ class ProcessBackupJob implements ShouldQueue
         }
 
         $overrides = array_filter([
-            'mail.mailers.smtp.host'       => $vars['MAIL_HOST'] ?? null,
-            'mail.mailers.smtp.port'       => isset($vars['MAIL_PORT']) ? (int) $vars['MAIL_PORT'] : null,
+            'mail.mailers.smtp.host' => $vars['MAIL_HOST'] ?? null,
+            'mail.mailers.smtp.port' => isset($vars['MAIL_PORT']) ? (int) $vars['MAIL_PORT'] : null,
             'mail.mailers.smtp.encryption' => $vars['MAIL_ENCRYPTION'] ?? null,
-            'mail.mailers.smtp.username'   => $vars['MAIL_USERNAME'] ?? null,
-            'mail.mailers.smtp.password'   => $vars['MAIL_PASSWORD'] ?? null,
-            'mail.from.address'            => $vars['MAIL_FROM_ADDRESS'] ?? null,
-            'mail.from.name'               => $vars['MAIL_FROM_NAME'] ?? null,
+            'mail.mailers.smtp.username' => $vars['MAIL_USERNAME'] ?? null,
+            'mail.mailers.smtp.password' => $vars['MAIL_PASSWORD'] ?? null,
+            'mail.from.address' => $vars['MAIL_FROM_ADDRESS'] ?? null,
+            'mail.from.name' => $vars['MAIL_FROM_NAME'] ?? null,
         ], fn ($v) => $v !== null);
 
         if (! empty($overrides)) {

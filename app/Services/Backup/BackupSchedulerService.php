@@ -143,10 +143,10 @@ class BackupSchedulerService
                 return "Daily at {$hour}:00";
             }
             if (str_starts_with($hour, '*/')) {
-                return 'Every ' . substr($hour, 2) . ' hours';
+                return 'Every '.substr($hour, 2).' hours';
             }
             if (str_starts_with($min, '*/')) {
-                return 'Every ' . substr($min, 2) . ' minutes';
+                return 'Every '.substr($min, 2).' minutes';
             }
 
             return $cronExpression;
