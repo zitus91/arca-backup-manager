@@ -325,35 +325,110 @@ stdout_logfile=/var/www/backup-manager/storage/logs/reverb.log
 
 ### Docker
 
-A `Dockerfile` and `docker-compose.yml` are included in the repository.
+A `Dockerfile` and `docker-compose.yml` are included.
+
+**Local development / quick start:**
 
 ```bash
-# Build and start all containers
 docker compose up -d
 
-# First-time setup (run once after the containers are healthy)
-docker compose exec app composer setup
+# One-time initialization (first run only)
+docker compose exec php-fpm php artisan key:generate
+docker compose exec php-fpm php artisan migrate --force
+# (optional) docker compose exec php-fpm php artisan db:seed
 ```
 
-Open **http://localhost:8080** and log in with `admin@backup.local` / `password`.
+Open **http://localhost:8080**.
 
-The compose file starts four services:
+The default `docker-compose.yml` also starts `sqlite-web` (database browser) on port 8082 for convenience during development.
 
-| Service | Role |
-|---------|------|
-| `app` | Laravel + Apache HTTP server (port 8080) |
-| `queue` | Queue worker (`php artisan queue:work`) |
-| `scheduler` | Laravel scheduler (`php artisan schedule:work`) |
-| `reverb` | WebSocket server (port 8081) |
+### Production Docker Deployment (Portainer)
 
-Volumes `./storage` and `./database` are mounted from the host so backup data and the SQLite database survive container restarts.
+You are using **Portainer** with persistent data volumes at `/var/www/backup`.
 
-Override ports via environment variables:
+**Key points:**
+- Code lives in `REMOTE_PATH` (example: `/var/www/backup-manager`)
+- Data (storage + database) lives at `DATA_PATH=/var/www/backup`
+- Use `docker-compose.prod.yml` which maps volumes correctly.
 
-```dotenv
-APP_PORT=8080
-REVERB_PORT=8081
+**One-time server setup:**
+
+1. Clone the code on the server (example path):
+
+```bash
+git clone git@github.com:zitus91/backup-manager.git /var/www/backup-manager
+cd /var/www/backup-manager
 ```
+
+2. Create `/var/www/backup-manager/.env` **on the server** with your production values.
+
+3. Make sure the data directories exist:
+
+```bash
+mkdir -p /var/www/backup/storage/app/public /var/www/backup/database
+```
+
+4. Initial start (you can do this from CLI or via Portainer stack):
+
+```bash
+DATA_PATH=/var/www/backup \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+DATA_PATH=/var/www/backup \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec php-fpm \
+  php artisan migrate --force
+```
+
+**Normal workflow going forward:**
+
+- `git push`
+- Run the deploy script from your laptop (it does `git pull` on server + rebuild)
+- If Portainer manages the stack → after the script, go to Portainer and click **Redeploy the stack** (recommended when using Portainer)
+
+**Workflow (recommended):**
+
+1. Make changes locally
+2. `git push`
+3. Run the deploy script from your machine — it will SSH to the server and do `git pull` + Docker rebuild
+
+**Subsequent deploys (from your machine):**
+
+```bash
+cp scripts/.env.deploy.example scripts/.env.deploy
+# Edit with your values (REMOTE_PATH for code, DATA_PATH=/var/www/backup)
+
+source scripts/.env.deploy
+./scripts/deploy.sh
+```
+
+The script will:
+- SSH to the server
+- `git pull` the latest code
+- Rebuild the Docker image(s)
+- Run `docker compose up -d`
+- Run migrations + cache
+
+**Because you use Portainer**, after running the script it is often best to also:
+1. Open Portainer
+2. Go to your stack
+3. Click **Redeploy the stack**
+
+This ensures Portainer properly tracks the new containers.
+
+Useful one-liners:
+```bash
+./scripts/deploy.sh --dry-run
+./scripts/deploy.sh --no-build
+PORTAINER_MODE=true ./scripts/deploy.sh     # recommended with Portainer
+DATA_PATH=/var/www/backup ./scripts/deploy.sh
+```
+
+**Important security notes:**
+- The production `.env` (with real database credentials, storage keys, etc.) must **never** leave the server.
+- `sqlite-web` is **not** started in production (`docker-compose.prod.yml` removes it).
+- Consider putting a reverse proxy (Caddy, Nginx Proxy Manager, Traefik) in front of the nginx container for TLS.
+
+See `scripts/deploy.sh` for full details and customization.
 
 ---
 

@@ -1,0 +1,63 @@
+# docker-compose.prod.yml
+# Usage:
+#   DATA_PATH=/var/www/backup \
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Optimized for Portainer + persistent data on /var/www/backup
+
+services:
+  php-fpm:
+    # image: ghcr.io/yourorg/backup-manager:latest   # uncomment if using registry
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+    volumes:
+      - ${DATA_PATH:-/var/www/backup}/storage:/var/www/html/storage
+      - ${DATA_PATH:-/var/www/backup}/database:/var/www/html/database
+      - ./.env:/var/www/html/.env:ro
+
+  laravel-scheduler:
+    restart: unless-stopped
+    command: php artisan schedule:work --verbose --no-interaction
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+    volumes:
+      - ${DATA_PATH:-/var/www/backup}/storage:/var/www/html/storage
+      - ${DATA_PATH:-/var/www/backup}/database:/var/www/html/database
+      - ./.env:/var/www/html/.env:ro
+
+  laravel-worker:
+    restart: unless-stopped
+    command: php artisan queue:work --verbose --tries=1 --timeout=3600 --sleep=3 --max-time=0 --memory=512
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+    volumes:
+      - ${DATA_PATH:-/var/www/backup}/storage:/var/www/html/storage
+      - ${DATA_PATH:-/var/www/backup}/database:/var/www/html/database
+      - ./.env:/var/www/html/.env:ro
+
+  reverb:
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+    volumes:
+      - ${DATA_PATH:-/var/www/backup}/storage:/var/www/html/storage
+      - ./.env:/var/www/html/.env:ro
+
+  # sqlite-web removed in production (see original compose for dev)
+
+  nginx:
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ${DATA_PATH:-/var/www/backup}/storage/app/public:/var/www/html/storage/app/public:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+
+  redis:
+    restart: unless-stopped
+    command: redis-server --appendonly yes --save 60 1 --maxmemory 256mb --maxmemory-policy allkeys-lru
