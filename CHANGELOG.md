@@ -7,6 +7,18 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ---
 
+## [Unreleased]
+
+### Aggiunto
+
+- **Screenshot nel README**: catturate le schermate dell'interfaccia (dashboard, job, sorgenti, restore, log, registro attività) e le modali di creazione (sorgente, destinazione, job), con i dati reali sfocati.
+
+### Rimosso
+
+- **File markdown di sviluppo** dal repository: `WORKFLOW_STATE.md`, la spec `docs/superpowers/specs/2026-07-15-resource-ownership-design.md`, le memorie del tool Serena (`.serena/memories/*`) e le istruzioni per gli assistenti AI (`CLAUDE.md`, `.github/copilot-instructions.md`).
+
+---
+
 ## [1.2.0] - 2026-04-13
 
 ### Aggiunto
