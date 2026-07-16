@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name') }} &mdash; Backup Manager</title>
+    <title>Arca &mdash; Backup Manager</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('/images/logo.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('/images/logo.svg') }}">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
@@ -32,11 +32,11 @@
                         {{-- <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary-content" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
                         </svg> --}}
-                        <img src="{{ asset('/images/logo.png') }}" alt="Backup Manager Logo" class="w-15 h-15" />
+                        <img src="{{ asset('/images/logo.svg') }}" alt="Arca Logo" class="w-15 h-15" />
                     </div>
                     <div>
-                        <span class="text-lg font-bold tracking-tight">Backup</span>
-                        <span class="text-xs text-base-content/50 block -mt-0.5">Manager v1.1.0</span>
+                        <span class="text-lg font-bold tracking-tight">Arca</span>
+                        <span class="text-xs text-base-content/50 block -mt-0.5">Backup Manager v1.2.0</span>
                     </div>
                 </a>
             </div>
@@ -184,7 +184,7 @@
                 <button onclick="document.body.dataset.sidebarOpen='true'" class="btn btn-sm btn-square btn-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <span class="ml-3 text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Backup Manager</span>
+                <span class="ml-3 text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Arca</span>
             </header>
 
             {{-- Page Content --}}

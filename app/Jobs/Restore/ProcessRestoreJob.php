@@ -432,7 +432,7 @@ class ProcessRestoreJob implements ShouldQueue
             $cmd = 'tar -xf '.escapeshellarg($archivePath).' -C '.escapeshellarg($extractDir);
         }
 
-        $result = Process::timeout(600)->run($cmd);
+        $result = Process::timeout(config('backup.process_timeout'))->run($cmd);
 
         if (! $result->successful()) {
             throw new \RuntimeException('Failed to extract backup package: '.$result->errorOutput());

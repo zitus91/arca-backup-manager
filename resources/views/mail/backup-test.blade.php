@@ -97,7 +97,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Backup Manager</h1>
+            <h1>Arca</h1>
             <p>{{ __('backup-job.test_email_header_sub') }}</p>
         </div>
 
@@ -130,7 +130,7 @@
         <div class="footer">
             <p>
                 {{ __('backup-job.test_email_footer') }}<br>
-                <strong>Backup Manager</strong>
+                <strong>Arca</strong>
             </p>
         </div>
     </div>

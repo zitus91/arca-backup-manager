@@ -184,7 +184,7 @@
         </div>
 
         <div class="footer">
-            <p>Automated notification sent by <strong>Backup Manager</strong></p>
+            <p>Automated notification sent by <strong>Arca</strong></p>
         </div>
     </div>
 </body>

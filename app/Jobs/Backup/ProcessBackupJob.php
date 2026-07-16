@@ -186,7 +186,7 @@ class ProcessBackupJob implements ShouldQueue
                 $packageName = \Illuminate\Support\Str::slug($backupJob->source->name).'-'.now()->format('Ymd-His').'.tar.gz';
                 $packagePath = storage_path('app/backups/tmp/'.$packageName);
 
-                $result = Process::timeout(600)->run([
+                $result = Process::timeout(config('backup.process_timeout'))->run([
                     'tar', '-czf', $packagePath, '-C', $tmpDir, '.',
                 ]);
 
