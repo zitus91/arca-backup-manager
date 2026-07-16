@@ -1,11 +1,12 @@
 <p align="center">
-  <img src="public/images/logo.png" alt="Backup Manager Logo" width="160">
+  <img src="public/images/logo.svg" alt="Arca Logo" width="120">
 </p>
 
-<h1 align="center">Backup Manager</h1>
+<h1 align="center">Arca</h1>
 
 <p align="center">
-  <strong>A self-hosted web application to schedule, monitor, and restore backups of MySQL, MongoDB and filesystems.</strong>
+  <strong>Your data, kept safe. Self-hosted.</strong><br>
+  A self-hosted web application to schedule, monitor, and restore backups of MySQL, MongoDB and filesystems.
 </p>
 
 <p align="center">
@@ -45,7 +46,7 @@
 
 ## 🎯 Overview
 
-**Backup Manager** is a self-hosted web application built with **Laravel 12** and **Livewire 4** that lets you configure, schedule, monitor, and restore backups of MySQL databases, MongoDB databases, and filesystem directories — from a single, clean UI.
+**Arca** is a self-hosted web application built with **Laravel 12** and **Livewire 4** that lets you configure, schedule, monitor, and restore backups of MySQL databases, MongoDB databases, and filesystem directories — from a single, clean UI.
 
 All backup and restore operations run in the background via queued jobs. The dashboard updates in real time through **Laravel Reverb** WebSockets, so you always know exactly what is happening.
 
