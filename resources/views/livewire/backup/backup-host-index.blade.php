@@ -62,18 +62,22 @@
                             </td>
                             {{-- Connection --}}
                             <td>
-                                <div class="text-xs font-semibold text-secondary font-mono">{{ $host->config['host'] }}:{{ $host->config['port'] }}</div>
-                                <div class="text-[10px] text-base-content/40">
-                                    {{ $host->config['user'] }}
-                                    &middot;
-                                    <span class="{{ $host->config['auth_method'] === 'key' ? 'text-secondary/70' : 'text-base-content/40' }}">
-                                        {{ $host->config['auth_method'] === 'key' ? '🔑 key' : '🔒 pwd' }}
-                                    </span>
-                                </div>
+                                @if ($host->sshConfig()['enabled'] ?? false)
+                                    <div class="text-xs font-semibold text-secondary font-mono">{{ $host->config['ssh']['host'] }}:{{ $host->config['ssh']['port'] }}</div>
+                                    <div class="text-[10px] text-base-content/40">
+                                        {{ $host->config['ssh']['user'] }}
+                                        &middot;
+                                        <span class="{{ $host->config['ssh']['auth_method'] === 'key' ? 'text-secondary/70' : 'text-base-content/40' }}">
+                                            {{ $host->config['ssh']['auth_method'] === 'key' ? '🔑 key' : '🔒 pwd' }}
+                                        </span>
+                                    </div>
+                                @else
+                                    <span class="text-xs text-base-content/40">&mdash;</span>
+                                @endif
                             </td>
                             {{-- Sources count --}}
                             <td>
-                                <span class="text-xs font-medium text-base-content/60">&mdash;</span>
+                                <span class="text-xs font-medium text-base-content/60">{{ $host->usage_count }}</span>
                             </td>
                             {{-- Status --}}
                             <td>

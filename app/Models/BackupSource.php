@@ -16,6 +16,9 @@ class BackupSource extends Model
     protected $fillable = [
         'user_id',
         'host_id',
+        'mysql_host_id',
+        'mongodb_host_id',
+        'filesystem_host_id',
         'name',
         'config',
         'is_active',
@@ -34,6 +37,21 @@ class BackupSource extends Model
     public function host(): BelongsTo
     {
         return $this->belongsTo(BackupHost::class, 'host_id');
+    }
+
+    public function mysqlHost(): BelongsTo
+    {
+        return $this->belongsTo(BackupHost::class, 'mysql_host_id');
+    }
+
+    public function mongodbHost(): BelongsTo
+    {
+        return $this->belongsTo(BackupHost::class, 'mongodb_host_id');
+    }
+
+    public function filesystemHost(): BelongsTo
+    {
+        return $this->belongsTo(BackupHost::class, 'filesystem_host_id');
     }
 
     public function backupJobs(): HasMany

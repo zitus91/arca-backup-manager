@@ -4,6 +4,7 @@ namespace App\Livewire\Backup;
 
 use App\Models\AuditLog;
 use App\Models\BackupHost;
+use App\Models\BackupSource;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -79,8 +80,18 @@ class BackupHostIndex extends Component
             $query->where('is_active', $this->filterStatus === 'active');
         }
 
+        $hosts = $query->latest()->get();
+
+        $sourceCounts = BackupSource::query()
+            ->selectRaw('mysql_host_id, mongodb_host_id, filesystem_host_id')
+            ->get()
+            ->flatMap(fn ($s) => array_filter([$s->mysql_host_id, $s->mongodb_host_id, $s->filesystem_host_id]))
+            ->countBy();
+
+        $hosts->each(fn ($h) => $h->usage_count = (int) ($sourceCounts[$h->id] ?? 0));
+
         return view('livewire.backup.backup-host-index', [
-            'hosts' => $query->latest()->get(),
+            'hosts' => $hosts,
         ]);
     }
 }
