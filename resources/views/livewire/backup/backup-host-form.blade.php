@@ -8,8 +8,16 @@
             @error('name') <span class="text-error text-xs mt-1.5">{{ $message }}</span> @enderror
         </div>
 
+        @error('enable_services') <div class="rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-error text-xs font-medium">{{ $message }}</div> @enderror
+
         {{-- SSH Connection --}}
         <div class="rounded-xl border border-secondary/20 bg-secondary/[0.03] p-5 space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" wire:model.live="enable_ssh" class="toggle toggle-sm toggle-secondary" />
+                <span class="text-sm font-semibold">{{ __('backup-host.enable_ssh') }}</span>
+            </label>
+
+            @if ($enable_ssh)
             {{-- Requirements check --}}
             @if (!empty($sshRequirements))
                 <div class="space-y-1.5">
@@ -118,6 +126,128 @@
                     </div>
                 @endif
             </div>
+            @endif
+        </div>
+
+        {{-- MySQL Service --}}
+        <div class="rounded-xl border border-primary/20 bg-primary/[0.03] p-5 space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" wire:model.live="enable_mysql" class="toggle toggle-sm toggle-primary" />
+                <span class="text-sm font-semibold">{{ __('backup-host.service_mysql') }}</span>
+            </label>
+
+            @if ($enable_mysql)
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div class="form-control col-span-2 sm:col-span-1">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mysql_host') }}</span></label>
+                        <input type="text" wire:model="mysql_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />
+                        @error('mysql_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mysql_port') }}</span></label>
+                        <input type="number" wire:model="mysql_port" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('mysql_port') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mysql_user') }}</span></label>
+                        <input type="text" wire:model="mysql_user" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('mysql_user') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mysql_password') }}</span></label>
+                        <input type="password" wire:model="mysql_password" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('mysql_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-primary/10">
+                    <button type="button" wire:click="testMysqlConnection" class="btn btn-sm btn-outline btn-primary rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testMysqlConnection">
+                        <span wire:loading wire:target="testMysqlConnection" class="loading loading-spinner loading-xs"></span>
+                        {{ __('backup-host.test_connection') }}
+                    </button>
+
+                    @if ($mysql_connection_status === 'success')
+                        <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {{ $mysql_connection_message }}
+                        </div>
+                    @elseif ($mysql_connection_status === 'failed')
+                        <div class="mt-3 flex items-start gap-2 text-error text-xs">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                            <span>{{ $mysql_connection_message }}</span>
+                        </div>
+                    @endif
+
+                    @if (count($mysql_available_databases) > 0)
+                        <p class="text-[10px] text-base-content/40 mt-2">{{ implode(', ', $mysql_available_databases) }}</p>
+                    @endif
+                </div>
+            @endif
+        </div>
+
+        {{-- MongoDB Service --}}
+        <div class="rounded-xl border border-success/20 bg-success/[0.03] p-5 space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" wire:model.live="enable_mongodb" class="toggle toggle-sm toggle-success" />
+                <span class="text-sm font-semibold">{{ __('backup-host.service_mongodb') }}</span>
+            </label>
+
+            @if ($enable_mongodb)
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div class="form-control col-span-2 sm:col-span-1">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mongodb_host') }}</span></label>
+                        <input type="text" wire:model="mongodb_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />
+                        @error('mongodb_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mongodb_port') }}</span></label>
+                        <input type="number" wire:model="mongodb_port" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('mongodb_port') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mongodb_user') }}</span></label>
+                        <input type="text" wire:model="mongodb_user" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('mongodb_user') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mongodb_password') }}</span></label>
+                        <input type="password" wire:model="mongodb_password" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('mongodb_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-success/10">
+                    <button type="button" wire:click="testMongoConnection" class="btn btn-sm btn-outline btn-success rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testMongoConnection">
+                        <span wire:loading wire:target="testMongoConnection" class="loading loading-spinner loading-xs"></span>
+                        {{ __('backup-host.test_connection') }}
+                    </button>
+
+                    @if ($mongodb_connection_status === 'success')
+                        <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {{ $mongodb_connection_message }}
+                        </div>
+                    @elseif ($mongodb_connection_status === 'failed')
+                        <div class="mt-3 flex items-start gap-2 text-error text-xs">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                            <span>{{ $mongodb_connection_message }}</span>
+                        </div>
+                    @endif
+
+                    @if (count($mongodb_available_databases) > 0)
+                        <p class="text-[10px] text-base-content/40 mt-2">{{ implode(', ', $mongodb_available_databases) }}</p>
+                    @endif
+                </div>
+            @endif
+        </div>
+
+        {{-- Filesystem Capability --}}
+        <div class="rounded-xl border border-warning/20 bg-warning/[0.03] p-5 space-y-2">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" wire:model.live="enable_filesystem" class="toggle toggle-sm toggle-warning" />
+                <span class="text-sm font-semibold">{{ __('backup-host.service_filesystem') }}</span>
+            </label>
+            <p class="text-[10px] text-base-content/40">{{ __('backup-host.filesystem_capability_hint') }}</p>
         </div>
 
         {{-- Active Toggle --}}
