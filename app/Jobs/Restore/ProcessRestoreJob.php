@@ -73,7 +73,9 @@ class ProcessRestoreJob implements ShouldQueue
         try {
             // 2. Download and restore each backup in the chain (full first, then incrementals)
             $sourceConfig = $source->config;
-            $sharedSsh = $sourceConfig['ssh'] ?? ['enabled' => false];
+            $sharedSsh = $source->host
+                ? array_merge($source->host->config, ['enabled' => true])
+                : ($sourceConfig['ssh'] ?? ['enabled' => false]);
             $restoreType = $restoreLog->restore_type;
             $selectedItems = $restoreLog->selected_items;
             $results = [];

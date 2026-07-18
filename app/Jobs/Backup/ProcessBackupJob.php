@@ -90,7 +90,9 @@ class ProcessBackupJob implements ShouldQueue
         try {
             // 2. Execute backup for each enabled source type
             $sourceConfig = $backupJob->source->config;
-            $sharedSsh = $sourceConfig['ssh'] ?? ['enabled' => false];
+            $sharedSsh = $backupJob->source->host
+                ? array_merge($backupJob->source->host->config, ['enabled' => true])
+                : ($sourceConfig['ssh'] ?? ['enabled' => false]);
             $results = [];
             $totalSize = 0;
             $fileNames = [];
