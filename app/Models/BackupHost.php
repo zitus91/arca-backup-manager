@@ -6,16 +6,14 @@ use App\Trait\HasCache;
 use App\Trait\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class BackupSource extends Model
+class BackupHost extends Model
 {
     use HasCache, HasFactory, OwnedByUser;
 
     protected $fillable = [
         'user_id',
-        'host_id',
         'name',
         'config',
         'is_active',
@@ -31,29 +29,9 @@ class BackupSource extends Model
 
     // ── Relationships ──────────────────────────────────────────
 
-    public function host(): BelongsTo
+    public function backupSources(): HasMany
     {
-        return $this->belongsTo(BackupHost::class, 'host_id');
-    }
-
-    public function backupJobs(): HasMany
-    {
-        return $this->hasMany(BackupJob::class);
-    }
-
-    // ── Accessors ───────────────────────────────────────────────
-
-    public function getEnabledTypesAttribute(): array
-    {
-        return array_values(array_intersect(
-            array_keys($this->config ?? []),
-            ['mysql', 'mongodb', 'filesystem']
-        ));
-    }
-
-    public function hasType(string $type): bool
-    {
-        return isset($this->config[$type]);
+        return $this->hasMany(BackupSource::class, 'host_id');
     }
 
     // ── Scopes ─────────────────────────────────────────────────
