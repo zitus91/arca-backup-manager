@@ -73,7 +73,7 @@
                             </td>
                             {{-- Sources count --}}
                             <td>
-                                <span class="text-xs font-medium text-base-content/60">{{ $host->backup_sources_count }}</span>
+                                <span class="text-xs font-medium text-base-content/60">&mdash;</span>
                             </td>
                             {{-- Status --}}
                             <td>

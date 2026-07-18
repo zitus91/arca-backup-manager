@@ -80,7 +80,7 @@ class BackupHostIndex extends Component
         }
 
         return view('livewire.backup.backup-host-index', [
-            'hosts' => $query->withCount('backupSources')->latest()->get(),
+            'hosts' => $query->latest()->get(),
         ]);
     }
 }

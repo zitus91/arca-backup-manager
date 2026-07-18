@@ -6,7 +6,6 @@ use App\Trait\HasCache;
 use App\Trait\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BackupHost extends Model
 {
@@ -27,14 +26,25 @@ class BackupHost extends Model
         ];
     }
 
-    // ── Relationships ──────────────────────────────────────────
+    // ── Accessors ────────────────────────────────────────────
 
-    public function backupSources(): HasMany
+    public function offers(string $type): bool
     {
-        return $this->hasMany(BackupSource::class, 'host_id');
+        $svc = $this->config[$type] ?? null;
+
+        if ($type === 'filesystem') {
+            return is_array($svc) && ! empty($svc['enabled']);
+        }
+
+        return is_array($svc);
     }
 
-    // ── Scopes ─────────────────────────────────────────────────
+    public function sshConfig(): array
+    {
+        return $this->config['ssh'] ?? ['enabled' => false];
+    }
+
+    // ── Scopes ───────────────────────────────────────────────
 
     public function scopeActive($query)
     {
