@@ -74,6 +74,15 @@
                     {{ __('backup-source.title') }}
                 </a>
 
+                <a href="{{ route('admin.backup.hosts') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                          {{ request()->routeIs('admin.backup.hosts') ? 'bg-primary/10 text-primary shadow-sm' : 'text-base-content/70 hover:bg-base-content/5 hover:text-base-content' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 {{ request()->routeIs('admin.backup.hosts') ? 'text-primary' : 'text-base-content/40' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+                    </svg>
+                    {{ __('backup-host.title') }}
+                </a>
+
                 <a href="{{ route('admin.backup.destinations') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                           {{ request()->routeIs('admin.backup.destinations') ? 'bg-primary/10 text-primary shadow-sm' : 'text-base-content/70 hover:bg-base-content/5 hover:text-base-content' }}">

@@ -6,6 +6,7 @@ use App\Livewire\Admin\SystemDashboard;
 use App\Livewire\Admin\UserIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Backup\AuditLogIndex;
+use App\Livewire\Backup\BackupHostIndex;
 use App\Livewire\Backup\BackupJobIndex;
 use App\Livewire\Backup\BackupJobShow;
 use App\Livewire\Backup\BackupLogIndex;
@@ -39,6 +40,7 @@ Route::prefix('admin/backup')->name('admin.backup.')->middleware('auth')->group(
     Route::get('/jobs', BackupJobIndex::class)->name('jobs');
     Route::get('/jobs/{job}', BackupJobShow::class)->name('jobs.show');
     Route::get('/sources', BackupSourceIndex::class)->name('sources');
+    Route::get('/hosts', BackupHostIndex::class)->name('hosts');
     Route::get('/destinations', StorageDestinationIndex::class)->name('destinations');
     Route::get('/logs', BackupLogIndex::class)->name('logs');
     Route::get('/logs/{log}/download', BackupLogDownloadController::class)->name('logs.download');
