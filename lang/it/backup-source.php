@@ -73,6 +73,12 @@ return [
     'save' => 'Salva',
     'update' => 'Aggiorna',
 
+    // Host remoto (SSH)
+    'remote_host' => 'Host remoto (SSH)',
+    'remote_host_hint' => 'Opzionale. Scegli un host salvato per il tunnel SSH.',
+    'host_none' => 'Nessuno (connessione diretta)',
+    'host_new' => 'Nuovo host',
+
     // SSH Tunnel condiviso
     'ssh_tunnel' => 'Tunnel SSH',
     'ssh_tunnel_hint' => 'Connessione SSH usata per tutti i tipi di questa sorgente (database e filesystem)',

@@ -73,6 +73,12 @@ return [
     'save' => 'Save',
     'update' => 'Update',
 
+    // Remote Host (SSH)
+    'remote_host' => 'Remote Host (SSH)',
+    'remote_host_hint' => 'Optional. Select a saved host to tunnel through SSH.',
+    'host_none' => 'None (direct connection)',
+    'host_new' => 'New host',
+
     // Shared SSH Tunnel
     'ssh_tunnel' => 'SSH Tunnel',
     'ssh_tunnel_hint' => 'SSH connection used for all source types in this package (databases and filesystem)',

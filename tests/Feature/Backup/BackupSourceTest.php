@@ -2,6 +2,7 @@
 
 use App\Livewire\Backup\BackupSourceForm;
 use App\Livewire\Backup\BackupSourceIndex;
+use App\Models\BackupHost;
 use App\Models\BackupSource;
 use Livewire\Livewire;
 
@@ -103,4 +104,32 @@ it('encrypts source credentials in database', function () {
 
     $raw = \DB::table('backup_sources')->first();
     expect($raw->config)->not->toContain('supersecret');
+});
+
+it('links a source to a host via dropdown', function () {
+    $host = BackupHost::factory()->create();
+
+    Livewire::test(BackupSourceForm::class)
+        ->set('name', 'Prod with host')
+        ->set('enable_mysql', true)
+        ->set('mysql_host', '127.0.0.1')
+        ->set('mysql_port', 3306)
+        ->set('mysql_databases', ['app'])
+        ->set('mysql_username', 'root')
+        ->set('mysql_password', 'secret')
+        ->set('host_id', $host->id)
+        ->call('save')
+        ->assertDispatched('source-saved');
+
+    $source = App\Models\BackupSource::where('name', 'Prod with host')->first();
+    expect($source->host_id)->toBe($host->id);
+    expect($source->config)->not->toHaveKey('ssh');
+});
+
+it('loads the linked host when editing a source', function () {
+    $host = BackupHost::factory()->create();
+    $source = App\Models\BackupSource::factory()->mysql()->create(['host_id' => $host->id]);
+
+    Livewire::test(BackupSourceForm::class, ['sourceId' => $source->id])
+        ->assertSet('host_id', $host->id);
 });
