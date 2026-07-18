@@ -2,7 +2,6 @@
 
 use App\Models\BackupHost;
 use App\Models\BackupSource;
-use Illuminate\Support\Facades\Artisan;
 
 function backfillHosts(): void
 {
