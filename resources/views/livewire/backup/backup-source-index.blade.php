@@ -95,7 +95,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
                                         <div>
                                             <div class="text-xs font-semibold text-secondary">{{ $source->host->name }}</div>
-                                            <div class="text-[10px] text-base-content/40 font-mono">{{ $source->host->config['user'] }}@:{{ $source->host->config['host'] }}:{{ $source->host->config['port'] }}</div>
+                                            <div class="text-[10px] text-base-content/40 font-mono">{{ $source->host->config['user'] }}&#64;{{ $source->host->config['host'] }}:{{ $source->host->config['port'] }}</div>
                                         </div>
                                     </div>
                                 @else

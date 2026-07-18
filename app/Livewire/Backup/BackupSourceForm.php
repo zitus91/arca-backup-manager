@@ -203,7 +203,7 @@ class BackupSourceForm extends Component
             ]);
         }
 
-        $rules['host_id'] = 'nullable|exists:backup_hosts,id';
+        $rules['host_id'] = ['nullable', Rule::exists('backup_hosts', 'id')->where('user_id', auth()->id())];
 
         return $rules;
     }
@@ -508,8 +508,16 @@ class BackupSourceForm extends Component
 
     public function render()
     {
+        $hosts = \App\Models\BackupHost::active()->orderBy('name')->get();
+        if ($this->host_id && ! $hosts->contains('id', $this->host_id)) {
+            $current = \App\Models\BackupHost::find($this->host_id);
+            if ($current) {
+                $hosts = $hosts->push($current)->sortBy('name')->values();
+            }
+        }
+
         return view('livewire.backup.backup-source-form', [
-            'hosts' => \App\Models\BackupHost::active()->orderBy('name')->get(),
+            'hosts' => $hosts,
         ]);
     }
 }

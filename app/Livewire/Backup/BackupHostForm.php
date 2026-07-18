@@ -105,13 +105,24 @@ class BackupHostForm extends Component
             $host = BackupHost::findOrFail($this->hostId);
             $old = $host->toArray();
             $host->update($data);
-            AuditLog::record('updated', "Updated backup host: {$host->name}", $host, $old, $data);
+            AuditLog::record('updated', "Updated backup host: {$host->name}", $host, $this->redactSecrets($old), $this->redactSecrets($data));
         } else {
             $host = BackupHost::create($data);
-            AuditLog::record('created', "Created backup host: {$host->name}", $host, null, $data);
+            AuditLog::record('created', "Created backup host: {$host->name}", $host, null, $this->redactSecrets($data));
         }
 
         $this->dispatch('host-saved');
+    }
+
+    private function redactSecrets(array $data): array
+    {
+        foreach (['password', 'key_path'] as $key) {
+            if (! empty($data['config'][$key] ?? null)) {
+                $data['config'][$key] = '••••••';
+            }
+        }
+
+        return $data;
     }
 
     public function checkSshRequirements(): void
