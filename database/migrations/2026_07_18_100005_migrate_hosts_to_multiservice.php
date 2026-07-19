@@ -13,7 +13,7 @@ return new class extends Migration
         // 1) Flatten legacy flat-ssh host rows to nested {ssh: {...}}.
         BackupHost::withoutGlobalScopes()->get()->each(function (BackupHost $h) {
             $cfg = $h->config;
-            if (isset($cfg['host']) && ! isset($cfg['ssh']) && ! isset($cfg['mysql']) && ! isset($cfg['mongodb'])) {
+            if (isset($cfg['host']) && ! isset($cfg['ssh']) && ! isset($cfg['mysql']) && ! isset($cfg['mongodb']) && ! isset($cfg['filesystem'])) {
                 $h->forceFill(['config' => ['ssh' => array_merge(['enabled' => true], $cfg)]])->saveQuietly();
             }
         });
