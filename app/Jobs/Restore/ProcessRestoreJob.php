@@ -125,11 +125,17 @@ class ProcessRestoreJob implements ShouldQueue
                     foreach ($databases as $db) {
                         $singleConf = array_merge($mysqlConf, ['database' => $db]);
 
-                        // Apply remote host config if restoring to a different server
-                        if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mysql'])) {
-                            $singleConf = array_merge($singleConf, $remoteHostConfig['mysql']);
+                        // Restore target decides the connection: same_host keeps the
+                        // source host's ssh tunnel (already in $singleConf); remote_host
+                        // uses the explicit override, or connects directly (no tunnel)
+                        // when no override is given — never leak the source host's ssh.
+                        if ($restoreTarget === 'remote_host') {
+                            if (! empty($remoteHostConfig['mysql'])) {
+                                $singleConf = array_merge($singleConf, $remoteHostConfig['mysql']);
+                            } else {
+                                $singleConf['ssh'] = ['enabled' => false];
+                            }
                         }
-                        // same_host: ssh already carried via the per-type assembly above
 
                         // Get custom target name if specified
                         $targetDbName = $customNames['databases'][$db] ?? null;
@@ -158,11 +164,15 @@ class ProcessRestoreJob implements ShouldQueue
                     foreach ($databases as $db) {
                         $singleConf = array_merge($mongoConf, ['database' => $db]);
 
-                        // Apply remote host config if restoring to a different server
-                        if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['mongodb'])) {
-                            $singleConf = array_merge($singleConf, $remoteHostConfig['mongodb']);
+                        // See MySQL block: never carry the source host's ssh into a
+                        // remote_host restore without an explicit override.
+                        if ($restoreTarget === 'remote_host') {
+                            if (! empty($remoteHostConfig['mongodb'])) {
+                                $singleConf = array_merge($singleConf, $remoteHostConfig['mongodb']);
+                            } else {
+                                $singleConf['ssh'] = ['enabled' => false];
+                            }
                         }
-                        // same_host: ssh already carried via the per-type assembly above
 
                         // Get custom target name if specified
                         $targetDbName = $customNames['databases'][$db] ?? null;
@@ -191,9 +201,12 @@ class ProcessRestoreJob implements ShouldQueue
                     foreach ($paths as $path) {
                         $singleConf = ['path' => $path, 'exclude_patterns' => $fsConf['exclude_patterns'] ?? [], 'ssh' => $fsConf['ssh']];
 
-                        // Apply SSH config: source SSH for same_host (already set above), custom remote config for remote_host
-                        if ($restoreTarget === 'remote_host' && ! empty($remoteHostConfig['filesystem'])) {
-                            $singleConf['ssh'] = $remoteHostConfig['filesystem'];
+                        // same_host keeps the source host's ssh (set above); remote_host
+                        // uses the override, or no tunnel when none is given.
+                        if ($restoreTarget === 'remote_host') {
+                            $singleConf['ssh'] = ! empty($remoteHostConfig['filesystem'])
+                                ? $remoteHostConfig['filesystem']
+                                : ['enabled' => false];
                         }
 
                         // Get custom target path if specified

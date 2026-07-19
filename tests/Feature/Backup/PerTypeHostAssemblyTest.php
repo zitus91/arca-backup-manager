@@ -54,3 +54,29 @@ it('skips assembly when source has no host set for the type', function () {
 
     expect(assembleTypeConf($source, 'mysql'))->toBeNull();
 });
+
+// Locks the restore-target SSH selection rule (ProcessRestoreJob): same_host keeps
+// the source host tunnel; remote_host uses an explicit override, else no tunnel —
+// the source host's ssh must never leak into a remote_host restore without override.
+function restoreSshFor(string $restoreTarget, array $sourceHostSsh, ?array $override): array
+{
+    if ($restoreTarget !== 'remote_host') {
+        return $sourceHostSsh; // same_host
+    }
+
+    return ! empty($override) ? $override : ['enabled' => false];
+}
+
+it('keeps the source host tunnel for a same_host restore', function () {
+    $srcSsh = ['enabled' => true, 'host' => 'origin.example.com'];
+    expect(restoreSshFor('same_host', $srcSsh, null))->toBe($srcSsh);
+});
+
+it('uses the explicit override for a remote_host restore', function () {
+    $override = ['enabled' => true, 'host' => 'target.example.com'];
+    expect(restoreSshFor('remote_host', ['enabled' => true, 'host' => 'origin'], $override))->toBe($override);
+});
+
+it('never leaks the source tunnel into a remote_host restore without override', function () {
+    expect(restoreSshFor('remote_host', ['enabled' => true, 'host' => 'origin'], null))->toBe(['enabled' => false]);
+});
