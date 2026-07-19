@@ -15,7 +15,6 @@ class BackupSource extends Model
 
     protected $fillable = [
         'user_id',
-        'host_id',
         'mysql_host_id',
         'mongodb_host_id',
         'filesystem_host_id',
@@ -33,11 +32,6 @@ class BackupSource extends Model
     }
 
     // ── Relationships ──────────────────────────────────────────
-
-    public function host(): BelongsTo
-    {
-        return $this->belongsTo(BackupHost::class, 'host_id');
-    }
 
     public function mysqlHost(): BelongsTo
     {
