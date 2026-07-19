@@ -285,7 +285,7 @@
                 <div class="form-control">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.filesystem_host_select') }}</span></label>
                     <div class="flex items-center gap-3">
-                        <select wire:model="filesystem_host_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 flex-1">
+                        <select wire:model.live="filesystem_host_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 flex-1">
                             <option value="">{{ __('backup-source.host_none') }}</option>
                             @foreach ($filesystemHosts as $host)
                                 <option value="{{ $host->id }}">{{ $host->name }}</option>

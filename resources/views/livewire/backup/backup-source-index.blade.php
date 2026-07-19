@@ -108,16 +108,12 @@
                                     @if (isset($config['mysql']))
                                         <div class="flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
-                                            <span class="text-primary/70 font-medium">{{ $config['mysql']['host'] ?? '' }}:{{ $config['mysql']['port'] ?? 3306 }}</span>
-                                            <span class="text-base-content/30">&middot;</span>
                                             <span>{{ count($config['mysql']['databases'] ?? []) }} db</span>
                                         </div>
                                     @endif
                                     @if (isset($config['mongodb']))
                                         <div class="flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-success/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
-                                            <span class="text-success/70 font-medium">{{ $config['mongodb']['host'] ?? '' }}:{{ $config['mongodb']['port'] ?? 27017 }}</span>
-                                            <span class="text-base-content/30">&middot;</span>
                                             <span>{{ count($config['mongodb']['databases'] ?? []) }} db</span>
                                         </div>
                                     @endif
