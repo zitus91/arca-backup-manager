@@ -216,7 +216,7 @@ class BackupSourceForm extends Component
             $run = function (string $connHost, int $connPort) use ($mysql): void {
                 $pdo = new \PDO(
                     "mysql:host={$connHost};port={$connPort}",
-                    $mysql['user'] ?? 'root',
+                    $mysql['username'] ?? ($mysql['user'] ?? 'root'),
                     $mysql['password'] ?? '',
                     [\PDO::ATTR_TIMEOUT => 5, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
                 );
@@ -278,8 +278,9 @@ class BackupSourceForm extends Component
             $run = function (string $connHost, int $connPort) use ($mongodb): void {
                 if (extension_loaded('mongodb')) {
                     $uri = 'mongodb://';
-                    if (! empty($mongodb['user'])) {
-                        $uri .= urlencode($mongodb['user']).':'.urlencode($mongodb['password'] ?? '').'@';
+                    $mongoUser = $mongodb['username'] ?? ($mongodb['user'] ?? '');
+                    if (! empty($mongoUser)) {
+                        $uri .= urlencode($mongoUser).':'.urlencode($mongodb['password'] ?? '').'@';
                     }
                     $uri .= "{$connHost}:{$connPort}";
 
@@ -304,10 +305,11 @@ class BackupSourceForm extends Component
                 } else {
                     // Fallback: try mongosh command line
                     $auth = '';
-                    if (! empty($mongodb['user'])) {
+                    $mongoUser = $mongodb['username'] ?? ($mongodb['user'] ?? '');
+                    if (! empty($mongoUser)) {
                         $auth = sprintf(
                             '-u %s -p %s --authenticationDatabase admin',
-                            escapeshellarg($mongodb['user']),
+                            escapeshellarg($mongoUser),
                             escapeshellarg($mongodb['password'] ?? '')
                         );
                     }

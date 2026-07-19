@@ -29,7 +29,7 @@ return new class extends Migration
                 if (! is_array($svc) || ! isset($svc['host']) || $source->{$type.'_host_id'}) {
                     continue; // no inline creds, or already linked
                 }
-                $creds = ['host' => $svc['host'], 'port' => $svc['port'] ?? null, 'user' => $svc['user'] ?? ($svc['username'] ?? ''), 'password' => $svc['password'] ?? ''];
+                $creds = ['host' => $svc['host'], 'port' => $svc['port'] ?? null, 'username' => $svc['username'] ?? ($svc['user'] ?? ''), 'password' => $svc['password'] ?? ''];
                 $host = $this->findOrCreateHost($source->user_id, $type, $creds, $ssh);
                 $source->{$type.'_host_id'} = $host->id;
                 $config[$type] = ['databases' => $svc['databases'] ?? (isset($svc['database']) ? [$svc['database']] : [])];
@@ -82,7 +82,7 @@ return new class extends Migration
                 return ! empty($h->config['filesystem']['enabled']) && $sameSsh;
             }
 
-            return is_array($svc) && ($svc['host'] ?? null) === ($creds['host'] ?? null) && (int) ($svc['port'] ?? 0) === (int) ($creds['port'] ?? 0) && ($svc['user'] ?? '') === ($creds['user'] ?? '') && $sameSsh;
+            return is_array($svc) && ($svc['host'] ?? null) === ($creds['host'] ?? null) && (int) ($svc['port'] ?? 0) === (int) ($creds['port'] ?? 0) && ($svc['username'] ?? '') === ($creds['username'] ?? '') && $sameSsh;
         });
 
         if ($existing) {

@@ -100,7 +100,7 @@ class BackupHostForm extends Component
                 $mysql = $cfg['mysql'];
                 $this->mysql_host = $mysql['host'] ?? '127.0.0.1';
                 $this->mysql_port = (int) ($mysql['port'] ?? 3306);
-                $this->mysql_user = $mysql['user'] ?? 'root';
+                $this->mysql_user = $mysql['username'] ?? ($mysql['user'] ?? 'root');
                 $this->mysql_password = $mysql['password'] ?? '';
             }
 
@@ -109,7 +109,7 @@ class BackupHostForm extends Component
                 $mongodb = $cfg['mongodb'];
                 $this->mongodb_host = $mongodb['host'] ?? '127.0.0.1';
                 $this->mongodb_port = (int) ($mongodb['port'] ?? 27017);
-                $this->mongodb_user = $mongodb['user'] ?? '';
+                $this->mongodb_user = $mongodb['username'] ?? ($mongodb['user'] ?? '');
                 $this->mongodb_password = $mongodb['password'] ?? '';
             }
 
@@ -190,7 +190,7 @@ class BackupHostForm extends Component
             $config['mysql'] = [
                 'host' => $this->mysql_host,
                 'port' => $this->mysql_port,
-                'user' => $this->mysql_user,
+                'username' => $this->mysql_user,
                 'password' => $this->mysql_password,
             ];
         }
@@ -199,7 +199,7 @@ class BackupHostForm extends Component
             $config['mongodb'] = [
                 'host' => $this->mongodb_host,
                 'port' => $this->mongodb_port,
-                'user' => $this->mongodb_user,
+                'username' => $this->mongodb_user,
                 'password' => $this->mongodb_password,
             ];
         }

@@ -57,7 +57,7 @@ it('creates a host offering mysql + filesystem with ssh', function () {
     expect($host->offers('mysql'))->toBeTrue();
     expect($host->offers('filesystem'))->toBeTrue();
     expect($host->offers('mongodb'))->toBeFalse();
-    expect($host->config['mysql']['user'])->toBe('root');
+    expect($host->config['mysql']['username'])->toBe('root');
     expect($host->config['ssh']['host'])->toBe('ssh.example.com');
 });
 

@@ -29,7 +29,7 @@ class BackupHostFactory extends Factory
     {
         return $this->state(fn (array $attrs) => [
             'config' => array_merge($attrs['config'] ?? [], [
-                'mysql' => ['host' => '127.0.0.1', 'port' => 3306, 'user' => 'root', 'password' => $this->faker->password()],
+                'mysql' => ['host' => '127.0.0.1', 'port' => 3306, 'username' => 'root', 'password' => $this->faker->password()],
             ]),
         ]);
     }
@@ -38,7 +38,7 @@ class BackupHostFactory extends Factory
     {
         return $this->state(fn (array $attrs) => [
             'config' => array_merge($attrs['config'] ?? [], [
-                'mongodb' => ['host' => '127.0.0.1', 'port' => 27017, 'user' => 'admin', 'password' => $this->faker->password()],
+                'mongodb' => ['host' => '127.0.0.1', 'port' => 27017, 'username' => 'admin', 'password' => $this->faker->password()],
             ]),
         ]);
     }

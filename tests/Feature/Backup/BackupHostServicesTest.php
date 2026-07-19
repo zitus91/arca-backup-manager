@@ -15,13 +15,13 @@ it('returns ssh config or a disabled default', function () {
     expect($withSsh->sshConfig()['enabled'])->toBeTrue();
 
     $noSsh = BackupHost::factory()->sshOnly()->state(fn () => [
-        'config' => ['mysql' => ['host' => '127.0.0.1', 'port' => 3306, 'user' => 'root', 'password' => 'x']],
+        'config' => ['mysql' => ['host' => '127.0.0.1', 'port' => 3306, 'username' => 'root', 'password' => 'x']],
     ])->create();
     expect($noSsh->sshConfig())->toBe(['enabled' => false]);
 });
 
 it('stores nested service credentials encrypted', function () {
     $host = BackupHost::factory()->withMysql()->create();
-    expect($host->config['mysql']['user'])->not->toBeNull();
+    expect($host->config['mysql']['username'])->not->toBeNull();
     expect($host->config['ssh']['host'])->not->toBeNull();
 });

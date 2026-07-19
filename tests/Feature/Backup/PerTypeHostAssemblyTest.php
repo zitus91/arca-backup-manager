@@ -30,14 +30,18 @@ it('assembles mysql conf from host creds + host ssh + source databases', functio
     $conf = assembleTypeConf($source, 'mysql');
 
     expect($conf['host'])->toBe($host->config['mysql']['host']);
-    expect($conf['user'])->toBe($host->config['mysql']['user']);
+    expect($conf['username'])->toBe($host->config['mysql']['username']);
     expect($conf['databases'])->toBe(['shop']);
     expect($conf['ssh']['enabled'])->toBeTrue();
+
+    // Regression lock: the dump command reads $config['username'], not $config['user'].
+    expect($conf)->toHaveKey('username');
+    expect($conf)->not->toHaveKey('user');
 });
 
 it('returns ssh disabled when host has no ssh configured', function () {
     $host = BackupHost::factory()->sshOnly()->state(fn () => [
-        'config' => ['mysql' => ['host' => '127.0.0.1', 'port' => 3306, 'user' => 'x']],
+        'config' => ['mysql' => ['host' => '127.0.0.1', 'port' => 3306, 'username' => 'x']],
     ])->create();
     $source = BackupSource::factory()->create([
         'config' => ['mysql' => ['databases' => ['a']]],

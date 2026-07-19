@@ -41,7 +41,7 @@ it('converts a legacy flat-ssh host to nested and backfills a mysql source', fun
     $source->refresh();
     expect($source->mysql_host_id)->not->toBeNull();
     $mysqlHost = BackupHost::find($source->mysql_host_id);
-    expect($mysqlHost->config['mysql']['user'])->toBe('root');
+    expect($mysqlHost->config['mysql']['username'])->toBe('root');
     expect($mysqlHost->config['ssh']['host'])->toBe('ssh.example.com');
     expect($source->config['mysql'])->toBe(['databases' => ['app']]);
 });
