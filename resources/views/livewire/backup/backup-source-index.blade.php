@@ -90,17 +90,17 @@
                             </td>
                             {{-- SSH --}}
                             <td>
-                                @if ($source->host)
-                                    <div class="flex items-center gap-1.5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-secondary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                                        <div>
-                                            <div class="text-xs font-semibold text-secondary">{{ $source->host->name }}</div>
-                                            <div class="text-[10px] text-base-content/40 font-mono">{{ $source->host->config['user'] }}&#64;{{ $source->host->config['host'] }}:{{ $source->host->config['port'] }}</div>
-                                        </div>
-                                    </div>
-                                @else
-                                    <span class="text-[10px] text-base-content/20 italic">—</span>
-                                @endif
+                                <div class="flex flex-wrap gap-1.5">
+                                    @if ($source->hasType('mysql'))
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary">MySQL: {{ $source->mysqlHost?->name ?? '—' }}</span>
+                                    @endif
+                                    @if ($source->hasType('mongodb'))
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-success/10 text-success">MongoDB: {{ $source->mongodbHost?->name ?? '—' }}</span>
+                                    @endif
+                                    @if ($source->hasType('filesystem'))
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-warning/10 text-warning">Filesystem: {{ $source->filesystemHost?->name ?? '—' }}</span>
+                                    @endif
+                                </div>
                             </td>
                             {{-- Details --}}
                             <td>

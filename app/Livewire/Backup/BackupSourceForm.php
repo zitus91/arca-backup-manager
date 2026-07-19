@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Backup;
 
+use App\Models\BackupHost;
 use App\Models\BackupSource;
 use App\Services\Backup\SshTunnelService;
 use Illuminate\Validation\Rule;
@@ -23,13 +24,7 @@ class BackupSourceForm extends Component
     public bool $enable_filesystem = false;
 
     // MySQL fields
-    public string $mysql_host = '127.0.0.1';
-
-    public int $mysql_port = 3306;
-
-    public string $mysql_username = 'root';
-
-    public string $mysql_password = '';
+    public ?int $mysql_host_id = null;
 
     public array $mysql_databases = [];
 
@@ -40,13 +35,7 @@ class BackupSourceForm extends Component
     public string $mysql_connection_message = '';
 
     // MongoDB fields
-    public string $mongodb_host = '127.0.0.1';
-
-    public int $mongodb_port = 27017;
-
-    public string $mongodb_username = '';
-
-    public string $mongodb_password = '';
+    public ?int $mongodb_host_id = null;
 
     public array $mongodb_databases = [];
 
@@ -57,6 +46,8 @@ class BackupSourceForm extends Component
     public string $mongodb_connection_message = '';
 
     // Filesystem fields
+    public ?int $filesystem_host_id = null;
+
     public array $fs_paths = [''];
 
     public string $fs_exclude_patterns = '*.log, *.tmp, node_modules, vendor';
@@ -64,9 +55,6 @@ class BackupSourceForm extends Component
     public array $fs_path_statuses = [];
 
     public array $fs_path_messages = [];
-
-    // Selected remote host (SSH). Null = local / direct connection.
-    public ?int $host_id = null;
 
     // -------------------------------------------------------------------------
 
@@ -80,89 +68,31 @@ class BackupSourceForm extends Component
 
             $config = $source->config;
 
-            // New multi-source format: config has top-level keys per type
-            if (isset($config['mysql'])) {
+            $this->mysql_host_id = $source->mysql_host_id;
+            $this->mongodb_host_id = $source->mongodb_host_id;
+            $this->filesystem_host_id = $source->filesystem_host_id;
+
+            if ($this->mysql_host_id) {
                 $this->enable_mysql = true;
-                $this->fillMysql($config['mysql']);
+                $this->mysql_databases = $config['mysql']['databases'] ?? [];
             }
-            if (isset($config['mongodb'])) {
+            if ($this->mongodb_host_id) {
                 $this->enable_mongodb = true;
-                $this->fillMongodb($config['mongodb']);
+                $this->mongodb_databases = $config['mongodb']['databases'] ?? [];
             }
-            if (isset($config['filesystem'])) {
+            if ($this->filesystem_host_id) {
                 $this->enable_filesystem = true;
-                $this->fillFilesystem($config['filesystem']);
+                $this->fillFilesystem($config['filesystem'] ?? []);
             }
-
-            $this->host_id = $source->host_id;
-
-            // Backward compat: old single-type format (flat config with separate type column)
-            if (! $this->enable_mysql && ! $this->enable_mongodb && ! $this->enable_filesystem) {
-                $type = $source->getAttributes()['type'] ?? null;
-                if ($type === 'mysql') {
-                    $this->enable_mysql = true;
-                    $this->fillMysql($config);
-                } elseif ($type === 'mongodb') {
-                    $this->enable_mongodb = true;
-                    $this->fillMongodb($config);
-                } elseif ($type === 'filesystem') {
-                    $this->enable_filesystem = true;
-                    $this->fillFilesystem($config);
-                }
-            }
-        }
-    }
-
-    private function hostSshConfig(): ?array
-    {
-        if (! $this->host_id) {
-            return null;
-        }
-
-        $host = \App\Models\BackupHost::find($this->host_id);
-
-        return $host ? array_merge($host->config, ['enabled' => true]) : null;
-    }
-
-    protected function fillMysql(array $config): void
-    {
-        $this->mysql_host = $config['host'] ?? '127.0.0.1';
-        $this->mysql_port = $config['port'] ?? 3306;
-        $this->mysql_username = $config['username'] ?? 'root';
-        $this->mysql_password = $config['password'] ?? '';
-        $this->mysql_databases = $config['databases'] ?? [];
-
-        if (empty($this->mysql_databases) && ! empty($config['database'])) {
-            $this->mysql_databases = [$config['database']];
-        }
-    }
-
-    protected function fillMongodb(array $config): void
-    {
-        $this->mongodb_host = $config['host'] ?? '127.0.0.1';
-        $this->mongodb_port = $config['port'] ?? 27017;
-        $this->mongodb_username = $config['username'] ?? '';
-        $this->mongodb_password = $config['password'] ?? '';
-        $this->mongodb_databases = $config['databases'] ?? [];
-
-        if (empty($this->mongodb_databases) && ! empty($config['database'])) {
-            $this->mongodb_databases = [$config['database']];
         }
     }
 
     protected function fillFilesystem(array $config): void
     {
-        // Support both old single-path and new multi-path format
-        if (isset($config['paths']) && is_array($config['paths'])) {
-            $this->fs_paths = ! empty($config['paths']) ? $config['paths'] : [''];
-        } elseif (isset($config['path']) && $config['path'] !== '') {
-            $this->fs_paths = [$config['path']];
-        } else {
-            $this->fs_paths = [''];
-        }
+        $this->fs_paths = ! empty($config['paths']) ? $config['paths'] : [''];
         $this->fs_exclude_patterns = is_array($config['exclude_patterns'] ?? null)
             ? implode(', ', $config['exclude_patterns'])
-            : '';
+            : ($config['exclude_patterns'] ?? '');
     }
 
     public function rules(): array
@@ -177,10 +107,7 @@ class BackupSourceForm extends Component
 
         if ($this->enable_mysql) {
             $rules = array_merge($rules, [
-                'mysql_host' => 'required|string|max:255',
-                'mysql_port' => 'required|integer|min:1|max:65535',
-                'mysql_username' => 'required|string|max:255',
-                'mysql_password' => 'required|string|max:255',
+                'mysql_host_id' => ['required', Rule::exists('backup_hosts', 'id')->where('user_id', auth()->id())],
                 'mysql_databases' => 'required|array|min:1',
                 'mysql_databases.*' => 'string|max:255',
             ]);
@@ -188,8 +115,7 @@ class BackupSourceForm extends Component
 
         if ($this->enable_mongodb) {
             $rules = array_merge($rules, [
-                'mongodb_host' => 'required|string|max:255',
-                'mongodb_port' => 'required|integer|min:1|max:65535',
+                'mongodb_host_id' => ['required', Rule::exists('backup_hosts', 'id')->where('user_id', auth()->id())],
                 'mongodb_databases' => 'required|array|min:1',
                 'mongodb_databases.*' => 'string|max:255',
             ]);
@@ -197,13 +123,12 @@ class BackupSourceForm extends Component
 
         if ($this->enable_filesystem) {
             $rules = array_merge($rules, [
+                'filesystem_host_id' => ['required', Rule::exists('backup_hosts', 'id')->where('user_id', auth()->id())],
                 'fs_paths' => 'required|array|min:1',
                 'fs_paths.*' => 'required|string|max:500',
                 'fs_exclude_patterns' => 'nullable|string',
             ]);
         }
-
-        $rules['host_id'] = ['nullable', Rule::exists('backup_hosts', 'id')->where('user_id', auth()->id())];
 
         return $rules;
     }
@@ -221,30 +146,16 @@ class BackupSourceForm extends Component
         $config = [];
 
         if ($this->enable_mysql) {
-            $config['mysql'] = [
-                'host' => $this->mysql_host,
-                'port' => $this->mysql_port,
-                'username' => $this->mysql_username,
-                'password' => $this->mysql_password,
-                'databases' => $this->mysql_databases,
-            ];
+            $config['mysql'] = ['databases' => $this->mysql_databases];
         }
 
         if ($this->enable_mongodb) {
-            $config['mongodb'] = [
-                'host' => $this->mongodb_host,
-                'port' => $this->mongodb_port,
-                'username' => $this->mongodb_username,
-                'password' => $this->mongodb_password,
-                'databases' => $this->mongodb_databases,
-            ];
+            $config['mongodb'] = ['databases' => $this->mongodb_databases];
         }
 
         if ($this->enable_filesystem) {
-            $paths = array_values(array_filter(array_map('trim', $this->fs_paths), fn ($p) => $p !== ''));
             $config['filesystem'] = [
-                'paths' => $paths,
-                'path' => $paths[0] ?? '',  // backward compat
+                'paths' => array_values(array_filter(array_map('trim', $this->fs_paths), fn ($p) => $p !== '')),
                 'exclude_patterns' => $this->fs_exclude_patterns
                     ? array_map('trim', explode(',', $this->fs_exclude_patterns))
                     : [],
@@ -253,9 +164,11 @@ class BackupSourceForm extends Component
 
         $data = [
             'name' => $this->name,
-            'config' => $config,
             'is_active' => $this->is_active,
-            'host_id' => $this->host_id,
+            'mysql_host_id' => $this->enable_mysql ? $this->mysql_host_id : null,
+            'mongodb_host_id' => $this->enable_mongodb ? $this->mongodb_host_id : null,
+            'filesystem_host_id' => $this->enable_filesystem ? $this->filesystem_host_id : null,
+            'config' => $config,
         ];
 
         if ($this->sourceId) {
@@ -282,18 +195,29 @@ class BackupSourceForm extends Component
         }
     }
 
-    public function testMysqlConnection(): void
+    public function loadMysqlDatabases(): void
     {
         $this->mysql_available_databases = [];
         $this->mysql_connection_status = null;
         $this->mysql_connection_message = '';
 
+        $host = $this->mysql_host_id ? BackupHost::find($this->mysql_host_id) : null;
+
+        if (! $host) {
+            $this->mysql_connection_status = 'failed';
+            $this->mysql_connection_message = __('backup-source.no_host_for_type');
+
+            return;
+        }
+
+        $mysql = $host->config['mysql'] ?? [];
+
         try {
-            $run = function (string $host, int $port): void {
+            $run = function (string $connHost, int $connPort) use ($mysql): void {
                 $pdo = new \PDO(
-                    "mysql:host={$host};port={$port}",
-                    $this->mysql_username,
-                    $this->mysql_password,
+                    "mysql:host={$connHost};port={$connPort}",
+                    $mysql['user'] ?? 'root',
+                    $mysql['password'] ?? '',
                     [\PDO::ATTR_TIMEOUT => 5, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
                 );
                 $stmt = $pdo->query('SHOW DATABASES');
@@ -302,16 +226,16 @@ class BackupSourceForm extends Component
                 $this->mysql_available_databases = array_values(array_diff($allDatabases, $systemDbs));
             };
 
-            $sshConfig = $this->hostSshConfig();
-            if ($sshConfig) {
+            $sshConfig = $host->sshConfig();
+            if (! empty($sshConfig['enabled'])) {
                 app(SshTunnelService::class)->withTunnel(
                     $sshConfig,
-                    $this->mysql_host,
-                    $this->mysql_port,
+                    $mysql['host'] ?? '127.0.0.1',
+                    (int) ($mysql['port'] ?? 3306),
                     fn (int $localPort) => $run('127.0.0.1', $localPort)
                 );
             } else {
-                $run($this->mysql_host, $this->mysql_port);
+                $run($mysql['host'] ?? '127.0.0.1', (int) ($mysql['port'] ?? 3306));
             }
 
             $this->mysql_connection_status = 'success';
@@ -333,20 +257,31 @@ class BackupSourceForm extends Component
         }
     }
 
-    public function testMongoConnection(): void
+    public function loadMongodbDatabases(): void
     {
         $this->mongodb_available_databases = [];
         $this->mongodb_connection_status = null;
         $this->mongodb_connection_message = '';
 
+        $host = $this->mongodb_host_id ? BackupHost::find($this->mongodb_host_id) : null;
+
+        if (! $host) {
+            $this->mongodb_connection_status = 'failed';
+            $this->mongodb_connection_message = __('backup-source.no_host_for_type');
+
+            return;
+        }
+
+        $mongodb = $host->config['mongodb'] ?? [];
+
         try {
-            $run = function (string $host, int $port): void {
+            $run = function (string $connHost, int $connPort) use ($mongodb): void {
                 if (extension_loaded('mongodb')) {
                     $uri = 'mongodb://';
-                    if ($this->mongodb_username) {
-                        $uri .= urlencode($this->mongodb_username).':'.urlencode($this->mongodb_password).'@';
+                    if (! empty($mongodb['user'])) {
+                        $uri .= urlencode($mongodb['user']).':'.urlencode($mongodb['password'] ?? '').'@';
                     }
-                    $uri .= "{$host}:{$port}";
+                    $uri .= "{$connHost}:{$connPort}";
 
                     $manager = new \MongoDB\Driver\Manager($uri, [
                         'connectTimeoutMS' => 5000,
@@ -369,18 +304,18 @@ class BackupSourceForm extends Component
                 } else {
                     // Fallback: try mongosh command line
                     $auth = '';
-                    if ($this->mongodb_username) {
+                    if (! empty($mongodb['user'])) {
                         $auth = sprintf(
                             '-u %s -p %s --authenticationDatabase admin',
-                            escapeshellarg($this->mongodb_username),
-                            escapeshellarg($this->mongodb_password)
+                            escapeshellarg($mongodb['user']),
+                            escapeshellarg($mongodb['password'] ?? '')
                         );
                     }
 
                     $cmd = sprintf(
                         'mongosh --host %s --port %d %s --quiet --eval "db.adminCommand(\'listDatabases\').databases.forEach(d => print(d.name))" 2>&1',
-                        escapeshellarg($host),
-                        $port,
+                        escapeshellarg($connHost),
+                        $connPort,
                         $auth
                     );
 
@@ -400,16 +335,16 @@ class BackupSourceForm extends Component
                 }
             };
 
-            $sshConfig = $this->hostSshConfig();
-            if ($sshConfig) {
+            $sshConfig = $host->sshConfig();
+            if (! empty($sshConfig['enabled'])) {
                 app(SshTunnelService::class)->withTunnel(
                     $sshConfig,
-                    $this->mongodb_host,
-                    $this->mongodb_port,
+                    $mongodb['host'] ?? '127.0.0.1',
+                    (int) ($mongodb['port'] ?? 27017),
                     fn (int $localPort) => $run('127.0.0.1', $localPort)
                 );
             } else {
-                $run($this->mongodb_host, $this->mongodb_port);
+                $run($mongodb['host'] ?? '127.0.0.1', (int) ($mongodb['port'] ?? 27017));
             }
 
             $this->mongodb_connection_status = 'success';
@@ -448,11 +383,13 @@ class BackupSourceForm extends Component
             return;
         }
 
-        $sshConfig = $this->hostSshConfig();
-        if ($sshConfig) {
+        $host = $this->filesystem_host_id ? BackupHost::find($this->filesystem_host_id) : null;
+        $sshConfig = $host?->sshConfig();
+
+        if ($sshConfig && ! empty($sshConfig['enabled'])) {
             // Check path on remote host via SSH
             $user = escapeshellarg($sshConfig['user']);
-            $host = escapeshellarg($sshConfig['host']);
+            $sshHost = escapeshellarg($sshConfig['host']);
             $port = (int) $sshConfig['port'];
             $baseOpts = "-o ConnectTimeout=8 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p {$port}";
 
@@ -462,10 +399,10 @@ class BackupSourceForm extends Component
 
             if ($sshConfig['auth_method'] === 'password') {
                 $pass = escapeshellarg($sshConfig['password']);
-                $cmd = "sshpass -p {$pass} ssh {$baseOpts} {$user}@{$host} {$quotedCheck} 2>&1";
+                $cmd = "sshpass -p {$pass} ssh {$baseOpts} {$user}@{$sshHost} {$quotedCheck} 2>&1";
             } else {
                 $keyPath = escapeshellarg($sshConfig['key_path']);
-                $cmd = "ssh {$baseOpts} -i {$keyPath} {$user}@{$host} {$quotedCheck} 2>&1";
+                $cmd = "ssh {$baseOpts} -i {$keyPath} {$user}@{$sshHost} {$quotedCheck} 2>&1";
             }
 
             exec($cmd, $output, $exitCode);
@@ -508,16 +445,24 @@ class BackupSourceForm extends Component
 
     public function render()
     {
-        $hosts = \App\Models\BackupHost::active()->orderBy('name')->get();
-        if ($this->host_id && ! $hosts->contains('id', $this->host_id)) {
-            $current = \App\Models\BackupHost::find($this->host_id);
+        return view('livewire.backup.backup-source-form', [
+            'mysqlHosts' => $this->hostsOffering('mysql', $this->mysql_host_id),
+            'mongodbHosts' => $this->hostsOffering('mongodb', $this->mongodb_host_id),
+            'filesystemHosts' => $this->hostsOffering('filesystem', $this->filesystem_host_id),
+        ]);
+    }
+
+    private function hostsOffering(string $type, ?int $currentId)
+    {
+        $hosts = BackupHost::active()->orderBy('name')->get()->filter->offers($type)->values();
+
+        if ($currentId && ! $hosts->contains('id', $currentId)) {
+            $current = BackupHost::find($currentId);
             if ($current) {
                 $hosts = $hosts->push($current)->sortBy('name')->values();
             }
         }
 
-        return view('livewire.backup.backup-source-form', [
-            'hosts' => $hosts,
-        ]);
+        return $hosts;
     }
 }

@@ -20,14 +20,6 @@ it('creates a host with encrypted ssh config', function () {
     expect($host->is_active)->toBeTrue();
 });
 
-it('links a source to a host', function () {
-    $host = BackupHost::factory()->create();
-    $source = BackupSource::factory()->mysql()->create(['host_id' => $host->id]);
-
-    expect($source->host->id)->toBe($host->id);
-    expect($host->backupSources->pluck('id'))->toContain($source->id);
-});
-
 it('nulls source host_id when host deleted', function () {
     $host = BackupHost::factory()->create();
     $source = BackupSource::factory()->mysql()->create(['host_id' => $host->id]);

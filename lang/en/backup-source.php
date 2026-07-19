@@ -78,6 +78,11 @@ return [
     'remote_host_hint' => 'Optional. Select a saved host to tunnel through SSH.',
     'host_none' => 'None (direct connection)',
     'host_new' => 'New host',
+    'mysql_host_select' => 'MySQL Host',
+    'mongodb_host_select' => 'MongoDB Host',
+    'filesystem_host_select' => 'Filesystem Host',
+    'load_databases' => 'Load Databases',
+    'no_host_for_type' => 'Select a host first',
 
     // Shared SSH Tunnel
     'ssh_tunnel' => 'SSH Tunnel',

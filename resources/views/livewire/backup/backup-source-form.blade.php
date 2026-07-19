@@ -79,89 +79,55 @@
             @error('enable_sources') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
         </div>
 
-        {{-- Remote Host (SSH) --}}
-        <div class="rounded-xl border border-secondary/20 bg-secondary/[0.03] p-5 space-y-3">
-            <div>
-                <span class="text-sm font-semibold">{{ __('backup-source.remote_host') }}</span>
-                <p class="text-[10px] text-base-content/40 mt-0.5">{{ __('backup-source.remote_host_hint') }}</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <select wire:model="host_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 flex-1">
-                    <option value="">{{ __('backup-source.host_none') }}</option>
-                    @foreach ($hosts as $host)
-                        <option value="{{ $host->id }}">{{ $host->name }} ({{ $host->config['user'] }}@{{ $host->config['host'] }}:{{ $host->config['port'] }})</option>
-                    @endforeach
-                </select>
-                <a href="{{ route('admin.backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-secondary rounded-lg gap-1 whitespace-nowrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                    {{ __('backup-source.host_new') }}
-                </a>
-            </div>
-            @error('host_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-        </div>
-
         {{-- MySQL Fields --}}
         @if ($enable_mysql)
             <div class="rounded-xl border border-primary/20 bg-primary/[0.03] p-5 space-y-4">
                 <div class="flex items-center gap-2 mb-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
                     <h4 class="text-sm font-semibold text-primary">{{ __('backup-source.mysql_config') }}</h4>
-                    @if ($host_id)
-                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-secondary bg-secondary/10 border border-secondary/20 px-1.5 py-0.5 rounded-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                            SSH
-                        </span>
-                    @endif
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.host') }}</span></label>
-                        <input type="text" wire:model="mysql_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mysql_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.mysql_host_select') }}</span></label>
+                    <div class="flex items-center gap-3">
+                        <select wire:model.live="mysql_host_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 flex-1">
+                            <option value="">{{ __('backup-source.host_none') }}</option>
+                            @foreach ($mysqlHosts as $host)
+                                <option value="{{ $host->id }}">{{ $host->name }}</option>
+                            @endforeach
+                        </select>
+                        <a href="{{ route('admin.backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-primary rounded-lg gap-1 whitespace-nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            {{ __('backup-source.host_new') }}
+                        </a>
                     </div>
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.port') }}</span></label>
-                        <input type="number" wire:model="mysql_port" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mysql_port') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-                    </div>
+                    @error('mysql_host_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.username') }}</span></label>
-                        <input type="text" wire:model="mysql_username" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mysql_username') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.password') }}</span></label>
-                        <input type="password" wire:model="mysql_password" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mysql_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+                {{-- Load Databases --}}
+                @if ($mysql_host_id)
+                    <div class="pt-2 border-t border-primary/10">
+                        <button type="button" wire:click="loadMysqlDatabases" class="btn btn-sm btn-outline btn-primary rounded-lg gap-2" wire:loading.attr="disabled" wire:target="loadMysqlDatabases">
+                            <span wire:loading wire:target="loadMysqlDatabases" class="loading loading-spinner loading-xs"></span>
+                            <span wire:loading.remove wire:target="loadMysqlDatabases">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" /></svg>
+                            </span>
+                            {{ __('backup-source.load_databases') }}
+                        </button>
 
-                {{-- Test Connection --}}
-                <div class="pt-2 border-t border-primary/10">
-                    <button type="button" wire:click="testMysqlConnection" class="btn btn-sm btn-outline btn-primary rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testMysqlConnection">
-                        <span wire:loading wire:target="testMysqlConnection" class="loading loading-spinner loading-xs"></span>
-                        <span wire:loading.remove wire:target="testMysqlConnection">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" /></svg>
-                        </span>
-                        {{ __('backup-source.mysql_test_connection') }}
-                    </button>
-
-                    @if ($mysql_connection_status === 'success')
-                        <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            {{ $mysql_connection_message }}
-                        </div>
-                    @elseif ($mysql_connection_status === 'failed')
-                        <div class="mt-3 flex items-start gap-2 text-error text-xs">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                            <span>{{ $mysql_connection_message }}</span>
-                        </div>
-                    @endif
-                </div>
+                        @if ($mysql_connection_status === 'success')
+                            <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {{ $mysql_connection_message }}
+                            </div>
+                        @elseif ($mysql_connection_status === 'failed')
+                            <div class="mt-3 flex items-start gap-2 text-error text-xs">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                <span>{{ $mysql_connection_message }}</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
 
                 {{-- Database Selection (shown after successful connection) --}}
                 @if (count($mysql_available_databases) > 0)
@@ -213,62 +179,49 @@
                 <div class="flex items-center gap-2 mb-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
                     <h4 class="text-sm font-semibold text-success">{{ __('backup-source.mongodb_config') }}</h4>
-                    @if ($host_id)
-                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-secondary bg-secondary/10 border border-secondary/20 px-1.5 py-0.5 rounded-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                            SSH
-                        </span>
-                    @endif
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.host') }}</span></label>
-                        <input type="text" wire:model="mongodb_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mongodb_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.mongodb_host_select') }}</span></label>
+                    <div class="flex items-center gap-3">
+                        <select wire:model.live="mongodb_host_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 flex-1">
+                            <option value="">{{ __('backup-source.host_none') }}</option>
+                            @foreach ($mongodbHosts as $host)
+                                <option value="{{ $host->id }}">{{ $host->name }}</option>
+                            @endforeach
+                        </select>
+                        <a href="{{ route('admin.backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-success rounded-lg gap-1 whitespace-nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            {{ __('backup-source.host_new') }}
+                        </a>
                     </div>
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.port') }}</span></label>
-                        <input type="number" wire:model="mongodb_port" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mongodb_port') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-                    </div>
+                    @error('mongodb_host_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.username') }} <span class="text-base-content/30">({{ __('backup-source.optional') }})</span></span></label>
-                        <input type="text" wire:model="mongodb_username" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mongodb_username') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.password') }} <span class="text-base-content/30">({{ __('backup-source.optional') }})</span></span></label>
-                        <input type="password" wire:model="mongodb_password" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
-                        @error('mongodb_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+                {{-- Load Databases --}}
+                @if ($mongodb_host_id)
+                    <div class="pt-2 border-t border-success/10">
+                        <button type="button" wire:click="loadMongodbDatabases" class="btn btn-sm btn-outline btn-success rounded-lg gap-2" wire:loading.attr="disabled" wire:target="loadMongodbDatabases">
+                            <span wire:loading wire:target="loadMongodbDatabases" class="loading loading-spinner loading-xs"></span>
+                            <span wire:loading.remove wire:target="loadMongodbDatabases">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" /></svg>
+                            </span>
+                            {{ __('backup-source.load_databases') }}
+                        </button>
 
-                {{-- Test Connection --}}
-                <div class="pt-2 border-t border-success/10">
-                    <button type="button" wire:click="testMongoConnection" class="btn btn-sm btn-outline btn-success rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testMongoConnection">
-                        <span wire:loading wire:target="testMongoConnection" class="loading loading-spinner loading-xs"></span>
-                        <span wire:loading.remove wire:target="testMongoConnection">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" /></svg>
-                        </span>
-                        {{ __('backup-source.mongodb_test_connection') }}
-                    </button>
-
-                    @if ($mongodb_connection_status === 'success')
-                        <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            {{ $mongodb_connection_message }}
-                        </div>
-                    @elseif ($mongodb_connection_status === 'failed')
-                        <div class="mt-3 flex items-start gap-2 text-error text-xs">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                            <span>{{ $mongodb_connection_message }}</span>
-                        </div>
-                    @endif
-                </div>
+                        @if ($mongodb_connection_status === 'success')
+                            <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {{ $mongodb_connection_message }}
+                            </div>
+                        @elseif ($mongodb_connection_status === 'failed')
+                            <div class="mt-3 flex items-start gap-2 text-error text-xs">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                <span>{{ $mongodb_connection_message }}</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
 
                 {{-- Database Selection (shown after successful connection) --}}
                 @if (count($mongodb_available_databases) > 0)
@@ -321,18 +274,29 @@
                     <div class="flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
                         <h4 class="text-sm font-semibold text-warning">{{ __('backup-source.filesystem_config') }}</h4>
-                        @if ($host_id)
-                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-secondary bg-secondary/10 border border-secondary/20 px-1.5 py-0.5 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                                SSH
-                            </span>
-                        @endif
                     </div>
                     <div class="flex items-center gap-2">
                         <button type="button" wire:click="checkAllFilesystemPaths" class="text-[10px] font-medium text-warning hover:text-warning/80 transition-colors">
                             {{ __('backup-source.check_all') }}
                         </button>
                     </div>
+                </div>
+
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.filesystem_host_select') }}</span></label>
+                    <div class="flex items-center gap-3">
+                        <select wire:model="filesystem_host_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 flex-1">
+                            <option value="">{{ __('backup-source.host_none') }}</option>
+                            @foreach ($filesystemHosts as $host)
+                                <option value="{{ $host->id }}">{{ $host->name }}</option>
+                            @endforeach
+                        </select>
+                        <a href="{{ route('admin.backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-warning rounded-lg gap-1 whitespace-nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            {{ __('backup-source.host_new') }}
+                        </a>
+                    </div>
+                    @error('filesystem_host_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                 </div>
 
                 {{-- Paths List --}}

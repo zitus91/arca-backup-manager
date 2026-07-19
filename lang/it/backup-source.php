@@ -78,6 +78,11 @@ return [
     'remote_host_hint' => 'Opzionale. Scegli un host salvato per il tunnel SSH.',
     'host_none' => 'Nessuno (connessione diretta)',
     'host_new' => 'Nuovo host',
+    'mysql_host_select' => 'Host MySQL',
+    'mongodb_host_select' => 'Host MongoDB',
+    'filesystem_host_select' => 'Host Filesystem',
+    'load_databases' => 'Carica Database',
+    'no_host_for_type' => 'Seleziona prima un host',
 
     // SSH Tunnel condiviso
     'ssh_tunnel' => 'Tunnel SSH',
