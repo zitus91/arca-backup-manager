@@ -2,6 +2,7 @@
 
 namespace App\Services\Restore;
 
+use App\Services\Backup\FtpStorageService;
 use App\Services\Backup\SshTunnelService;
 use Illuminate\Support\Facades\Process;
 
@@ -22,7 +23,11 @@ class FilesystemRestoreService
         $restoredPath = $targetPath ?? ($originalPath.'_restored_'.now()->format('Ymd_His'));
         $sshConfig = $config['ssh'] ?? null;
 
-        if ($sshConfig) {
+        if (($config['transport'] ?? null) === 'ftp') {
+            return $this->restoreViaFtp($config, $originalPath, $restoredPath, $archivePath, $overrideExisting);
+        }
+
+        if ($sshConfig && ! empty($sshConfig['enabled']) && ! empty($sshConfig['host'])) {
             return $this->restoreRemote($originalPath, $restoredPath, $archivePath, $overrideExisting, $sshConfig);
         }
 
@@ -121,6 +126,37 @@ class FilesystemRestoreService
         return [
             'restored_path' => $sshUser.'@'.$sshHost.':'.$targetPath,
             'original_path' => $originalPath,
+            'archive_file' => basename($archivePath),
+            'override_existing' => $overrideExisting,
+            'remote' => true,
+        ];
+    }
+
+    /**
+     * Restore files to a remote host via FTP (extract locally, then mirror up).
+     */
+    protected function restoreViaFtp(array $config, string $originalPath, string $targetPath, string $archivePath, bool $overrideExisting): array
+    {
+        $tmpDir = dirname($archivePath).'/ftp_restore_'.uniqid();
+        @mkdir($tmpDir, 0755, true);
+
+        try {
+            $extractCmd = $this->buildExtractCommand($archivePath, $tmpDir);
+            $result = Process::timeout(3600)->run($extractCmd);
+
+            if (! $result->successful()) {
+                throw new \RuntimeException('Filesystem extract failed: '.$result->errorOutput());
+            }
+
+            $fileCount = app(FtpStorageService::class)->mirrorUp($config['ftp'] ?? [], $tmpDir, $targetPath);
+        } finally {
+            Process::run('rm -rf '.escapeshellarg($tmpDir));
+        }
+
+        return [
+            'restored_path' => $targetPath,
+            'original_path' => $originalPath,
+            'files_count' => $fileCount,
             'archive_file' => basename($archivePath),
             'override_existing' => $overrideExisting,
             'remote' => true,

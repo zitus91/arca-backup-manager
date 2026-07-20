@@ -242,12 +242,91 @@
         </div>
 
         {{-- Filesystem Capability --}}
-        <div class="rounded-xl border border-warning/20 bg-warning/[0.03] p-5 space-y-2">
+        <div class="rounded-xl border border-warning/20 bg-warning/[0.03] p-5 space-y-3">
             <label class="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" wire:model.live="enable_filesystem" class="toggle toggle-sm toggle-warning" />
                 <span class="text-sm font-semibold">{{ __('backup-host.service_filesystem') }}</span>
             </label>
-            <p class="text-[10px] text-base-content/40">{{ __('backup-host.filesystem_capability_hint') }}</p>
+
+            @if ($enable_filesystem)
+                <div class="form-control pt-1">
+                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.transport') }}</span></label>
+                    <select wire:model.live="fs_transport" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10">
+                        <option value="ssh">{{ __('backup-host.transport_ssh') }}</option>
+                        <option value="ftp">{{ __('backup-host.transport_ftp') }}</option>
+                    </select>
+                </div>
+
+                @if ($fs_transport === 'ssh')
+                    <p class="text-[10px] text-base-content/40">{{ __('backup-host.filesystem_capability_hint') }}</p>
+                @else
+                    <div class="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-warning text-xs font-medium">
+                        {{ __('backup-host.ftp_full_only_warning') }}
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ftp_host') }}</span></label>
+                            <input type="text" wire:model="fs_ftp_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />
+                            @error('fs_ftp_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ftp_port') }}</span></label>
+                            <input type="number" wire:model="fs_ftp_port" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                            @error('fs_ftp_port') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ftp_username') }}</span></label>
+                            <input type="text" wire:model="fs_ftp_username" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                            @error('fs_ftp_username') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ftp_password') }}</span></label>
+                            <input type="password" wire:model="fs_ftp_password" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                            @error('fs_ftp_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ftp_root_path') }}</span></label>
+                        <input type="text" wire:model="fs_ftp_root_path" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('fs_ftp_root_path') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="flex gap-6 pt-1">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" wire:model="fs_ftp_passive" class="toggle toggle-sm toggle-warning" />
+                            <span class="text-sm">{{ __('backup-host.ftp_passive') }}</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" wire:model="fs_ftp_ssl" class="toggle toggle-sm toggle-warning" />
+                            <span class="text-sm">{{ __('backup-host.ftp_ssl') }}</span>
+                        </label>
+                    </div>
+
+                    <div class="pt-2 border-t border-warning/10">
+                        <button type="button" wire:click="testFtpConnection" class="btn btn-sm btn-outline btn-warning rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testFtpConnection">
+                            <span wire:loading wire:target="testFtpConnection" class="loading loading-spinner loading-xs"></span>
+                            {{ __('backup-host.test_ftp_connection') }}
+                        </button>
+
+                        @if ($fs_ftp_connection_status === 'success')
+                            <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {{ $fs_ftp_connection_message }}
+                            </div>
+                        @elseif ($fs_ftp_connection_status === 'failed')
+                            <div class="mt-3 flex items-start gap-2 text-error text-xs">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                <span>{{ $fs_ftp_connection_message }}</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+            @endif
         </div>
 
         {{-- Active Toggle --}}

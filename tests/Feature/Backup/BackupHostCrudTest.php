@@ -80,3 +80,30 @@ it('edits an existing host', function () {
 
     expect($host->fresh()->name)->toBe('new');
 });
+
+it('creates a host with an ftp filesystem transport', function () {
+    Livewire::test(App\Livewire\Backup\BackupHostForm::class)
+        ->set('name', 'ftp-web')
+        ->set('enable_filesystem', true)
+        ->set('fs_transport', 'ftp')
+        ->set('fs_ftp_host', 'ftp.example.com')
+        ->set('fs_ftp_username', 'ftpuser')
+        ->set('fs_ftp_password', 'secret')
+        ->call('save')
+        ->assertDispatched('host-saved');
+
+    $host = App\Models\BackupHost::where('name', 'ftp-web')->first();
+    expect($host->filesystemTransport())->toBe('ftp');
+    expect($host->config['filesystem']['ftp']['host'])->toBe('ftp.example.com');
+    expect($host->config['filesystem']['ftp']['username'])->toBe('ftpuser');
+});
+
+it('requires ftp host/username when filesystem transport is ftp', function () {
+    Livewire::test(App\Livewire\Backup\BackupHostForm::class)
+        ->set('name', 'bad-ftp')
+        ->set('enable_filesystem', true)
+        ->set('fs_transport', 'ftp')
+        ->set('fs_ftp_host', '')
+        ->call('save')
+        ->assertHasErrors('fs_ftp_host');
+});

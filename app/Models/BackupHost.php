@@ -44,6 +44,20 @@ class BackupHost extends Model
         return $this->config['ssh'] ?? ['enabled' => false];
     }
 
+    public function filesystemTransport(): string
+    {
+        return $this->config['filesystem']['transport'] ?? 'ssh';
+    }
+
+    public function filesystemFtpConfig(): ?array
+    {
+        if ($this->filesystemTransport() !== 'ftp') {
+            return null;
+        }
+
+        return $this->config['filesystem']['ftp'] ?? null;
+    }
+
     // ── Scopes ───────────────────────────────────────────────
 
     public function scopeActive($query)
