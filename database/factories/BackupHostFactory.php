@@ -47,7 +47,28 @@ class BackupHostFactory extends Factory
     {
         return $this->state(fn (array $attrs) => [
             'config' => array_merge($attrs['config'] ?? [], [
-                'filesystem' => ['enabled' => true],
+                'filesystem' => ['enabled' => true, 'transport' => 'ssh'],
+            ]),
+        ]);
+    }
+
+    public function withFtpFilesystem(): static
+    {
+        return $this->state(fn (array $attrs) => [
+            'config' => array_merge($attrs['config'] ?? [], [
+                'filesystem' => [
+                    'enabled' => true,
+                    'transport' => 'ftp',
+                    'ftp' => [
+                        'host' => $this->faker->domainName(),
+                        'port' => 21,
+                        'username' => 'ftpuser',
+                        'password' => $this->faker->password(),
+                        'root_path' => '/',
+                        'passive' => true,
+                        'ssl' => false,
+                    ],
+                ],
             ]),
         ]);
     }
