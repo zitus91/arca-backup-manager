@@ -247,7 +247,6 @@
                 <input type="checkbox" wire:model.live="enable_filesystem" class="toggle toggle-sm toggle-warning" />
                 <span class="text-sm font-semibold">{{ __('backup-host.service_filesystem') }}</span>
             </label>
-            <p class="text-[10px] text-base-content/40">{{ __('backup-host.filesystem_capability_hint') }}</p>
 
             @if ($enable_filesystem)
                 <div class="form-control pt-1">
@@ -265,8 +264,8 @@
                         {{ __('backup-host.ftp_full_only_warning') }}
                     </div>
 
-                    <div class="grid grid-cols-3 gap-3 pt-1">
-                        <div class="form-control col-span-2">
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div class="form-control">
                             <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ftp_host') }}</span></label>
                             <input type="text" wire:model="fs_ftp_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />
                             @error('fs_ftp_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
