@@ -135,11 +135,17 @@ class FtpStorageService
                 continue;
             }
 
+            $out = fopen($target, 'wb');
+
+            if ($out === false) {
+                fclose($stream);
+                throw new \RuntimeException("Cannot open local file for writing: {$target}");
+            }
+
             try {
-                $out = fopen($target, 'wb');
                 stream_copy_to_stream($stream, $out);
-                fclose($out);
             } finally {
+                fclose($out);
                 if (is_resource($stream)) {
                     fclose($stream);
                 }
