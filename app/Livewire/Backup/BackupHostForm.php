@@ -74,6 +74,26 @@ class BackupHostForm extends Component
     // Filesystem capability
     public bool $enable_filesystem = false;
 
+    public string $fs_transport = 'ssh'; // 'ssh' | 'ftp'
+
+    public string $fs_ftp_host = '';
+
+    public int $fs_ftp_port = 21;
+
+    public string $fs_ftp_username = '';
+
+    public string $fs_ftp_password = '';
+
+    public string $fs_ftp_root_path = '/';
+
+    public bool $fs_ftp_passive = true;
+
+    public bool $fs_ftp_ssl = false;
+
+    public ?string $fs_ftp_connection_status = null;
+
+    public string $fs_ftp_connection_message = '';
+
     public function mount(?int $hostId = null): void
     {
         if ($hostId) {
@@ -114,6 +134,20 @@ class BackupHostForm extends Component
             }
 
             $this->enable_filesystem = ! empty($cfg['filesystem']['enabled']);
+            if ($this->enable_filesystem) {
+                $fsCfg = $cfg['filesystem'];
+                $this->fs_transport = $fsCfg['transport'] ?? 'ssh';
+                if ($this->fs_transport === 'ftp') {
+                    $ftp = $fsCfg['ftp'] ?? [];
+                    $this->fs_ftp_host = $ftp['host'] ?? '';
+                    $this->fs_ftp_port = (int) ($ftp['port'] ?? 21);
+                    $this->fs_ftp_username = $ftp['username'] ?? '';
+                    $this->fs_ftp_password = $ftp['password'] ?? '';
+                    $this->fs_ftp_root_path = $ftp['root_path'] ?? '/';
+                    $this->fs_ftp_passive = $ftp['passive'] ?? true;
+                    $this->fs_ftp_ssl = $ftp['ssl'] ?? false;
+                }
+            }
         }
 
         $this->checkSshRequirements();
@@ -129,6 +163,12 @@ class BackupHostForm extends Component
     {
         $this->ssh_connection_status = null;
         $this->ssh_connection_message = '';
+    }
+
+    public function updatedFsTransport(): void
+    {
+        $this->fs_ftp_connection_status = null;
+        $this->fs_ftp_connection_message = '';
     }
 
     public function rules(): array
@@ -163,6 +203,14 @@ class BackupHostForm extends Component
         if ($this->enable_mongodb) {
             $rules['mongodb_host'] = 'required|string|max:255';
             $rules['mongodb_port'] = 'required|integer|min:1|max:65535';
+        }
+
+        if ($this->enable_filesystem && $this->fs_transport === 'ftp') {
+            $rules['fs_ftp_host'] = 'required|string|max:255';
+            $rules['fs_ftp_port'] = 'required|integer|min:1|max:65535';
+            $rules['fs_ftp_username'] = 'required|string|max:255';
+            $rules['fs_ftp_password'] = 'nullable|string|max:255';
+            $rules['fs_ftp_root_path'] = 'string|max:500';
         }
 
         return $rules;
@@ -211,7 +259,19 @@ class BackupHostForm extends Component
         }
 
         if ($this->enable_filesystem) {
-            $config['filesystem'] = ['enabled' => true];
+            $fs = ['enabled' => true, 'transport' => $this->fs_transport];
+            if ($this->fs_transport === 'ftp') {
+                $fs['ftp'] = [
+                    'host' => $this->fs_ftp_host,
+                    'port' => $this->fs_ftp_port,
+                    'username' => $this->fs_ftp_username,
+                    'password' => $this->fs_ftp_password,
+                    'root_path' => $this->fs_ftp_root_path,
+                    'passive' => $this->fs_ftp_passive,
+                    'ssl' => $this->fs_ftp_ssl,
+                ];
+            }
+            $config['filesystem'] = $fs;
         }
 
         $data = [
@@ -247,7 +307,30 @@ class BackupHostForm extends Component
             }
         }
 
+        if (! empty($data['config']['filesystem']['ftp']['password'] ?? null)) {
+            $data['config']['filesystem']['ftp']['password'] = '••••••';
+        }
+
         return $data;
+    }
+
+    public function testFtpConnection(): void
+    {
+        $this->fs_ftp_connection_status = null;
+        $this->fs_ftp_connection_message = '';
+
+        $ok = app(\App\Services\Backup\FtpStorageService::class)->testConnection([
+            'host' => $this->fs_ftp_host,
+            'port' => $this->fs_ftp_port,
+            'username' => $this->fs_ftp_username,
+            'password' => $this->fs_ftp_password,
+            'root_path' => $this->fs_ftp_root_path,
+            'passive' => $this->fs_ftp_passive,
+            'ssl' => $this->fs_ftp_ssl,
+        ]);
+
+        $this->fs_ftp_connection_status = $ok ? 'success' : 'failed';
+        $this->fs_ftp_connection_message = $ok ? __('backup-host.connection_success') : __('backup-host.connection_failed');
     }
 
     public function checkSshRequirements(): void
