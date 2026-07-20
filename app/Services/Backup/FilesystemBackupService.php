@@ -3,6 +3,7 @@
 namespace App\Services\Backup;
 
 use Illuminate\Support\Facades\Process;
+use App\Services\Backup\FtpStorageService;
 
 class FilesystemBackupService
 {
@@ -15,6 +16,10 @@ class FilesystemBackupService
         $sourcePath = $config['path'];
         $excludePatterns = $config['exclude_patterns'] ?? [];
         $ssh = $config['ssh'] ?? null;
+
+        if (($config['transport'] ?? 'ssh') === 'ftp') {
+            return $this->backupViaFtp($config, $sourcePath, $excludePatterns, $outputPath, $compression);
+        }
 
         if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
             return $this->backupViaSsh($ssh, $sourcePath, $excludePatterns, $outputPath, $compression);
@@ -59,6 +64,14 @@ class FilesystemBackupService
         $sourcePath = $config['path'];
         $excludePatterns = $config['exclude_patterns'] ?? [];
         $ssh = $config['ssh'] ?? null;
+
+        if (($config['transport'] ?? 'ssh') === 'ftp') {
+            $r = $this->backupViaFtp($config, $sourcePath, $excludePatterns, $outputPath, $compression);
+            $r['meta']['incremental'] = false;
+            $r['meta']['note'] = 'Incremental not available over FTP; full backup performed.';
+
+            return $r;
+        }
 
         if ($ssh && ! empty($ssh['enabled']) && ! empty($ssh['host'])) {
             return $this->incrementalBackupViaSsh($ssh, $sourcePath, $excludePatterns, $outputPath, $compression, $checkpoint);
@@ -332,6 +345,40 @@ class FilesystemBackupService
             'file_path' => $fullPath,
             'file_size' => file_exists($fullPath) ? filesize($fullPath) : 0,
             'meta' => $meta,
+        ];
+    }
+
+    /**
+     * Backup a filesystem path over FTP: mirror the remote tree down to a
+     * local staging dir, then archive with the same tar/zip logic as SSH.
+     */
+    protected function backupViaFtp(array $config, string $sourcePath, array $excludePatterns, string $outputPath, string $compression): array
+    {
+        $ftp = $config['ftp'] ?? [];
+        $localDir = rtrim($outputPath, '/').'/ftp_'.now()->format('Ymd_His');
+        @mkdir($localDir, 0755, true);
+
+        $fileCount = app(FtpStorageService::class)->mirrorDown($ftp, $sourcePath, $localDir, $excludePatterns);
+
+        $fileName = $this->generateFileName(basename(rtrim($sourcePath, '/')) ?: 'ftp', $compression);
+        $fullPath = rtrim($outputPath, '/').'/'.$fileName;
+
+        $archiveCmd = match ($compression) {
+            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localDir)).' '.escapeshellarg(basename($localDir)),
+            'zip' => 'cd '.escapeshellarg(dirname($localDir)).' && zip -r '.escapeshellarg($fullPath).' '.escapeshellarg(basename($localDir)),
+            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localDir)).' '.escapeshellarg(basename($localDir)),
+        };
+        $res = Process::timeout(3600)->run($archiveCmd);
+        Process::run('rm -rf '.escapeshellarg($localDir));
+        if (! $res->successful()) {
+            throw new \RuntimeException('FTP filesystem backup archiving failed: '.$res->errorOutput());
+        }
+
+        return [
+            'file_name' => $fileName,
+            'file_path' => $fullPath,
+            'file_size' => file_exists($fullPath) ? filesize($fullPath) : 0,
+            'meta' => ['source_path' => $sourcePath, 'exclude_patterns' => $excludePatterns, 'files_count' => $fileCount, 'via_ftp' => true],
         ];
     }
 
