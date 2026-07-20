@@ -125,6 +125,12 @@ class BackupHostForm extends Component
         $this->ssh_connection_status = null;
     }
 
+    public function updatedEnableSsh(): void
+    {
+        $this->ssh_connection_status = null;
+        $this->ssh_connection_message = '';
+    }
+
     public function rules(): array
     {
         $rules = [

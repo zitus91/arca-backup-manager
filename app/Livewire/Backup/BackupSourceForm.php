@@ -87,6 +87,20 @@ class BackupSourceForm extends Component
         }
     }
 
+    public function updatedEnableMysql(): void
+    {
+        $this->mysql_connection_status = null;
+        $this->mysql_connection_message = '';
+        $this->mysql_available_databases = [];
+    }
+
+    public function updatedEnableMongodb(): void
+    {
+        $this->mongodb_connection_status = null;
+        $this->mongodb_connection_message = '';
+        $this->mongodb_available_databases = [];
+    }
+
     protected function fillFilesystem(array $config): void
     {
         $this->fs_paths = ! empty($config['paths']) ? $config['paths'] : [''];
