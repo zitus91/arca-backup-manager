@@ -45,6 +45,7 @@ class ProcessBackupJob implements ShouldQueue
         BackupSchedulerService $schedulerService,
     ): void {
         $backupJob = BackupJob::with(['source', 'destination'])->findOrFail($this->backupJobId);
+        $backupJob->loadMissing(['source.mysqlHost', 'source.mongodbHost', 'source.filesystemHost']);
         $log = BackupLog::findOrFail($this->backupLogId);
 
         // 1. Update status to running
@@ -89,17 +90,20 @@ class ProcessBackupJob implements ShouldQueue
 
         try {
             // 2. Execute backup for each enabled source type
-            $sourceConfig = $backupJob->source->config;
-            $sharedSsh = $sourceConfig['ssh'] ?? ['enabled' => false];
+            $source = $backupJob->source;
+            $sourceConfig = $source->config;
             $results = [];
             $totalSize = 0;
             $fileNames = [];
             $incrementalCheckpoints = [];
+            $processedTypes = [];
 
-            if (isset($sourceConfig['mysql'])) {
+            if ($source->mysql_host_id) {
+                $host = $source->mysqlHost;
                 $mysqlDir = $tmpDir.'/mysql';
                 @mkdir($mysqlDir, 0755, true);
-                $mysqlConf = array_merge($sourceConfig['mysql'], ['ssh' => $sharedSsh]);
+                $mysqlConf = array_merge($host->config['mysql'] ?? [], ['ssh' => $host->sshConfig()], $sourceConfig['mysql'] ?? []);
+                $processedTypes[] = 'mysql';
                 $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mysqlConf, ['database' => $db]);
@@ -120,10 +124,12 @@ class ProcessBackupJob implements ShouldQueue
                 }
             }
 
-            if (isset($sourceConfig['mongodb'])) {
+            if ($source->mongodb_host_id) {
+                $host = $source->mongodbHost;
                 $mongoDir = $tmpDir.'/mongodb';
                 @mkdir($mongoDir, 0755, true);
-                $mongoConf = array_merge($sourceConfig['mongodb'], ['ssh' => $sharedSsh]);
+                $mongoConf = array_merge($host->config['mongodb'] ?? [], ['ssh' => $host->sshConfig()], $sourceConfig['mongodb'] ?? []);
+                $processedTypes[] = 'mongodb';
                 $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
                 foreach ($databases as $db) {
                     $singleConf = array_merge($mongoConf, ['database' => $db]);
@@ -144,14 +150,16 @@ class ProcessBackupJob implements ShouldQueue
                 }
             }
 
-            if (isset($sourceConfig['filesystem'])) {
+            if ($source->filesystem_host_id) {
+                $host = $source->filesystemHost;
                 $fsDir = $tmpDir.'/filesystem';
                 @mkdir($fsDir, 0755, true);
-                $fsConf = $sourceConfig['filesystem'];
+                $fsConf = array_merge($host->config['filesystem'] ?? [], ['ssh' => $host->sshConfig()], $sourceConfig['filesystem'] ?? []);
+                $processedTypes[] = 'filesystem';
                 $paths = $fsConf['paths'] ?? (isset($fsConf['path']) ? [$fsConf['path']] : []);
                 $excludePatterns = $fsConf['exclude_patterns'] ?? [];
                 foreach ($paths as $path) {
-                    $singleConf = ['path' => $path, 'exclude_patterns' => $excludePatterns, 'ssh' => $sharedSsh];
+                    $singleConf = ['path' => $path, 'exclude_patterns' => $excludePatterns, 'ssh' => $fsConf['ssh']];
                     $fsCheckpoint = $checkpoint['filesystem'][$path] ?? ($checkpoint['filesystem'] ?? null);
 
                     if ($isIncremental) {
@@ -199,7 +207,7 @@ class ProcessBackupJob implements ShouldQueue
                     'file_name' => $packageName,
                     'file_size' => filesize($packagePath),
                     'meta' => [
-                        'types' => array_keys(array_intersect_key($sourceConfig, array_flip(['mysql', 'mongodb', 'filesystem']))),
+                        'types' => $processedTypes,
                         'files' => $fileNames,
                     ],
                 ];

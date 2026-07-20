@@ -24,7 +24,7 @@ it('logs in with valid credentials', function () {
         ->set('email', 'admin@example.com')
         ->set('password', 'correct-password')
         ->call('login')
-        ->assertRedirect(route('admin.backup.dashboard'));
+        ->assertRedirect(route('backup.dashboard'));
 
     expect(auth()->check())->toBeTrue();
     expect(auth()->id())->toBe($user->id);
@@ -104,7 +104,7 @@ it('clears rate limit on successful login', function () {
     $component
         ->set('password', 'correct-password')
         ->call('login')
-        ->assertRedirect(route('admin.backup.dashboard'));
+        ->assertRedirect(route('backup.dashboard'));
 
     expect(auth()->check())->toBeTrue();
 });

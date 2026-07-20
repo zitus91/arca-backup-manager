@@ -6,6 +6,7 @@ use App\Trait\HasCache;
 use App\Trait\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BackupSource extends Model
@@ -14,6 +15,9 @@ class BackupSource extends Model
 
     protected $fillable = [
         'user_id',
+        'mysql_host_id',
+        'mongodb_host_id',
+        'filesystem_host_id',
         'name',
         'config',
         'is_active',
@@ -28,6 +32,21 @@ class BackupSource extends Model
     }
 
     // ── Relationships ──────────────────────────────────────────
+
+    public function mysqlHost(): BelongsTo
+    {
+        return $this->belongsTo(BackupHost::class, 'mysql_host_id');
+    }
+
+    public function mongodbHost(): BelongsTo
+    {
+        return $this->belongsTo(BackupHost::class, 'mongodb_host_id');
+    }
+
+    public function filesystemHost(): BelongsTo
+    {
+        return $this->belongsTo(BackupHost::class, 'filesystem_host_id');
+    }
 
     public function backupJobs(): HasMany
     {

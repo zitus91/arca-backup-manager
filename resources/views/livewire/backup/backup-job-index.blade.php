@@ -144,7 +144,7 @@
                             </td>
                             <td>
                                 <div class="flex items-center justify-end gap-1">
-                                    <a href="{{ route('admin.backup.jobs.show', $job->id) }}"
+                                    <a href="{{ route('backup.jobs.show', $job->id) }}"
                                        class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-base-content tooltip tooltip-left"
                                        data-tip="{{ __('backup-job.view_summary') }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">

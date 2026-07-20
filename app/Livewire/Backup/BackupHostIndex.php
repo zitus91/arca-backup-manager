@@ -3,34 +3,22 @@
 namespace App\Livewire\Backup;
 
 use App\Models\AuditLog;
+use App\Models\BackupHost;
 use App\Models\BackupSource;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 #[Layout('components.layouts.admin')]
-class BackupSourceIndex extends Component
+class BackupHostIndex extends Component
 {
-    use WithPagination;
-
-    public string $filterType = '';
-
     public string $filterStatus = '';
 
     public bool $showForm = false;
 
     public ?int $editId = null;
 
-    public function updatedFilterType(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatedFilterStatus(): void
-    {
-        $this->resetPage();
-    }
+    public ?int $confirmingDeleteId = null;
 
     public function openCreate(): void
     {
@@ -50,14 +38,12 @@ class BackupSourceIndex extends Component
         $this->editId = null;
     }
 
-    #[On('source-saved')]
-    public function onSourceSaved(): void
+    #[On('host-saved')]
+    public function onHostSaved(): void
     {
         $this->closeForm();
-        session()->flash('message', __('backup-source.saved'));
+        session()->flash('message', __('backup-host.saved'));
     }
-
-    public ?int $confirmingDeleteId = null;
 
     public function confirmDelete(int $id): void
     {
@@ -80,29 +66,32 @@ class BackupSourceIndex extends Component
 
     public function delete(int $id): void
     {
-        $source = BackupSource::findOrFail($id);
-        AuditLog::record('deleted', "Deleted backup source: {$source->name}", $source);
-        $source->delete();
-        session()->flash('message', __('backup-source.deleted'));
+        $host = BackupHost::findOrFail($id);
+        AuditLog::record('deleted', "Deleted backup host: {$host->name}", $host);
+        $host->delete();
+        session()->flash('message', __('backup-host.deleted'));
     }
 
     public function render()
     {
-        $query = BackupSource::query()->with(['mysqlHost', 'mongodbHost', 'filesystemHost']);
+        $query = BackupHost::query();
 
         if ($this->filterStatus !== '') {
             $query->where('is_active', $this->filterStatus === 'active');
         }
 
-        $sources = $query->latest()->get();
+        $hosts = $query->latest()->get();
 
-        // Filter by type in PHP (config is encrypted, can't query SQL)
-        if ($this->filterType) {
-            $sources = $sources->filter(fn ($s) => $s->hasType($this->filterType));
-        }
+        $sourceCounts = BackupSource::query()
+            ->selectRaw('mysql_host_id, mongodb_host_id, filesystem_host_id')
+            ->get()
+            ->flatMap(fn ($s) => array_filter([$s->mysql_host_id, $s->mongodb_host_id, $s->filesystem_host_id]))
+            ->countBy();
 
-        return view('livewire.backup.backup-source-index', [
-            'sources' => $sources,
+        $hosts->each(fn ($h) => $h->usage_count = (int) ($sourceCounts[$h->id] ?? 0));
+
+        return view('livewire.backup.backup-host-index', [
+            'hosts' => $hosts,
         ]);
     }
 }

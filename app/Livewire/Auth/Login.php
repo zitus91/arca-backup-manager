@@ -60,7 +60,7 @@ class Login extends Component
 
         Log::info('[Login] Successful login', ['email' => $this->email]);
 
-        $this->redirectIntended(route('admin.backup.dashboard'), navigate: false);
+        $this->redirectIntended(route('backup.dashboard'), navigate: false);
     }
 
     public function render()

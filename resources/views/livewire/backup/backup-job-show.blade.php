@@ -3,7 +3,7 @@
     {{-- Page Header --}}
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div class="flex items-center gap-3">
-            <a href="{{ route('admin.backup.jobs') }}"
+            <a href="{{ route('backup.jobs') }}"
                class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/50 hover:text-base-content">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
@@ -268,7 +268,7 @@
                                     </div>
                                     <div class="flex items-center gap-1 flex-shrink-0">
                                         @if ($locked->storage_path)
-                                            <a href="{{ route('admin.backup.logs.download', $locked->id) }}"
+                                            <a href="{{ route('backup.logs.download', $locked->id) }}"
                                                class="btn btn-ghost btn-xs btn-square rounded-lg text-info/70 tooltip tooltip-left"
                                                data-tip="{{ __('backup-job-show.action_download') }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
@@ -424,7 +424,7 @@
                                             @endif
                                             {{-- Download --}}
                                             @if ($log->status === 'success' && $log->storage_path)
-                                                <a href="{{ route('admin.backup.logs.download', $log->id) }}"
+                                                <a href="{{ route('backup.logs.download', $log->id) }}"
                                                    class="btn btn-ghost btn-xs btn-square rounded-lg text-info/80 hover:text-info hover:bg-info/10 tooltip tooltip-left"
                                                    data-tip="{{ __('backup-job-show.action_download') }}">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -672,7 +672,7 @@
                     </button>
                     @endif
                     @if ($detailLog->status === 'success' && $detailLog->storage_path)
-                        <a href="{{ route('admin.backup.logs.download', $detailLog) }}" class="btn btn-primary btn-sm rounded-xl gap-2" target="_blank">
+                        <a href="{{ route('backup.logs.download', $detailLog) }}" class="btn btn-primary btn-sm rounded-xl gap-2" target="_blank">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                             {{ __('backup-log.download') }}
                         </a>

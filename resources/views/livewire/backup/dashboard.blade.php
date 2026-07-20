@@ -171,7 +171,7 @@
     <div>
         <div class="flex items-center justify-between mb-3 px-1">
             <h2 class="text-sm font-semibold tracking-tight">{{ __('backup-dashboard.jobs_health') }}</h2>
-            <a href="{{ route('admin.backup.jobs') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.manage') }}</a>
+            <a href="{{ route('backup.jobs') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.manage') }}</a>
         </div>
 
         @if ($this->jobsHealth->isEmpty())
@@ -185,7 +185,7 @@
                         $lastLog = $job->latestLog;
                         $status = $lastLog?->status ?? 'unknown';
                     @endphp
-                    <a href="{{ route('admin.backup.jobs.show', $job) }}" class="flex items-center gap-4 px-4 py-3 hover:bg-base-200/40 transition-colors group {{ !$job->is_active ? 'opacity-50' : '' }}">
+                    <a href="{{ route('backup.jobs.show', $job) }}" class="flex items-center gap-4 px-4 py-3 hover:bg-base-200/40 transition-colors group {{ !$job->is_active ? 'opacity-50' : '' }}">
                         <div class="flex-shrink-0">
                             @if ($status === 'running')
                                 <span class="relative flex h-2.5 w-2.5">
@@ -233,7 +233,7 @@
             <div class="card-body p-5">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-sm font-semibold">{{ __('backup-dashboard.storage_breakdown') }}</h2>
-                    <a href="{{ route('admin.backup.destinations') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.manage') }}</a>
+                    <a href="{{ route('backup.destinations') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.manage') }}</a>
                 </div>
 
                 @if (empty($this->storageBreakdown))
@@ -278,7 +278,7 @@
             <div class="card-body p-5">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-sm font-semibold">{{ __('backup-dashboard.recent_logs') }}</h2>
-                    <a href="{{ route('admin.backup.logs') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.view_all') }}</a>
+                    <a href="{{ route('backup.logs') }}" class="text-[11px] text-primary hover:underline font-medium">{{ __('backup-dashboard.view_all') }}</a>
                 </div>
 
                 <div class="overflow-x-auto -mx-2">
@@ -321,7 +321,7 @@
                                     <td class="text-[11px] text-base-content/40 tabular-nums whitespace-nowrap pr-2">
                                         {{ $log->started_at->diffForHumans() }}
                                         @if ($log->status === 'success' && $log->storage_path)
-                                            <a href="{{ route('admin.backup.logs.download', $log) }}" class="inline-flex ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80" target="_blank">
+                                            <a href="{{ route('backup.logs.download', $log) }}" class="inline-flex ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80" target="_blank">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                             </a>
                                         @endif

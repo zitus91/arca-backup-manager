@@ -73,6 +73,17 @@ return [
     'save' => 'Save',
     'update' => 'Update',
 
+    // Remote Host (SSH)
+    'remote_host' => 'Remote Host (SSH)',
+    'remote_host_hint' => 'Optional. Select a saved host to tunnel through SSH.',
+    'host_none' => 'None (direct connection)',
+    'host_new' => 'New host',
+    'mysql_host_select' => 'MySQL Host',
+    'mongodb_host_select' => 'MongoDB Host',
+    'filesystem_host_select' => 'Filesystem Host',
+    'load_databases' => 'Load Databases',
+    'no_host_for_type' => 'Select a host first',
+
     // Shared SSH Tunnel
     'ssh_tunnel' => 'SSH Tunnel',
     'ssh_tunnel_hint' => 'SSH connection used for all source types in this package (databases and filesystem)',

@@ -6,6 +6,7 @@ use App\Livewire\Admin\SystemDashboard;
 use App\Livewire\Admin\UserIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Backup\AuditLogIndex;
+use App\Livewire\Backup\BackupHostIndex;
 use App\Livewire\Backup\BackupJobIndex;
 use App\Livewire\Backup\BackupJobShow;
 use App\Livewire\Backup\BackupLogIndex;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('admin.backup.dashboard');
+    return redirect()->route('backup.dashboard');
 });
 
 // Authentication
@@ -33,12 +34,13 @@ Route::post('/logout', function () {
     return redirect()->route('login');
 })->middleware('auth')->name('logout');
 
-// Admin Backup Manager routes (protected)
-Route::prefix('admin/backup')->name('admin.backup.')->middleware('auth')->group(function () {
+// Backup Manager routes (operational, protected)
+Route::prefix('backup')->name('backup.')->middleware('auth')->group(function () {
     Route::get('/', Dashboard::class)->name('dashboard');
     Route::get('/jobs', BackupJobIndex::class)->name('jobs');
     Route::get('/jobs/{job}', BackupJobShow::class)->name('jobs.show');
     Route::get('/sources', BackupSourceIndex::class)->name('sources');
+    Route::get('/hosts', BackupHostIndex::class)->name('hosts');
     Route::get('/destinations', StorageDestinationIndex::class)->name('destinations');
     Route::get('/logs', BackupLogIndex::class)->name('logs');
     Route::get('/logs/{log}/download', BackupLogDownloadController::class)->name('logs.download');
@@ -55,10 +57,10 @@ Route::prefix('admin/backup')->name('admin.backup.')->middleware('auth')->group(
 
         return back();
     })->name('locale');
+});
 
-    // Admin-only
-    Route::middleware('admin')->group(function () {
-        Route::get('/system', SystemDashboard::class)->name('system');
-        Route::get('/users', UserIndex::class)->name('users');
-    });
+// Admin routes (true admin, protected)
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/system', SystemDashboard::class)->name('system');
+    Route::get('/users', UserIndex::class)->name('users');
 });

@@ -3,6 +3,7 @@
 use App\Events\Backup\BackupJobCompleted;
 use App\Events\Backup\BackupJobStarted;
 use App\Jobs\Backup\ProcessBackupJob;
+use App\Models\BackupHost;
 use App\Models\BackupJob;
 use App\Models\BackupLog;
 use App\Models\BackupSource;
@@ -16,7 +17,8 @@ it('processes a backup job successfully', function () {
     Event::fake();
     Mail::fake();
 
-    $source = BackupSource::factory()->mysql()->create();
+    $mysqlHost = BackupHost::factory()->withMysql()->create();
+    $source = BackupSource::factory()->mysql()->create(['mysql_host_id' => $mysqlHost->id]);
     $dest = BackupStorageDestination::factory()->s3()->create();
     $job = BackupJob::factory()->create([
         'backup_source_id' => $source->id,
@@ -70,7 +72,8 @@ it('handles backup job failure', function () {
     Event::fake();
     Mail::fake();
 
-    $source = BackupSource::factory()->mysql()->create();
+    $mysqlHost = BackupHost::factory()->withMysql()->create();
+    $source = BackupSource::factory()->mysql()->create(['mysql_host_id' => $mysqlHost->id]);
     $dest = BackupStorageDestination::factory()->s3()->create();
     $job = BackupJob::factory()->create([
         'backup_source_id' => $source->id,
@@ -110,7 +113,8 @@ it('handles backup job failure', function () {
 it('updates next_run_at after execution', function () {
     Event::fake();
 
-    $source = BackupSource::factory()->mysql()->create();
+    $mysqlHost = BackupHost::factory()->withMysql()->create();
+    $source = BackupSource::factory()->mysql()->create(['mysql_host_id' => $mysqlHost->id]);
     $dest = BackupStorageDestination::factory()->s3()->create();
     $job = BackupJob::factory()->daily()->create([
         'backup_source_id' => $source->id,
