@@ -47,8 +47,13 @@
                 </div>
             @endif
 
-            <div class="grid grid-cols-2 gap-3 pt-1">
-                <div class="form-control col-span-2 sm:col-span-1">
+            <div class="grid grid-cols-3 gap-3 pt-1">
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ssh_user') }}</span></label>
+                    <input type="text" wire:model="ssh_user" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" placeholder="ubuntu" />
+                    @error('ssh_user') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                </div>
+                <div class="form-control">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ssh_host') }}</span></label>
                     <input type="text" wire:model="ssh_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" placeholder="ssh.server.com" />
                     @error('ssh_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
@@ -57,11 +62,6 @@
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ssh_port') }}</span></label>
                     <input type="number" wire:model="ssh_port" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
                     @error('ssh_port') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
-                </div>
-                <div class="form-control col-span-2 flex justify-between px-1">
-                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ssh_user') }}</span></label>
-                    <input type="text" wire:model="ssh_user" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" placeholder="ubuntu" />
-                    @error('ssh_user') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                 </div>
 
                 {{-- Auth method toggle --}}
@@ -90,13 +90,13 @@
                 </div>
 
                 @if ($ssh_auth_method === 'key')
-                    <div class="form-control col-span-2 flex justify-between px-1">
+                    <div class="form-control ">
                         <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ssh_key_path') }}</span></label>
                         <input type="text" wire:model="ssh_key_path" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" placeholder="/home/user/.ssh/id_rsa" />
                         @error('ssh_key_path') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                     </div>
                 @else
-                    <div class="form-control col-span-2 flex justify-between px-1">
+                    <div class="form-control">
                         <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.ssh_password') }}</span></label>
                         <input type="password" wire:model="ssh_password" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
                         @error('ssh_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
