@@ -358,7 +358,12 @@ class FilesystemBackupService
         $localDir = rtrim($outputPath, '/').'/ftp_'.now()->format('Ymd_His');
         @mkdir($localDir, 0755, true);
 
-        $fileCount = app(FtpStorageService::class)->mirrorDown($ftp, $sourcePath, $localDir, $excludePatterns);
+        try {
+            $fileCount = app(FtpStorageService::class)->mirrorDown($ftp, $sourcePath, $localDir, $excludePatterns);
+        } catch (\Throwable $e) {
+            Process::run('rm -rf '.escapeshellarg($localDir));
+            throw $e;
+        }
 
         $fileName = $this->generateFileName(basename(rtrim($sourcePath, '/')) ?: 'ftp', $compression);
         $fullPath = rtrim($outputPath, '/').'/'.$fileName;
