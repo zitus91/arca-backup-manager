@@ -8,10 +8,13 @@ use App\Models\BackupJob;
 use App\Models\BackupLog;
 use App\Models\BackupSource;
 use App\Models\BackupStorageDestination;
+use App\Services\Backup\FtpStorageService;
 use App\Services\Backup\MysqlBackupService;
 use App\Services\Backup\S3StorageService;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 it('processes a backup job successfully', function () {
     Event::fake();
@@ -151,4 +154,58 @@ it('updates next_run_at after execution', function () {
     $job->refresh();
     expect($job->last_run_at)->not->toBeNull();
     expect($job->next_run_at)->not->toBeNull();
+});
+
+it('backs up a filesystem source over ftp when the host transport is ftp', function () {
+    Event::fake();
+    Mail::fake();
+
+    $remote = sys_get_temp_dir().'/pbj_ftp_src_'.uniqid();
+    File::ensureDirectoryExists($remote);
+    File::put($remote.'/one.txt', 'x');
+
+    app()->bind(FtpStorageService::class, fn () => new class($remote) extends FtpStorageService {
+        public function __construct(public string $root) {}
+
+        public function disk(array $config): \Illuminate\Contracts\Filesystem\Filesystem
+        {
+            return Storage::build(['driver' => 'local', 'root' => $this->root]);
+        }
+    });
+
+    $ftpHost = BackupHost::factory()->withFtpFilesystem()->create();
+    $source = BackupSource::factory()->filesystem()->create([
+        'filesystem_host_id' => $ftpHost->id,
+        'config' => ['filesystem' => ['paths' => ['/'], 'exclude_patterns' => []]],
+    ]);
+    $dest = BackupStorageDestination::factory()->s3()->create();
+    $job = BackupJob::factory()->create([
+        'backup_source_id' => $source->id,
+        'backup_storage_destination_id' => $dest->id,
+        'compression' => 'gzip',
+    ]);
+    $log = BackupLog::factory()->pending()->create([
+        'backup_job_id' => $job->id,
+        'started_at' => now(),
+    ]);
+
+    $mockS3 = \Mockery::mock(S3StorageService::class);
+    $mockS3->shouldReceive('upload')->once()->andReturn('backups/test/fs.tar.gz');
+    $mockS3->shouldReceive('delete')->andReturn(true);
+
+    $processJob = new ProcessBackupJob($job->id, $log->id);
+    $processJob->handle(
+        app(\App\Services\Backup\MysqlBackupService::class),
+        app(\App\Services\Backup\MongodbBackupService::class),
+        app(\App\Services\Backup\FilesystemBackupService::class),
+        $mockS3,
+        app(FtpStorageService::class),
+        app(\App\Services\Backup\BackupSchedulerService::class),
+    );
+
+    $log->refresh();
+    expect($log->status)->toBe('success');
+    expect($log->file_size_bytes)->toBeGreaterThan(0);
+
+    File::deleteDirectory($remote);
 });

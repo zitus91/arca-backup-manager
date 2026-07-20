@@ -159,7 +159,13 @@ class ProcessBackupJob implements ShouldQueue
                 $paths = $fsConf['paths'] ?? (isset($fsConf['path']) ? [$fsConf['path']] : []);
                 $excludePatterns = $fsConf['exclude_patterns'] ?? [];
                 foreach ($paths as $path) {
-                    $singleConf = ['path' => $path, 'exclude_patterns' => $excludePatterns, 'ssh' => $fsConf['ssh']];
+                    $singleConf = [
+                        'path' => $path,
+                        'exclude_patterns' => $excludePatterns,
+                        'ssh' => $fsConf['ssh'],
+                        'transport' => $host->filesystemTransport(),
+                        'ftp' => $host->filesystemFtpConfig() ?? [],
+                    ];
                     $fsCheckpoint = $checkpoint['filesystem'][$path] ?? ($checkpoint['filesystem'] ?? null);
 
                     if ($isIncremental) {

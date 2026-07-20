@@ -199,14 +199,22 @@ class ProcessRestoreJob implements ShouldQueue
                     }
 
                     foreach ($paths as $path) {
-                        $singleConf = ['path' => $path, 'exclude_patterns' => $fsConf['exclude_patterns'] ?? [], 'ssh' => $fsConf['ssh']];
+                        $singleConf = [
+                            'path' => $path,
+                            'exclude_patterns' => $fsConf['exclude_patterns'] ?? [],
+                            'ssh' => $fsConf['ssh'],
+                            'transport' => $filesystemHost->filesystemTransport(),
+                            'ftp' => $filesystemHost->filesystemFtpConfig() ?? [],
+                        ];
 
-                        // same_host keeps the source host's ssh (set above); remote_host
-                        // uses the override, or no tunnel when none is given.
+                        // same_host keeps the source host's ssh/ftp transport (set above); remote_host
+                        // uses the override, or no tunnel when none is given, and never pushes to the
+                        // source's own FTP host.
                         if ($restoreTarget === 'remote_host') {
                             $singleConf['ssh'] = ! empty($remoteHostConfig['filesystem'])
                                 ? $remoteHostConfig['filesystem']
                                 : ['enabled' => false];
+                            $singleConf['transport'] = 'ssh';
                         }
 
                         // Get custom target path if specified
