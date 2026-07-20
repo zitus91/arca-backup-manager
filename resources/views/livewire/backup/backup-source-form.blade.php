@@ -96,7 +96,7 @@
                                 <option value="{{ $host->id }}">{{ $host->name }}</option>
                             @endforeach
                         </select>
-                        <a href="{{ route('admin.backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-primary rounded-lg gap-1 whitespace-nowrap">
+                        <a href="{{ route('backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-primary rounded-lg gap-1 whitespace-nowrap">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             {{ __('backup-source.host_new') }}
                         </a>
@@ -190,7 +190,7 @@
                                 <option value="{{ $host->id }}">{{ $host->name }}</option>
                             @endforeach
                         </select>
-                        <a href="{{ route('admin.backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-success rounded-lg gap-1 whitespace-nowrap">
+                        <a href="{{ route('backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-success rounded-lg gap-1 whitespace-nowrap">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             {{ __('backup-source.host_new') }}
                         </a>
@@ -291,7 +291,7 @@
                                 <option value="{{ $host->id }}">{{ $host->name }}</option>
                             @endforeach
                         </select>
-                        <a href="{{ route('admin.backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-warning rounded-lg gap-1 whitespace-nowrap">
+                        <a href="{{ route('backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-warning rounded-lg gap-1 whitespace-nowrap">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             {{ __('backup-source.host_new') }}
                         </a>

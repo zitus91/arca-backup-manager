@@ -17,15 +17,15 @@ function standard(): User
 it('blocks standard users from admin-only pages', function () {
     $this->actingAs(standard());
 
-    $this->get(route('admin.backup.system'))->assertForbidden();
-    $this->get(route('admin.backup.users'))->assertForbidden();
+    $this->get(route('admin.system'))->assertForbidden();
+    $this->get(route('admin.users'))->assertForbidden();
 });
 
 it('allows admins into admin-only pages', function () {
     $this->actingAs(admin());
 
-    $this->get(route('admin.backup.system'))->assertOk();
-    $this->get(route('admin.backup.users'))->assertOk();
+    $this->get(route('admin.system'))->assertOk();
+    $this->get(route('admin.users'))->assertOk();
 });
 
 it('isAdmin reflects the role column', function () {
@@ -37,7 +37,7 @@ it('stores a language preference and switches the session locale', function () {
     $user = standard();
     $this->actingAs($user);
 
-    $this->post(route('admin.backup.locale'), ['locale' => 'it'])->assertRedirect();
+    $this->post(route('backup.locale'), ['locale' => 'it'])->assertRedirect();
 
     expect($user->fresh()->locale)->toBe('it');
     expect(session('locale'))->toBe('it');
@@ -47,7 +47,7 @@ it('ignores an unsupported locale', function () {
     $user = standard();
     $this->actingAs($user);
 
-    $this->post(route('admin.backup.locale'), ['locale' => 'de']);
+    $this->post(route('backup.locale'), ['locale' => 'de']);
 
     expect($user->fresh()->locale)->toBeNull();
 });
