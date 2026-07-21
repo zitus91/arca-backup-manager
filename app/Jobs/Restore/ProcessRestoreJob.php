@@ -114,7 +114,7 @@ class ProcessRestoreJob implements ShouldQueue
                 // 4. Restore MySQL if applicable
                 if (in_array($restoreType, ['db_only', 'full']) && $source->mysql_host_id) {
                     $mysqlHost = $source->mysqlHost;
-                    $mysqlConf = array_merge($mysqlHost->config['mysql'] ?? [], ['ssh' => $mysqlHost->sshConfig()], $sourceConfig['mysql'] ?? []);
+                    $mysqlConf = array_merge($mysqlHost->config['mysql'] ?? [], ['ssh' => $mysqlHost->usesSshFor('mysql') ? $mysqlHost->sshConfig() : ['enabled' => false]], $sourceConfig['mysql'] ?? []);
                     $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
 
                     // Filter by selected items if specified
@@ -153,7 +153,7 @@ class ProcessRestoreJob implements ShouldQueue
                 // 5. Restore MongoDB if applicable
                 if (in_array($restoreType, ['db_only', 'full']) && $source->mongodb_host_id) {
                     $mongodbHost = $source->mongodbHost;
-                    $mongoConf = array_merge($mongodbHost->config['mongodb'] ?? [], ['ssh' => $mongodbHost->sshConfig()], $sourceConfig['mongodb'] ?? []);
+                    $mongoConf = array_merge($mongodbHost->config['mongodb'] ?? [], ['ssh' => $mongodbHost->usesSshFor('mongodb') ? $mongodbHost->sshConfig() : ['enabled' => false]], $sourceConfig['mongodb'] ?? []);
                     $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
 
                     // Filter by selected items if specified

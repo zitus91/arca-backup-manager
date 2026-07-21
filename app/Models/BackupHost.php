@@ -44,6 +44,15 @@ class BackupHost extends Model
         return $this->config['ssh'] ?? ['enabled' => false];
     }
 
+    public function usesSshFor(string $type): bool
+    {
+        if (empty($this->sshConfig()['enabled'])) {
+            return false;
+        }
+
+        return (bool) ($this->config[$type]['use_ssh'] ?? true);
+    }
+
     public function filesystemTransport(): string
     {
         return $this->config['filesystem']['transport'] ?? 'ssh';

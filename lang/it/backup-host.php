@@ -54,6 +54,8 @@ return [
     'mongodb_port' => 'Porta MongoDB',
     'mongodb_user' => 'Utente MongoDB',
     'mongodb_password' => 'Password MongoDB',
+    'use_ssh_tunnel' => 'Usa tunnel SSH',
+    'use_ssh_tunnel_hint' => 'Disabilita se questo database è raggiungibile direttamente e l\'SSH dell\'host serve solo per altri servizi (es. filesystem).',
     'test_connection' => 'Prova connessione',
     'connection_success' => 'Connessione riuscita',
     'connection_failed' => 'Connessione fallita',

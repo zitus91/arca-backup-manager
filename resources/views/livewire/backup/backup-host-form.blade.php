@@ -160,6 +160,14 @@
                     </div>
                 </div>
 
+                @if ($enable_ssh)
+                    <label class="flex items-center gap-3 cursor-pointer pt-1">
+                        <input type="checkbox" wire:model.live="mysql_use_ssh" class="toggle toggle-sm toggle-primary" />
+                        <span class="text-sm">{{ __('backup-host.use_ssh_tunnel') }}</span>
+                    </label>
+                    <p class="text-[10px] text-base-content/40">{{ __('backup-host.use_ssh_tunnel_hint') }}</p>
+                @endif
+
                 <div class="pt-2 border-t border-primary/10">
                     <button type="button" wire:click="testMysqlConnection" class="btn btn-sm btn-outline btn-primary rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testMysqlConnection">
                         <span wire:loading wire:target="testMysqlConnection" class="loading loading-spinner loading-xs"></span>
@@ -215,6 +223,14 @@
                         @error('mongodb_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                     </div>
                 </div>
+
+                @if ($enable_ssh)
+                    <label class="flex items-center gap-3 cursor-pointer pt-1">
+                        <input type="checkbox" wire:model.live="mongodb_use_ssh" class="toggle toggle-sm toggle-success" />
+                        <span class="text-sm">{{ __('backup-host.use_ssh_tunnel') }}</span>
+                    </label>
+                    <p class="text-[10px] text-base-content/40">{{ __('backup-host.use_ssh_tunnel_hint') }}</p>
+                @endif
 
                 <div class="pt-2 border-t border-success/10">
                     <button type="button" wire:click="testMongoConnection" class="btn btn-sm btn-outline btn-success rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testMongoConnection">

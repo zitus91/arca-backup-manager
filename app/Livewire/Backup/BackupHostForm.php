@@ -54,6 +54,8 @@ class BackupHostForm extends Component
 
     public string $mysql_connection_message = '';
 
+    public bool $mysql_use_ssh = true;
+
     // MongoDB service
     public bool $enable_mongodb = false;
 
@@ -70,6 +72,8 @@ class BackupHostForm extends Component
     public ?string $mongodb_connection_status = null;
 
     public string $mongodb_connection_message = '';
+
+    public bool $mongodb_use_ssh = true;
 
     // Filesystem capability
     public bool $enable_filesystem = false;
@@ -122,6 +126,7 @@ class BackupHostForm extends Component
                 $this->mysql_port = (int) ($mysql['port'] ?? 3306);
                 $this->mysql_user = $mysql['username'] ?? ($mysql['user'] ?? 'root');
                 $this->mysql_password = $mysql['password'] ?? '';
+                $this->mysql_use_ssh = $mysql['use_ssh'] ?? true;
             }
 
             $this->enable_mongodb = isset($cfg['mongodb']);
@@ -131,6 +136,7 @@ class BackupHostForm extends Component
                 $this->mongodb_port = (int) ($mongodb['port'] ?? 27017);
                 $this->mongodb_user = $mongodb['username'] ?? ($mongodb['user'] ?? '');
                 $this->mongodb_password = $mongodb['password'] ?? '';
+                $this->mongodb_use_ssh = $mongodb['use_ssh'] ?? true;
             }
 
             $this->enable_filesystem = ! empty($cfg['filesystem']['enabled']);
@@ -246,6 +252,7 @@ class BackupHostForm extends Component
                 'port' => $this->mysql_port,
                 'username' => $this->mysql_user,
                 'password' => $this->mysql_password,
+                'use_ssh' => $this->mysql_use_ssh,
             ];
         }
 
@@ -255,6 +262,7 @@ class BackupHostForm extends Component
                 'port' => $this->mongodb_port,
                 'username' => $this->mongodb_user,
                 'password' => $this->mongodb_password,
+                'use_ssh' => $this->mongodb_use_ssh,
             ];
         }
 
@@ -441,7 +449,7 @@ class BackupHostForm extends Component
                 $this->mysql_available_databases = array_values(array_diff($allDatabases, $systemDbs));
             };
 
-            $sshConfig = $this->sshConfigArrayForTest();
+            $sshConfig = $this->mysql_use_ssh ? $this->sshConfigArrayForTest() : null;
             if ($sshConfig) {
                 app(SshTunnelService::class)->withTunnel(
                     $sshConfig,
@@ -528,7 +536,7 @@ class BackupHostForm extends Component
                 }
             };
 
-            $sshConfig = $this->sshConfigArrayForTest();
+            $sshConfig = $this->mongodb_use_ssh ? $this->sshConfigArrayForTest() : null;
             if ($sshConfig) {
                 app(SshTunnelService::class)->withTunnel(
                     $sshConfig,
