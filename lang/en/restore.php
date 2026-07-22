@@ -82,6 +82,7 @@ return [
     // Remote config
     'remote_config' => 'Remote Host Configuration',
     'remote_mysql_config' => 'MySQL Connection',
+    'remote_postgres_config' => 'PostgreSQL Connection',
     'remote_mongodb_config' => 'MongoDB Connection',
     'remote_filesystem_config' => 'SSH Connection (Filesystem)',
     'remote_host' => 'Host',
@@ -120,6 +121,7 @@ return [
 
     // Validation
     'remote_mysql_required' => 'Please provide MySQL remote host connection details.',
+    'remote_postgres_required' => 'Please provide PostgreSQL remote host connection details.',
     'remote_mongodb_required' => 'Please provide MongoDB remote host connection details.',
     'remote_filesystem_required' => 'Please provide SSH connection details for filesystem restore.',
 

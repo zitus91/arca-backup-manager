@@ -11,6 +11,7 @@ use App\Services\Backup\S3StorageService;
 use App\Services\Restore\FilesystemRestoreService;
 use App\Services\Restore\MongodbRestoreService;
 use App\Services\Restore\MysqlRestoreService;
+use App\Services\Restore\PostgresRestoreService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,6 +34,7 @@ class ProcessRestoreJob implements ShouldQueue
 
     public function handle(
         MysqlRestoreService $mysqlRestore,
+        PostgresRestoreService $postgresRestore,
         MongodbRestoreService $mongodbRestore,
         FilesystemRestoreService $filesystemRestore,
         S3StorageService $s3Service,
@@ -40,6 +42,7 @@ class ProcessRestoreJob implements ShouldQueue
     ): void {
         $restoreLog = RestoreLog::with([
             'backupLog.job.source.mysqlHost',
+            'backupLog.job.source.postgresHost',
             'backupLog.job.source.mongodbHost',
             'backupLog.job.source.filesystemHost',
             'backupLog.job.destination',
@@ -150,7 +153,44 @@ class ProcessRestoreJob implements ShouldQueue
                     }
                 }
 
-                // 5. Restore MongoDB if applicable
+                // 5. Restore PostgreSQL if applicable
+                if (in_array($restoreType, ['db_only', 'full']) && $source->postgres_host_id) {
+                    $postgresHost = $source->postgresHost;
+                    $postgresConf = array_merge($postgresHost->config['postgres'] ?? [], ['ssh' => $postgresHost->usesSshFor('postgres') ? $postgresHost->sshConfig() : ['enabled' => false]], $sourceConfig['postgres'] ?? []);
+                    $databases = $postgresConf['databases'] ?? (isset($postgresConf['database']) ? [$postgresConf['database']] : []);
+
+                    // Filter by selected items if specified
+                    if (! empty($selectedItems['postgres_databases'])) {
+                        $databases = array_intersect($databases, $selectedItems['postgres_databases']);
+                    }
+
+                    foreach ($databases as $db) {
+                        $singleConf = array_merge($postgresConf, ['database' => $db]);
+
+                        // See MySQL block: never carry the source host's ssh into a
+                        // remote_host restore without an explicit override.
+                        if ($restoreTarget === 'remote_host') {
+                            if (! empty($remoteHostConfig['postgres'])) {
+                                $singleConf = array_merge($singleConf, $remoteHostConfig['postgres']);
+                            } else {
+                                $singleConf['ssh'] = ['enabled' => false];
+                            }
+                        }
+
+                        // Get custom target name if specified
+                        $targetDbName = $customNames['databases'][$db] ?? null;
+
+                        $dumpFile = $this->findPostgresDump($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+
+                        if ($dumpFile) {
+                            $r = $postgresRestore->restore($singleConf, $dumpFile, $targetDbName, $stepOverride);
+                            $results[] = $r;
+                            $restoredDbNames[] = $r['restored_db_name'];
+                        }
+                    }
+                }
+
+                // 6. Restore MongoDB if applicable
                 if (in_array($restoreType, ['db_only', 'full']) && $source->mongodb_host_id) {
                     $mongodbHost = $source->mongodbHost;
                     $mongoConf = array_merge($mongodbHost->config['mongodb'] ?? [], ['ssh' => $mongodbHost->usesSshFor('mongodb') ? $mongodbHost->sshConfig() : ['enabled' => false]], $sourceConfig['mongodb'] ?? []);
@@ -187,7 +227,7 @@ class ProcessRestoreJob implements ShouldQueue
                     }
                 }
 
-                // 6. Restore Filesystem if applicable
+                // 7. Restore Filesystem if applicable
                 if (in_array($restoreType, ['files_only', 'full']) && $source->filesystem_host_id) {
                     $filesystemHost = $source->filesystemHost;
                     $fsConf = array_merge($filesystemHost->config['filesystem'] ?? [], ['ssh' => $filesystemHost->sshConfig()], $sourceConfig['filesystem'] ?? []);
@@ -435,7 +475,7 @@ class ProcessRestoreJob implements ShouldQueue
      */
     protected function isPackageArchive(BackupLog $backupLog, array $sourceConfig): bool
     {
-        $types = array_intersect(array_keys($sourceConfig), ['mysql', 'mongodb', 'filesystem']);
+        $types = array_intersect(array_keys($sourceConfig), ['mysql', 'postgres', 'mongodb', 'filesystem']);
 
         return count($types) > 1;
     }
@@ -495,6 +535,35 @@ class ProcessRestoreJob implements ShouldQueue
     /**
      * Find the MongoDB archive file in the extracted directory.
      */
+    protected function findPostgresDump(string $dir, string $dbName, bool $isPackage): ?string
+    {
+        // In package: look under postgres/ subdirectory
+        $searchDir = $isPackage ? $dir.'/postgres' : $dir;
+
+        if (! is_dir($searchDir)) {
+            return null;
+        }
+
+        // Find any postgres dump file matching this database
+        $patterns = [
+            "postgres_{$dbName}_*.sql.gz",
+            "postgres_{$dbName}_*.sql.zip",
+            "postgres_{$dbName}_*.sql",
+        ];
+
+        foreach ($patterns as $pattern) {
+            $files = glob("{$searchDir}/{$pattern}");
+            if (! empty($files)) {
+                return $files[0];
+            }
+        }
+
+        // Fallback: any sql file in the directory
+        $files = glob("{$searchDir}/*.sql*");
+
+        return ! empty($files) ? $files[0] : null;
+    }
+
     protected function findMongoArchive(string $dir, string $dbName, bool $isPackage): ?string
     {
         $searchDir = $isPackage ? $dir.'/mongodb' : $dir;

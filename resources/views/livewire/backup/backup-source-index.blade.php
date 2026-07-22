@@ -28,6 +28,7 @@
                     <select wire:model.live="filterType" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
                         <option value="">{{ __('backup-source.all') }}</option>
                         <option value="mysql">MySQL</option>
+                        <option value="postgres">PostgreSQL</option>
                         <option value="mongodb">MongoDB</option>
                         <option value="filesystem">Filesystem</option>
                     </select>
@@ -80,6 +81,9 @@
                                     @if ($source->hasType('mysql'))
                                         <span class="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary">MySQL</span>
                                     @endif
+                                    @if ($source->hasType('postgres'))
+                                        <span class="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold bg-info/10 text-info">PostgreSQL</span>
+                                    @endif
                                     @if ($source->hasType('mongodb'))
                                         <span class="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold bg-success/10 text-success">MongoDB</span>
                                     @endif
@@ -93,6 +97,9 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     @if ($source->hasType('mysql'))
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary">MySQL: {{ $source->mysqlHost?->name ?? '—' }}</span>
+                                    @endif
+                                    @if ($source->hasType('postgres'))
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-info/10 text-info">PostgreSQL: {{ $source->postgresHost?->name ?? '—' }}</span>
                                     @endif
                                     @if ($source->hasType('mongodb'))
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-success/10 text-success">MongoDB: {{ $source->mongodbHost?->name ?? '—' }}</span>
@@ -109,6 +116,12 @@
                                         <div class="flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
                                             <span>{{ count($config['mysql']['databases'] ?? []) }} db</span>
+                                        </div>
+                                    @endif
+                                    @if (isset($config['postgres']))
+                                        <div class="flex items-center gap-1.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-info/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
+                                            <span>{{ count($config['postgres']['databases'] ?? []) }} db</span>
                                         </div>
                                     @endif
                                     @if (isset($config['mongodb']))

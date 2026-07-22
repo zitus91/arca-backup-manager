@@ -67,11 +67,12 @@
                                             $selectedItems = $rLog->selected_items ?? [];
                                             $customNames = $rLog->custom_names ?? [];
                                             $mysqlDbs = $selectedItems['mysql_databases'] ?? [];
+                                            $postgresDbs = $selectedItems['postgres_databases'] ?? [];
                                             $mongoDbs = $selectedItems['mongodb_databases'] ?? [];
                                             $fsPaths = $selectedItems['filesystem_paths'] ?? [];
                                             $dbMapping = $customNames['databases'] ?? [];
                                             $pathMapping = $customNames['paths'] ?? [];
-                                            $hasAny = ! empty($mysqlDbs) || ! empty($mongoDbs) || ! empty($fsPaths);
+                                            $hasAny = ! empty($mysqlDbs) || ! empty($postgresDbs) || ! empty($mongoDbs) || ! empty($fsPaths);
                                         @endphp
 
                                         @if ($hasAny)
@@ -79,6 +80,12 @@
                                                 @foreach ($mysqlDbs as $db)
                                                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 font-mono">
                                                         <span class="font-semibold uppercase text-[8px] opacity-70">MySQL</span>
+                                                        {{ $dbMapping[$db] ?? $db }}
+                                                    </span>
+                                                @endforeach
+                                                @foreach ($postgresDbs as $db)
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-cyan-500/10 text-cyan-400 font-mono">
+                                                        <span class="font-semibold uppercase text-[8px] opacity-70">Postgres</span>
                                                         {{ $dbMapping[$db] ?? $db }}
                                                     </span>
                                                 @endforeach
@@ -197,11 +204,11 @@
                                 <div class="flex flex-wrap gap-1">
                                     @php
                                         $sourceConfig = $backup->job->source->config ?? [];
-                                        $types = array_intersect(array_keys($sourceConfig), ['mysql', 'mongodb', 'filesystem']);
+                                        $types = array_intersect(array_keys($sourceConfig), ['mysql', 'postgres', 'mongodb', 'filesystem']);
                                     @endphp
                                     @foreach ($types as $type)
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase
-                                            {{ $type === 'mysql' ? 'bg-blue-500/10 text-blue-400' : ($type === 'mongodb' ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400') }}">
+                                            {{ $type === 'mysql' ? 'bg-blue-500/10 text-blue-400' : ($type === 'postgres' ? 'bg-cyan-500/10 text-cyan-400' : ($type === 'mongodb' ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400')) }}">
                                             {{ $type }}
                                         </span>
                                     @endforeach
@@ -372,6 +379,33 @@
                                     </div>
                                 @endif
 
+                                @if (($selectedBackupInfo['has_postgres'] ?? false) && in_array($restoreType, ['full', 'db_only']))
+                                    <div class="space-y-2">
+                                        <p class="text-xs font-medium text-base-content/60 flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-cyan-500/10 text-cyan-400">PostgreSQL</span>
+                                            {{ __('restore.remote_postgres_config') }}
+                                        </p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.host" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="192.168.1.100" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.port" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="5432" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</span></label>
+                                                <input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.username" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" placeholder="postgres" />
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</span></label>
+                                                <input type="password" wire:model.live.debounce.500ms="remoteConfig.postgres.password" class="input input-bordered input-sm rounded-lg bg-base-200/50 border-base-content/10" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
                                 @if (($selectedBackupInfo['has_mongodb'] ?? false) && in_array($restoreType, ['full', 'db_only']))
                                     <div class="space-y-2">
                                         <p class="text-xs font-medium text-base-content/60 flex items-center gap-2">
@@ -447,6 +481,33 @@
                                         </div>
                                         @foreach ($customDbNames as $index => $item)
                                             @if ($item['type'] === 'mysql')
+                                                <div class="px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                    <label class="flex items-center gap-3 cursor-pointer">
+                                                        <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}"
+                                                            class="checkbox checkbox-sm checkbox-primary rounded"
+                                                            {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                        <span class="text-sm text-base-content/70 font-mono whitespace-nowrap">{{ $item['original'] }}</span>
+                                                        <span class="text-base-content/30 text-xs">→</span>
+                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target"
+                                                            class="input input-xs input-bordered rounded-lg font-mono flex-1 bg-base-100 border-base-content/10 focus:border-primary text-xs"
+                                                            {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                    </label>
+                                                    @if ($overrideExisting && $item['target'] === $item['original'])
+                                                        <p class="text-[10px] text-error font-semibold mt-1 ml-8">⚠ {{ __('restore.override_same_name_warning') }}</p>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @if ($selectedBackupInfo['has_postgres'] ?? false)
+                                    <div class="rounded-lg border border-base-content/5 bg-base-200/30 p-3 space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-cyan-500/10 text-cyan-400">PostgreSQL</span>
+                                            <span class="text-xs text-base-content/40">{{ __('restore.select_items_hint') }}</span>
+                                        </div>
+                                        @foreach ($customDbNames as $index => $item)
+                                            @if ($item['type'] === 'postgres')
                                                 <div class="px-2 py-1.5 rounded-lg hover:bg-base-content/[0.03] transition-colors {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
                                                     <label class="flex items-center gap-3 cursor-pointer">
                                                         <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}"
@@ -547,7 +608,7 @@
 
                         {{-- Restore Type Selection --}}
                         @php
-                            $hasDb = ($selectedBackupInfo['has_mysql'] ?? false) || ($selectedBackupInfo['has_mongodb'] ?? false);
+                            $hasDb = ($selectedBackupInfo['has_mysql'] ?? false) || ($selectedBackupInfo['has_postgres'] ?? false) || ($selectedBackupInfo['has_mongodb'] ?? false);
                             $hasFs = $selectedBackupInfo['has_filesystem'] ?? false;
                             $canChoose = $hasDb && $hasFs;
                         @endphp
@@ -660,6 +721,12 @@
                                                         <span>{{ $remoteConfig['mysql']['username'] ?: '?' }}@{{ $remoteConfig['mysql']['host'] }}:{{ $remoteConfig['mysql']['port'] ?: '3306' }}</span>
                                                     </li>
                                                 @endif
+                                                @if (! empty($remoteConfig['postgres']['host']) && in_array($restoreType, ['full', 'db_only']))
+                                                    <li class="flex items-center gap-1.5">
+                                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold uppercase bg-cyan-500/10 text-cyan-400">PostgreSQL</span>
+                                                        <span>{{ $remoteConfig['postgres']['username'] ?: '?' }}@{{ $remoteConfig['postgres']['host'] }}:{{ $remoteConfig['postgres']['port'] ?: '5432' }}</span>
+                                                    </li>
+                                                @endif
                                                 @if (! empty($remoteConfig['mongodb']['host']) && in_array($restoreType, ['full', 'db_only']))
                                                     <li class="flex items-center gap-1.5">
                                                         <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold uppercase bg-green-500/10 text-green-400">MongoDB</span>
@@ -759,6 +826,9 @@
                                     <div class="text-xs text-base-content/60 space-y-0.5">
                                         @if (! empty($remoteConfig['mysql']['host']))
                                             <p>MySQL: {{ $remoteConfig['mysql']['host'] }}:{{ $remoteConfig['mysql']['port'] ?? '3306' }}</p>
+                                        @endif
+                                        @if (! empty($remoteConfig['postgres']['host']))
+                                            <p>PostgreSQL: {{ $remoteConfig['postgres']['host'] }}:{{ $remoteConfig['postgres']['port'] ?? '5432' }}</p>
                                         @endif
                                         @if (! empty($remoteConfig['mongodb']['host']))
                                             <p>MongoDB: {{ $remoteConfig['mongodb']['host'] }}:{{ $remoteConfig['mongodb']['port'] ?? '27017' }}</p>

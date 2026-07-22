@@ -34,6 +34,15 @@ class BackupHostFactory extends Factory
         ]);
     }
 
+    public function withPostgres(): static
+    {
+        return $this->state(fn (array $attrs) => [
+            'config' => array_merge($attrs['config'] ?? [], [
+                'postgres' => ['host' => '127.0.0.1', 'port' => 5432, 'username' => 'postgres', 'password' => $this->faker->password()],
+            ]),
+        ]);
+    }
+
     public function withMongodb(): static
     {
         return $this->state(fn (array $attrs) => [

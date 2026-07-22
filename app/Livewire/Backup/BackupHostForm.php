@@ -56,6 +56,25 @@ class BackupHostForm extends Component
 
     public bool $mysql_use_ssh = true;
 
+    // PostgreSQL service
+    public bool $enable_postgres = false;
+
+    public string $postgres_host = '127.0.0.1';
+
+    public int $postgres_port = 5432;
+
+    public string $postgres_user = 'postgres';
+
+    public string $postgres_password = '';
+
+    public array $postgres_available_databases = [];
+
+    public ?string $postgres_connection_status = null;
+
+    public string $postgres_connection_message = '';
+
+    public bool $postgres_use_ssh = true;
+
     // MongoDB service
     public bool $enable_mongodb = false;
 
@@ -127,6 +146,16 @@ class BackupHostForm extends Component
                 $this->mysql_user = $mysql['username'] ?? ($mysql['user'] ?? 'root');
                 $this->mysql_password = $mysql['password'] ?? '';
                 $this->mysql_use_ssh = $mysql['use_ssh'] ?? true;
+            }
+
+            $this->enable_postgres = isset($cfg['postgres']);
+            if ($this->enable_postgres) {
+                $postgres = $cfg['postgres'];
+                $this->postgres_host = $postgres['host'] ?? '127.0.0.1';
+                $this->postgres_port = (int) ($postgres['port'] ?? 5432);
+                $this->postgres_user = $postgres['username'] ?? ($postgres['user'] ?? 'postgres');
+                $this->postgres_password = $postgres['password'] ?? '';
+                $this->postgres_use_ssh = $postgres['use_ssh'] ?? true;
             }
 
             $this->enable_mongodb = isset($cfg['mongodb']);
@@ -206,6 +235,12 @@ class BackupHostForm extends Component
             $rules['mysql_user'] = 'required|string|max:255';
         }
 
+        if ($this->enable_postgres) {
+            $rules['postgres_host'] = 'required|string|max:255';
+            $rules['postgres_port'] = 'required|integer|min:1|max:65535';
+            $rules['postgres_user'] = 'required|string|max:255';
+        }
+
         if ($this->enable_mongodb) {
             $rules['mongodb_host'] = 'required|string|max:255';
             $rules['mongodb_port'] = 'required|integer|min:1|max:65535';
@@ -224,7 +259,7 @@ class BackupHostForm extends Component
 
     public function save(): void
     {
-        if (! $this->enable_ssh && ! $this->enable_mysql && ! $this->enable_mongodb && ! $this->enable_filesystem) {
+        if (! $this->enable_ssh && ! $this->enable_mysql && ! $this->enable_postgres && ! $this->enable_mongodb && ! $this->enable_filesystem) {
             $this->addError('enable_services', __('backup-host.at_least_one_service'));
 
             return;
@@ -253,6 +288,16 @@ class BackupHostForm extends Component
                 'username' => $this->mysql_user,
                 'password' => $this->mysql_password,
                 'use_ssh' => $this->mysql_use_ssh,
+            ];
+        }
+
+        if ($this->enable_postgres) {
+            $config['postgres'] = [
+                'host' => $this->postgres_host,
+                'port' => $this->postgres_port,
+                'username' => $this->postgres_user,
+                'password' => $this->postgres_password,
+                'use_ssh' => $this->postgres_use_ssh,
             ];
         }
 
@@ -309,7 +354,7 @@ class BackupHostForm extends Component
             }
         }
 
-        foreach (['mysql', 'mongodb'] as $service) {
+        foreach (['mysql', 'postgres', 'mongodb'] as $service) {
             if (! empty($data['config'][$service]['password'] ?? null)) {
                 $data['config'][$service]['password'] = '••••••';
             }
@@ -466,6 +511,46 @@ class BackupHostForm extends Component
         } catch (\Throwable $e) {
             $this->mysql_connection_status = 'failed';
             $this->mysql_connection_message = __('backup-host.connection_failed').': '.$e->getMessage();
+        }
+    }
+
+    public function testPostgresConnection(): void
+    {
+        $this->postgres_available_databases = [];
+        $this->postgres_connection_status = null;
+        $this->postgres_connection_message = '';
+
+        try {
+            $run = function (string $host, int $port): void {
+                $pdo = new \PDO(
+                    "pgsql:host={$host};port={$port};dbname=postgres",
+                    $this->postgres_user,
+                    $this->postgres_password,
+                    [\PDO::ATTR_TIMEOUT => 5, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
+                );
+                $stmt = $pdo->query('SELECT datname FROM pg_database WHERE datistemplate = false');
+                $allDatabases = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                $systemDbs = ['postgres'];
+                $this->postgres_available_databases = array_values(array_diff($allDatabases, $systemDbs));
+            };
+
+            $sshConfig = $this->postgres_use_ssh ? $this->sshConfigArrayForTest() : null;
+            if ($sshConfig) {
+                app(SshTunnelService::class)->withTunnel(
+                    $sshConfig,
+                    $this->postgres_host,
+                    $this->postgres_port,
+                    fn (int $localPort) => $run('127.0.0.1', $localPort)
+                );
+            } else {
+                $run($this->postgres_host, $this->postgres_port);
+            }
+
+            $this->postgres_connection_status = 'success';
+            $this->postgres_connection_message = __('backup-host.connection_success');
+        } catch (\Throwable $e) {
+            $this->postgres_connection_status = 'failed';
+            $this->postgres_connection_message = __('backup-host.connection_failed').': '.$e->getMessage();
         }
     }
 

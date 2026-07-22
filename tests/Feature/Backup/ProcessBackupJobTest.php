@@ -54,6 +54,7 @@ it('processes a backup job successfully', function () {
     $processJob = new ProcessBackupJob($job->id, $log->id);
     $processJob->handle(
         $mockMysql,
+        app(\App\Services\Backup\PostgresBackupService::class),
         app(\App\Services\Backup\MongodbBackupService::class),
         app(\App\Services\Backup\FilesystemBackupService::class),
         $mockS3,
@@ -97,6 +98,7 @@ it('handles backup job failure', function () {
     $processJob = new ProcessBackupJob($job->id, $log->id);
     $processJob->handle(
         $mockMysql,
+        app(\App\Services\Backup\PostgresBackupService::class),
         app(\App\Services\Backup\MongodbBackupService::class),
         app(\App\Services\Backup\FilesystemBackupService::class),
         app(\App\Services\Backup\S3StorageService::class),
@@ -144,6 +146,7 @@ it('updates next_run_at after execution', function () {
     $processJob = new ProcessBackupJob($job->id, $log->id);
     $processJob->handle(
         $mockMysql,
+        app(\App\Services\Backup\PostgresBackupService::class),
         app(\App\Services\Backup\MongodbBackupService::class),
         app(\App\Services\Backup\FilesystemBackupService::class),
         $mockS3,
@@ -164,7 +167,8 @@ it('backs up a filesystem source over ftp when the host transport is ftp', funct
     File::ensureDirectoryExists($remote);
     File::put($remote.'/one.txt', 'x');
 
-    app()->bind(FtpStorageService::class, fn () => new class($remote) extends FtpStorageService {
+    app()->bind(FtpStorageService::class, fn () => new class($remote) extends FtpStorageService
+    {
         public function __construct(public string $root) {}
 
         public function disk(array $config): \Illuminate\Contracts\Filesystem\Filesystem
@@ -196,6 +200,7 @@ it('backs up a filesystem source over ftp when the host transport is ftp', funct
     $processJob = new ProcessBackupJob($job->id, $log->id);
     $processJob->handle(
         app(\App\Services\Backup\MysqlBackupService::class),
+        app(\App\Services\Backup\PostgresBackupService::class),
         app(\App\Services\Backup\MongodbBackupService::class),
         app(\App\Services\Backup\FilesystemBackupService::class),
         $mockS3,

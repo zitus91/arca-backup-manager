@@ -11,7 +11,7 @@
         {{-- Source Toggles --}}
         <div class="form-control">
             <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-source.sources') }}</span></label>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {{-- MySQL Toggle --}}
                 <label class="relative cursor-pointer">
                     <input type="checkbox" wire:model.live="enable_mysql" class="peer sr-only" />
@@ -27,6 +27,27 @@
                             <div class="w-4 h-4 rounded border-2 border-base-content/20 flex items-center justify-center transition-all {{ $enable_mysql ? 'border-primary bg-primary' : '' }}">
                                 @if ($enable_mysql)
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-primary-content" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </label>
+
+                {{-- PostgreSQL Toggle --}}
+                <label class="relative cursor-pointer">
+                    <input type="checkbox" wire:model.live="enable_postgres" class="peer sr-only" />
+                    <div class="flex items-center gap-3 p-4 rounded-xl border-2 border-base-content/10 peer-checked:border-info peer-checked:bg-info/5 transition-all">
+                        <div class="w-10 h-10 rounded-xl bg-info/10 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-sm">PostgreSQL</p>
+                            <p class="text-xs text-base-content/40">SQL Database</p>
+                        </div>
+                        <div class="ml-auto">
+                            <div class="w-4 h-4 rounded border-2 border-base-content/20 flex items-center justify-center transition-all {{ $enable_postgres ? 'border-info bg-info' : '' }}">
+                                @if ($enable_postgres)
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-info-content" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                 @endif
                             </div>
                         </div>
@@ -168,6 +189,100 @@
                         </div>
                         <p class="text-[10px] text-base-content/40">{{ __('backup-source.mysql_test_to_change') }}</p>
                         @error('mysql_databases') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                @endif
+            </div>
+        @endif
+
+        {{-- PostgreSQL Fields --}}
+        @if ($enable_postgres)
+            <div class="rounded-xl border border-info/20 bg-info/[0.03] p-5 space-y-4">
+                <div class="flex items-center gap-2 mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
+                    <h4 class="text-sm font-semibold text-info">{{ __('backup-source.postgres_config') }}</h4>
+                </div>
+
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-source.postgres_host_select') }}</span></label>
+                    <div class="flex items-center gap-3">
+                        <select wire:model.live="postgres_host_id" class="select select-bordered select-sm rounded-lg bg-base-100 border-base-content/10 flex-1">
+                            <option value="">{{ __('backup-source.host_none') }}</option>
+                            @foreach ($postgresHosts as $host)
+                                <option value="{{ $host->id }}">{{ $host->name }}</option>
+                            @endforeach
+                        </select>
+                        <a href="{{ route('backup.hosts') }}" target="_blank" class="btn btn-sm btn-outline btn-info rounded-lg gap-1 whitespace-nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            {{ __('backup-source.host_new') }}
+                        </a>
+                    </div>
+                    @error('postgres_host_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- Load Databases --}}
+                @if ($postgres_host_id)
+                    <div class="pt-2 border-t border-info/10">
+                        <button type="button" wire:click="loadPostgresDatabases" class="btn btn-sm btn-outline btn-info rounded-lg gap-2" wire:loading.attr="disabled" wire:target="loadPostgresDatabases">
+                            <span wire:loading wire:target="loadPostgresDatabases" class="loading loading-spinner loading-xs"></span>
+                            <span wire:loading.remove wire:target="loadPostgresDatabases">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" /></svg>
+                            </span>
+                            {{ __('backup-source.load_databases') }}
+                        </button>
+
+                        @if ($postgres_connection_status === 'success')
+                            <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {{ $postgres_connection_message }}
+                            </div>
+                        @elseif ($postgres_connection_status === 'failed')
+                            <div class="mt-3 flex items-start gap-2 text-error text-xs">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                <span>{{ $postgres_connection_message }}</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- Database Selection (shown after successful connection) --}}
+                @if (count($postgres_available_databases) > 0)
+                    <div class="pt-3 border-t border-info/10 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-source.postgres_select_databases') }}</label>
+                            <div class="flex items-center gap-3">
+                                <button type="button" wire:click="toggleSelectAllPostgresDatabases" class="text-[10px] font-medium text-info hover:text-info/80 transition-colors">
+                                    {{ count($postgres_databases) === count($postgres_available_databases) ? __('backup-source.postgres_deselect_all') : __('backup-source.postgres_select_all') }}
+                                </button>
+                                <span class="text-[10px] text-base-content/40">{{ count($postgres_databases) }}/{{ count($postgres_available_databases) }}</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                            @foreach ($postgres_available_databases as $db)
+                                <label class="flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all
+                                    {{ in_array($db, $postgres_databases) ? 'border-info/40 bg-info/10' : 'border-base-content/10 bg-base-100 hover:border-base-content/20' }}">
+                                    <input type="checkbox" value="{{ $db }}" wire:model="postgres_databases" class="checkbox checkbox-xs checkbox-info rounded" />
+                                    <span class="text-xs font-medium truncate">{{ $db }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('postgres_databases') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                @elseif (!empty($postgres_databases))
+                    <div class="pt-3 border-t border-info/10 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-source.postgres_select_databases') }}</label>
+                            <span class="text-[10px] text-base-content/40">{{ count($postgres_databases) }} {{ __('backup-source.postgres_selected') }}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($postgres_databases as $db)
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-info/10 text-info border border-info/20">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" /></svg>
+                                    {{ $db }}
+                                </span>
+                            @endforeach
+                        </div>
+                        <p class="text-[10px] text-base-content/40">{{ __('backup-source.postgres_test_to_change') }}</p>
+                        @error('postgres_databases') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                     </div>
                 @endif
             </div>

@@ -193,6 +193,70 @@
             @endif
         </div>
 
+        {{-- PostgreSQL Service --}}
+        <div class="rounded-xl border border-info/20 bg-info/[0.03] p-5 space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" wire:model.live="enable_postgres" class="toggle toggle-sm toggle-info" />
+                <span class="text-sm font-semibold">{{ __('backup-host.service_postgres') }}</span>
+            </label>
+
+            @if ($enable_postgres)
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div class="form-control col-span-2 sm:col-span-1">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.postgres_host') }}</span></label>
+                        <input type="text" wire:model="postgres_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />
+                        @error('postgres_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.postgres_port') }}</span></label>
+                        <input type="number" wire:model="postgres_port" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('postgres_port') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.postgres_user') }}</span></label>
+                        <input type="text" wire:model="postgres_user" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('postgres_user') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.postgres_password') }}</span></label>
+                        <input type="password" wire:model="postgres_password" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10" />
+                        @error('postgres_password') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                @if ($enable_ssh)
+                    <label class="flex items-center gap-3 cursor-pointer pt-1">
+                        <input type="checkbox" wire:model.live="postgres_use_ssh" class="toggle toggle-sm toggle-info" />
+                        <span class="text-sm">{{ __('backup-host.use_ssh_tunnel') }}</span>
+                    </label>
+                    <p class="text-[10px] text-base-content/40">{{ __('backup-host.use_ssh_tunnel_hint') }}</p>
+                @endif
+
+                <div class="pt-2 border-t border-info/10">
+                    <button type="button" wire:click="testPostgresConnection" class="btn btn-sm btn-outline btn-info rounded-lg gap-2" wire:loading.attr="disabled" wire:target="testPostgresConnection">
+                        <span wire:loading wire:target="testPostgresConnection" class="loading loading-spinner loading-xs"></span>
+                        {{ __('backup-host.test_connection') }}
+                    </button>
+
+                    @if ($postgres_connection_status === 'success')
+                        <div class="mt-3 flex items-center gap-2 text-success text-xs font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {{ $postgres_connection_message }}
+                        </div>
+                    @elseif ($postgres_connection_status === 'failed')
+                        <div class="mt-3 flex items-start gap-2 text-error text-xs">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                            <span>{{ $postgres_connection_message }}</span>
+                        </div>
+                    @endif
+
+                    @if (count($postgres_available_databases) > 0)
+                        <p class="text-[10px] text-base-content/40 mt-2">{{ implode(', ', $postgres_available_databases) }}</p>
+                    @endif
+                </div>
+            @endif
+        </div>
+
         {{-- MongoDB Service --}}
         <div class="rounded-xl border border-success/20 bg-success/[0.03] p-5 space-y-3">
             <label class="flex items-center gap-3 cursor-pointer">

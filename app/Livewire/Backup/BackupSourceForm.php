@@ -19,6 +19,8 @@ class BackupSourceForm extends Component
     // Enabled sections
     public bool $enable_mysql = false;
 
+    public bool $enable_postgres = false;
+
     public bool $enable_mongodb = false;
 
     public bool $enable_filesystem = false;
@@ -33,6 +35,17 @@ class BackupSourceForm extends Component
     public ?string $mysql_connection_status = null;
 
     public string $mysql_connection_message = '';
+
+    // PostgreSQL fields
+    public ?int $postgres_host_id = null;
+
+    public array $postgres_databases = [];
+
+    public array $postgres_available_databases = [];
+
+    public ?string $postgres_connection_status = null;
+
+    public string $postgres_connection_message = '';
 
     // MongoDB fields
     public ?int $mongodb_host_id = null;
@@ -69,12 +82,17 @@ class BackupSourceForm extends Component
             $config = $source->config;
 
             $this->mysql_host_id = $source->mysql_host_id;
+            $this->postgres_host_id = $source->postgres_host_id;
             $this->mongodb_host_id = $source->mongodb_host_id;
             $this->filesystem_host_id = $source->filesystem_host_id;
 
             if ($this->mysql_host_id) {
                 $this->enable_mysql = true;
                 $this->mysql_databases = $config['mysql']['databases'] ?? [];
+            }
+            if ($this->postgres_host_id) {
+                $this->enable_postgres = true;
+                $this->postgres_databases = $config['postgres']['databases'] ?? [];
             }
             if ($this->mongodb_host_id) {
                 $this->enable_mongodb = true;
@@ -92,6 +110,13 @@ class BackupSourceForm extends Component
         $this->mysql_connection_status = null;
         $this->mysql_connection_message = '';
         $this->mysql_available_databases = [];
+    }
+
+    public function updatedEnablePostgres(): void
+    {
+        $this->postgres_connection_status = null;
+        $this->postgres_connection_message = '';
+        $this->postgres_available_databases = [];
     }
 
     public function updatedEnableMongodb(): void
@@ -127,6 +152,14 @@ class BackupSourceForm extends Component
             ]);
         }
 
+        if ($this->enable_postgres) {
+            $rules = array_merge($rules, [
+                'postgres_host_id' => ['required', Rule::exists('backup_hosts', 'id')->where('user_id', auth()->id())],
+                'postgres_databases' => 'required|array|min:1',
+                'postgres_databases.*' => 'string|max:255',
+            ]);
+        }
+
         if ($this->enable_mongodb) {
             $rules = array_merge($rules, [
                 'mongodb_host_id' => ['required', Rule::exists('backup_hosts', 'id')->where('user_id', auth()->id())],
@@ -149,7 +182,7 @@ class BackupSourceForm extends Component
 
     public function save(): void
     {
-        if (! $this->enable_mysql && ! $this->enable_mongodb && ! $this->enable_filesystem) {
+        if (! $this->enable_mysql && ! $this->enable_postgres && ! $this->enable_mongodb && ! $this->enable_filesystem) {
             $this->addError('enable_sources', __('backup-source.at_least_one_source'));
 
             return;
@@ -161,6 +194,10 @@ class BackupSourceForm extends Component
 
         if ($this->enable_mysql) {
             $config['mysql'] = ['databases' => $this->mysql_databases];
+        }
+
+        if ($this->enable_postgres) {
+            $config['postgres'] = ['databases' => $this->postgres_databases];
         }
 
         if ($this->enable_mongodb) {
@@ -180,6 +217,7 @@ class BackupSourceForm extends Component
             'name' => $this->name,
             'is_active' => $this->is_active,
             'mysql_host_id' => $this->enable_mysql ? $this->mysql_host_id : null,
+            'postgres_host_id' => $this->enable_postgres ? $this->postgres_host_id : null,
             'mongodb_host_id' => $this->enable_mongodb ? $this->mongodb_host_id : null,
             'filesystem_host_id' => $this->enable_filesystem ? $this->filesystem_host_id : null,
             'config' => $config,
@@ -257,6 +295,68 @@ class BackupSourceForm extends Component
         } catch (\Throwable $e) {
             $this->mysql_connection_status = 'failed';
             $this->mysql_connection_message = __('backup-source.mysql_connection_failed').': '.$e->getMessage();
+        }
+    }
+
+    // -- PostgreSQL --------------------------------------------------
+
+    public function toggleSelectAllPostgresDatabases(): void
+    {
+        if (count($this->postgres_databases) === count($this->postgres_available_databases)) {
+            $this->postgres_databases = [];
+        } else {
+            $this->postgres_databases = $this->postgres_available_databases;
+        }
+    }
+
+    public function loadPostgresDatabases(): void
+    {
+        $this->postgres_available_databases = [];
+        $this->postgres_connection_status = null;
+        $this->postgres_connection_message = '';
+
+        $host = $this->postgres_host_id ? BackupHost::find($this->postgres_host_id) : null;
+
+        if (! $host) {
+            $this->postgres_connection_status = 'failed';
+            $this->postgres_connection_message = __('backup-source.no_host_for_type');
+
+            return;
+        }
+
+        $postgres = $host->config['postgres'] ?? [];
+
+        try {
+            $run = function (string $connHost, int $connPort) use ($postgres): void {
+                $pdo = new \PDO(
+                    "pgsql:host={$connHost};port={$connPort};dbname=postgres",
+                    $postgres['username'] ?? ($postgres['user'] ?? 'postgres'),
+                    $postgres['password'] ?? '',
+                    [\PDO::ATTR_TIMEOUT => 5, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
+                );
+                $stmt = $pdo->query('SELECT datname FROM pg_database WHERE datistemplate = false');
+                $allDatabases = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                $systemDbs = ['postgres'];
+                $this->postgres_available_databases = array_values(array_diff($allDatabases, $systemDbs));
+            };
+
+            $sshConfig = $host->sshConfig();
+            if (! empty($sshConfig['enabled'])) {
+                app(SshTunnelService::class)->withTunnel(
+                    $sshConfig,
+                    $postgres['host'] ?? '127.0.0.1',
+                    (int) ($postgres['port'] ?? 5432),
+                    fn (int $localPort) => $run('127.0.0.1', $localPort)
+                );
+            } else {
+                $run($postgres['host'] ?? '127.0.0.1', (int) ($postgres['port'] ?? 5432));
+            }
+
+            $this->postgres_connection_status = 'success';
+            $this->postgres_connection_message = __('backup-source.postgres_connection_success');
+        } catch (\Throwable $e) {
+            $this->postgres_connection_status = 'failed';
+            $this->postgres_connection_message = __('backup-source.postgres_connection_failed').': '.$e->getMessage();
         }
     }
 
@@ -463,6 +563,7 @@ class BackupSourceForm extends Component
     {
         return view('livewire.backup.backup-source-form', [
             'mysqlHosts' => $this->hostsOffering('mysql', $this->mysql_host_id),
+            'postgresHosts' => $this->hostsOffering('postgres', $this->postgres_host_id),
             'mongodbHosts' => $this->hostsOffering('mongodb', $this->mongodb_host_id),
             'filesystemHosts' => $this->hostsOffering('filesystem', $this->filesystem_host_id),
         ]);

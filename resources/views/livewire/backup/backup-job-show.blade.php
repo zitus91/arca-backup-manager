@@ -776,6 +776,17 @@
                                         </div>
                                     </div>
                                 @endif
+                                @if (($selectedBackupInfo['has_postgres'] ?? false) && in_array($restoreType, ['full', 'db_only']))
+                                    <div class="space-y-2">
+                                        <p class="text-xs font-medium text-base-content/60"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-cyan-500/10 text-cyan-400 mr-2">PostgreSQL</span>{{ __('restore.remote_postgres_config') }}</p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.host" class="input input-bordered input-sm rounded-lg" placeholder="192.168.1.100" /></div>
+                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.port" class="input input-bordered input-sm rounded-lg" placeholder="5432" /></div>
+                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.username" class="input input-bordered input-sm rounded-lg" /></div>
+                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</span></label><input type="password" wire:model.live.debounce.500ms="remoteConfig.postgres.password" class="input input-bordered input-sm rounded-lg" /></div>
+                                        </div>
+                                    </div>
+                                @endif
                                 @if (($selectedBackupInfo['has_mongodb'] ?? false) && in_array($restoreType, ['full', 'db_only']))
                                     <div class="space-y-2">
                                         <p class="text-xs font-medium text-base-content/60"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-green-500/10 text-green-400 mr-2">MongoDB</span>{{ __('restore.remote_mongodb_config') }}</p>
@@ -813,6 +824,23 @@
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-400">MySQL</span>
                                         @foreach ($customDbNames as $index => $item)
                                             @if ($item['type'] === 'mysql')
+                                                <div class="px-2 py-1.5 rounded-lg {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
+                                                    <label class="flex items-center gap-3 cursor-pointer">
+                                                        <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}" class="checkbox checkbox-sm checkbox-primary rounded" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                        <span class="text-sm font-mono text-base-content/70">{{ $item['original'] }}</span>
+                                                        <span class="text-base-content/30 text-xs">&rarr;</span>
+                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target" class="input input-xs input-bordered rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                    </label>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @if ($selectedBackupInfo['has_postgres'] ?? false)
+                                    <div class="rounded-lg border border-base-content/5 bg-base-200/30 p-3 space-y-2">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-cyan-500/10 text-cyan-400">PostgreSQL</span>
+                                        @foreach ($customDbNames as $index => $item)
+                                            @if ($item['type'] === 'postgres')
                                                 <div class="px-2 py-1.5 rounded-lg {{ in_array($restoreType, ['files_only']) ? 'opacity-30 pointer-events-none' : '' }}">
                                                     <label class="flex items-center gap-3 cursor-pointer">
                                                         <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}" class="checkbox checkbox-sm checkbox-primary rounded" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
@@ -884,7 +912,7 @@
                         </div>
 
                         @php
-                            $hasDb = ($selectedBackupInfo['has_mysql'] ?? false) || ($selectedBackupInfo['has_mongodb'] ?? false);
+                            $hasDb = ($selectedBackupInfo['has_mysql'] ?? false) || ($selectedBackupInfo['has_postgres'] ?? false) || ($selectedBackupInfo['has_mongodb'] ?? false);
                             $hasFs = $selectedBackupInfo['has_filesystem'] ?? false;
                             $canChoose = $hasDb && $hasFs;
                         @endphp
