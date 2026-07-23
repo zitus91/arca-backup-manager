@@ -25,6 +25,15 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /tmp/php \
+    && chown -R www-data:www-data /tmp/php \
+    && chmod 1777 /tmp/php
+
+COPY docker/php/zz-backup-manager.ini /usr/local/etc/php/conf.d/zz-backup-manager.ini
+COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint-app
+RUN chmod +x /usr/local/bin/docker-entrypoint-app
+
 WORKDIR /var/www/html
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint-app"]
 CMD ["php-fpm"]
