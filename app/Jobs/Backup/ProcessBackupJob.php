@@ -13,6 +13,7 @@ use App\Services\Backup\FilesystemBackupService;
 use App\Services\Backup\FtpStorageService;
 use App\Services\Backup\MongodbBackupService;
 use App\Services\Backup\MysqlBackupService;
+use App\Services\Backup\PostgresBackupService;
 use App\Services\Backup\S3StorageService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -38,6 +39,7 @@ class ProcessBackupJob implements ShouldQueue
 
     public function handle(
         MysqlBackupService $mysqlService,
+        PostgresBackupService $postgresService,
         MongodbBackupService $mongodbService,
         FilesystemBackupService $filesystemService,
         S3StorageService $s3Service,
@@ -45,7 +47,7 @@ class ProcessBackupJob implements ShouldQueue
         BackupSchedulerService $schedulerService,
     ): void {
         $backupJob = BackupJob::with(['source', 'destination'])->findOrFail($this->backupJobId);
-        $backupJob->loadMissing(['source.mysqlHost', 'source.mongodbHost', 'source.filesystemHost']);
+        $backupJob->loadMissing(['source.mysqlHost', 'source.postgresHost', 'source.mongodbHost', 'source.filesystemHost']);
         $log = BackupLog::findOrFail($this->backupLogId);
 
         // 1. Update status to running
@@ -102,7 +104,7 @@ class ProcessBackupJob implements ShouldQueue
                 $host = $source->mysqlHost;
                 $mysqlDir = $tmpDir.'/mysql';
                 @mkdir($mysqlDir, 0755, true);
-                $mysqlConf = array_merge($host->config['mysql'] ?? [], ['ssh' => $host->sshConfig()], $sourceConfig['mysql'] ?? []);
+                $mysqlConf = array_merge($host->config['mysql'] ?? [], ['ssh' => $host->usesSshFor('mysql') ? $host->sshConfig() : ['enabled' => false]], $sourceConfig['mysql'] ?? []);
                 $processedTypes[] = 'mysql';
                 $databases = $mysqlConf['databases'] ?? (isset($mysqlConf['database']) ? [$mysqlConf['database']] : []);
                 foreach ($databases as $db) {
@@ -124,11 +126,37 @@ class ProcessBackupJob implements ShouldQueue
                 }
             }
 
+            if ($source->postgres_host_id) {
+                $host = $source->postgresHost;
+                $postgresDir = $tmpDir.'/postgres';
+                @mkdir($postgresDir, 0755, true);
+                $postgresConf = array_merge($host->config['postgres'] ?? [], ['ssh' => $host->usesSshFor('postgres') ? $host->sshConfig() : ['enabled' => false]], $sourceConfig['postgres'] ?? []);
+                $processedTypes[] = 'postgres';
+                $databases = $postgresConf['databases'] ?? (isset($postgresConf['database']) ? [$postgresConf['database']] : []);
+                foreach ($databases as $db) {
+                    $singleConf = array_merge($postgresConf, ['database' => $db]);
+                    $postgresCheckpoint = $checkpoint['postgres'][$db] ?? ($checkpoint['postgres'] ?? null);
+
+                    if ($isIncremental) {
+                        $r = $postgresService->incrementalDump($singleConf, $postgresDir, $backupJob->compression, $postgresCheckpoint);
+                    } else {
+                        $r = $postgresService->dump($singleConf, $postgresDir, $backupJob->compression);
+                    }
+
+                    $results[] = $r;
+                    $totalSize += $r['file_size'] ?? 0;
+                    $fileNames[] = 'postgres/'.($r['file_name'] ?? 'dump');
+                    if (isset($r['incremental_checkpoint'])) {
+                        $incrementalCheckpoints['postgres'][$db] = $r['incremental_checkpoint'];
+                    }
+                }
+            }
+
             if ($source->mongodb_host_id) {
                 $host = $source->mongodbHost;
                 $mongoDir = $tmpDir.'/mongodb';
                 @mkdir($mongoDir, 0755, true);
-                $mongoConf = array_merge($host->config['mongodb'] ?? [], ['ssh' => $host->sshConfig()], $sourceConfig['mongodb'] ?? []);
+                $mongoConf = array_merge($host->config['mongodb'] ?? [], ['ssh' => $host->usesSshFor('mongodb') ? $host->sshConfig() : ['enabled' => false]], $sourceConfig['mongodb'] ?? []);
                 $processedTypes[] = 'mongodb';
                 $databases = $mongoConf['databases'] ?? (isset($mongoConf['database']) ? [$mongoConf['database']] : []);
                 foreach ($databases as $db) {

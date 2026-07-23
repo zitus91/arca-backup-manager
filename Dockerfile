@@ -5,11 +5,21 @@ RUN apt-get update && apt-get install -y \
     git curl zip unzip \
     libzip-dev libpng-dev libonig-dev libxml2-dev libsqlite3-dev \
     default-mysql-client \
-    mongodb-database-tools \
-    mongodb-mongosh \
     openssh-client sshpass rsync \
     && docker-php-ext-install pdo_mysql pdo_sqlite mbstring zip xml bcmath \
     && rm -rf /var/lib/apt/lists/*
+
+# MongoDB Database Tools (mongodump / mongorestore) — not in Debian repos, download from MongoDB CDN
+RUN ARCH=$(dpkg --print-architecture) \
+    && case "$ARCH" in \
+        amd64) TOOLS_ARCH="x86_64" ;; \
+        arm64|aarch64) TOOLS_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac \
+    && curl -fsSL "https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-${TOOLS_ARCH}-100.17.0.tgz" \
+        | tar -xz -C /tmp \
+    && cp /tmp/mongodb-database-tools-*/bin/* /usr/local/bin/ \
+    && rm -rf /tmp/mongodb-database-tools-*
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

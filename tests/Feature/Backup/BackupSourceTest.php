@@ -143,3 +143,46 @@ it('loads per-type hosts when editing', function () {
     Livewire::test(BackupSourceForm::class, ['sourceId' => $source->id])
         ->assertSet('mysql_host_id', $host->id);
 });
+
+it('creates a PostgreSQL source linked to a host', function () {
+    $host = BackupHost::factory()->withPostgres()->create();
+
+    Livewire::test(BackupSourceForm::class)
+        ->set('name', 'Production PostgreSQL')
+        ->set('enable_postgres', true)
+        ->set('postgres_host_id', $host->id)
+        ->set('postgres_databases', ['myapp'])
+        ->call('save')
+        ->assertDispatched('source-saved');
+
+    $source = BackupSource::first();
+    expect($source->hasType('postgres'))->toBeTrue();
+    expect($source->postgres_host_id)->toBe($host->id);
+    expect($source->config['postgres']['databases'])->toContain('myapp');
+});
+
+it('validates required fields for PostgreSQL', function () {
+    Livewire::test(BackupSourceForm::class)
+        ->set('enable_postgres', true)
+        ->set('name', '')
+        ->set('postgres_databases', [])
+        ->call('save')
+        ->assertHasErrors(['name', 'postgres_host_id', 'postgres_databases']);
+});
+
+it('links a source postgres host and stores only databases', function () {
+    $host = BackupHost::factory()->withPostgres()->create();
+
+    Livewire::test(BackupSourceForm::class)
+        ->set('name', 'Prod PG')
+        ->set('enable_postgres', true)
+        ->set('postgres_host_id', $host->id)
+        ->set('postgres_databases', ['app'])
+        ->call('save')
+        ->assertDispatched('source-saved');
+
+    $source = BackupSource::where('name', 'Prod PG')->first();
+    expect($source->postgres_host_id)->toBe($host->id);
+    expect($source->config['postgres'])->toBe(['databases' => ['app']]);
+    expect($source->config['postgres'])->not->toHaveKey('host');
+});

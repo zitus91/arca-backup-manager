@@ -26,3 +26,7 @@ scripts/.env.deploy.*
 Homestead.json
 Homestead.yaml
 Thumbs.db
+docs/*
+WORKFLOW_STATE.md
+.omo/*
+.serena/*

@@ -82,6 +82,7 @@ return [
     // Remote config
     'remote_config' => 'Configurazione Host Remoto',
     'remote_mysql_config' => 'Connessione MySQL',
+    'remote_postgres_config' => 'Connessione PostgreSQL',
     'remote_mongodb_config' => 'Connessione MongoDB',
     'remote_filesystem_config' => 'Connessione SSH (Filesystem)',
     'remote_host' => 'Host',
@@ -120,6 +121,7 @@ return [
 
     // Validation
     'remote_mysql_required' => 'Inserisci i dettagli di connessione MySQL dell\'host remoto.',
+    'remote_postgres_required' => 'Inserisci i dettagli di connessione PostgreSQL dell\'host remoto.',
     'remote_mongodb_required' => 'Inserisci i dettagli di connessione MongoDB dell\'host remoto.',
     'remote_filesystem_required' => 'Inserisci i dettagli di connessione SSH per il restore del filesystem.',
 

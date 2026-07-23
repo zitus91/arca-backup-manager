@@ -29,6 +29,15 @@ class BackupSourceFactory extends Factory
         ]);
     }
 
+    public function postgres(): static
+    {
+        return $this->state(fn () => [
+            'config' => [
+                'postgres' => $this->postgresConfig(),
+            ],
+        ]);
+    }
+
     public function mongodb(): static
     {
         return $this->state(fn () => [
@@ -53,6 +62,13 @@ class BackupSourceFactory extends Factory
     }
 
     private function mysqlConfig(): array
+    {
+        return [
+            'databases' => [$this->faker->slug(2)],
+        ];
+    }
+
+    private function postgresConfig(): array
     {
         return [
             'databases' => [$this->faker->slug(2)],

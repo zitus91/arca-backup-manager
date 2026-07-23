@@ -25,7 +25,7 @@
             <div class="flex flex-wrap items-end gap-4">
                 <div class="form-control w-44">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-job.filter_status') }}</span></label>
-                    <select wire:model.live="filterStatus" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                    <select wire:model.live="filterStatus" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10 focus:border-primary">
                         <option value="">{{ __('backup-job.all') }}</option>
                         <option value="active">{{ __('backup-job.active') }}</option>
                         <option value="inactive">{{ __('backup-job.inactive') }}</option>
@@ -33,7 +33,7 @@
                 </div>
                 <div class="form-control w-44">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-job.filter_schedule') }}</span></label>
-                    <select wire:model.live="filterScheduleType" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                    <select wire:model.live="filterScheduleType" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10 focus:border-primary">
                         <option value="">{{ __('backup-job.all') }}</option>
                         <option value="manual">{{ __('backup-job.schedule_manual') }}</option>
                         <option value="hourly">{{ __('backup-job.schedule_hourly') }}</option>
@@ -201,7 +201,7 @@
     {{-- Modal Form --}}
     @if ($showForm)
         <div class="modal modal-open">
-            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-6xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <h3 class="font-bold text-lg">
                         {{ $editId ? __('backup-job.edit_title') : __('backup-job.create_title') }}

@@ -13,9 +13,30 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 - **Screenshot nel README**: catturate le schermate dell'interfaccia (dashboard, job, sorgenti, restore, log, registro attività) e le modali di creazione (sorgente, destinazione, job), con i dati reali sfocati.
 
+#### Supporto PostgreSQL
+- **Backup PostgreSQL**: dump completi e incrementali con `pg_dump`, supporto checkpoint WAL e fallback a dump completo.
+- **Restore PostgreSQL**: ripristino su stesso host o host remoto, nomi target personalizzati, modalità override con drop database.
+- **Per-type host linking**: campo `postgres_host_id` su `BackupSource` per collegare un host PostgreSQL dedicato per sorgente.
+- **SSH tunnel per-service**: ogni tipo di servizio (MySQL, PostgreSQL, MongoDB, Filesystem) può usare un host diverso con tunnel SSH indipendente.
+- **Factory states**: stati `withPostgres()` per `BackupHostFactory` e `postgres()` per `BackupSourceFactory`.
+- **Test comportamentali**: 10 nuovi test per backup/restore PostgreSQL e validazione form sorgente.
+- **Traduzioni EN/IT**: nuove chiavi per label, descrizioni e messaggi PostgreSQL.
+
+### Modificato
+
+- **`ProcessBackupJob`**: aggiunto `PostgresBackupService` alla catena DI; loop backup PostgreSQL con checkpoint `postgres.<db>`.
+- **`ProcessRestoreJob`**: aggiunto `PostgresRestoreService` alla catena DI; fix `isPackageArchive()` per rilevare archivi PostgreSQL nei restore multi-tipo.
+- **`BackupSource` model**: aggiunto `postgresHost()` relation, `postgres_host_id` fillable, `'postgres'` in `enabledTypesAttribute`.
+- **`BackupHostForm` / `BackupSourceForm`**: sezioni PostgreSQL per configurazione host e sorgente.
+- **`Dockerfile`**: installazione di `mongodump`/`mongorestore` via tarball MongoDB CDN (il pacchetto `mongodb-database-tools` non esiste nei repo Debian).
+
 ### Rimosso
 
 - **File markdown di sviluppo** dal repository: `WORKFLOW_STATE.md`, la spec `docs/superpowers/specs/2026-07-15-resource-ownership-design.md`, le memorie del tool Serena (`.serena/memories/*`) e le istruzioni per gli assistenti AI (`CLAUDE.md`, `.github/copilot-instructions.md`).
+
+### Database
+
+- **Migration** `2026_07_22_100000`: aggiunge `postgres_host_id` FK nullable a `backup_sources` → `backup_hosts` (nullOnDelete).
 
 ---
 

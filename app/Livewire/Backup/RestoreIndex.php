@@ -107,10 +107,14 @@ class RestoreIndex extends Component
             'backup_date' => $log->started_at->format('d/m/Y H:i'),
             'file_size' => $log->formatted_size,
             'has_mysql' => isset($sourceConfig['mysql']),
+            'has_postgres' => isset($sourceConfig['postgres']),
             'has_mongodb' => isset($sourceConfig['mongodb']),
             'has_filesystem' => isset($sourceConfig['filesystem']),
             'mysql_databases' => isset($sourceConfig['mysql'])
                 ? ($sourceConfig['mysql']['databases'] ?? (isset($sourceConfig['mysql']['database']) ? [$sourceConfig['mysql']['database']] : []))
+                : [],
+            'postgres_databases' => isset($sourceConfig['postgres'])
+                ? ($sourceConfig['postgres']['databases'] ?? (isset($sourceConfig['postgres']['database']) ? [$sourceConfig['postgres']['database']] : []))
                 : [],
             'mongodb_databases' => isset($sourceConfig['mongodb'])
                 ? ($sourceConfig['mongodb']['databases'] ?? (isset($sourceConfig['mongodb']['database']) ? [$sourceConfig['mongodb']['database']] : []))
@@ -121,7 +125,7 @@ class RestoreIndex extends Component
         ];
 
         // Determine available restore types
-        $hasDb = $this->selectedBackupInfo['has_mysql'] || $this->selectedBackupInfo['has_mongodb'];
+        $hasDb = $this->selectedBackupInfo['has_mysql'] || $this->selectedBackupInfo['has_postgres'] || $this->selectedBackupInfo['has_mongodb'];
         $hasFs = $this->selectedBackupInfo['has_filesystem'];
 
         // If only one type, force that
@@ -134,6 +138,7 @@ class RestoreIndex extends Component
         // Pre-select all databases and paths
         $this->selectedDatabases = array_merge(
             $this->selectedBackupInfo['mysql_databases'] ?? [],
+            $this->selectedBackupInfo['postgres_databases'] ?? [],
             $this->selectedBackupInfo['mongodb_databases'] ?? [],
         );
         $this->selectedPaths = $this->selectedBackupInfo['filesystem_paths'] ?? [];
@@ -148,6 +153,14 @@ class RestoreIndex extends Component
                 'original' => $db,
                 'target' => $db.'_restored_'.$timestamp,
                 'type' => 'mysql',
+            ];
+        }
+
+        foreach ($this->selectedBackupInfo['postgres_databases'] ?? [] as $db) {
+            $this->customDbNames[] = [
+                'original' => $db,
+                'target' => $db.'_restored_'.$timestamp,
+                'type' => 'postgres',
             ];
         }
 
@@ -172,6 +185,7 @@ class RestoreIndex extends Component
         $this->overrideExisting = false;
         $this->remoteConfig = [
             'mysql' => ['host' => '', 'port' => '3306', 'username' => '', 'password' => ''],
+            'postgres' => ['host' => '', 'port' => '5432', 'username' => '', 'password' => ''],
             'mongodb' => ['host' => '', 'port' => '27017', 'username' => '', 'password' => '', 'auth_database' => 'admin'],
             'filesystem' => ['ssh_host' => '', 'ssh_port' => '22', 'ssh_user' => '', 'ssh_key_path' => ''],
         ];
@@ -218,8 +232,14 @@ class RestoreIndex extends Component
         if (in_array($this->restoreTarget, ['remote_host', 'known_host'])) {
             if ($hasSelectedDb) {
                 $hasMysql = ($this->selectedBackupInfo['has_mysql'] ?? false);
+                $hasPostgres = ($this->selectedBackupInfo['has_postgres'] ?? false);
                 $hasMongo = ($this->selectedBackupInfo['has_mongodb'] ?? false);
 
+                if ($hasPostgres && empty($this->remoteConfig['postgres']['host'])) {
+                    $this->dispatch('notify', type: 'error', message: __('restore.remote_postgres_required'));
+
+                    return;
+                }
                 if ($hasMysql && empty($this->remoteConfig['mysql']['host'])) {
                     $this->dispatch('notify', type: 'error', message: __('restore.remote_mysql_required'));
 
@@ -293,9 +313,11 @@ class RestoreIndex extends Component
         if (in_array($this->restoreType, ['full', 'db_only'])) {
             // Separate mysql and mongodb databases
             $allMysql = $this->selectedBackupInfo['mysql_databases'] ?? [];
+            $allPostgres = $this->selectedBackupInfo['postgres_databases'] ?? [];
             $allMongo = $this->selectedBackupInfo['mongodb_databases'] ?? [];
 
             $selectedItems['mysql_databases'] = array_values(array_intersect($this->selectedDatabases, $allMysql));
+            $selectedItems['postgres_databases'] = array_values(array_intersect($this->selectedDatabases, $allPostgres));
             $selectedItems['mongodb_databases'] = array_values(array_intersect($this->selectedDatabases, $allMongo));
         }
 
@@ -325,6 +347,9 @@ class RestoreIndex extends Component
 
             if ($this->selectedBackupInfo['has_mysql'] ?? false) {
                 $remoteHostConfig['mysql'] = $this->remoteConfig['mysql'];
+            }
+            if ($this->selectedBackupInfo['has_postgres'] ?? false) {
+                $remoteHostConfig['postgres'] = $this->remoteConfig['postgres'];
             }
             if ($this->selectedBackupInfo['has_mongodb'] ?? false) {
                 $remoteHostConfig['mongodb'] = $this->remoteConfig['mongodb'];
@@ -381,6 +406,15 @@ class RestoreIndex extends Component
                 'port' => (string) ($cfg['mysql']['port'] ?? 3306),
                 'username' => $cfg['mysql']['username'] ?? '',
                 'password' => $cfg['mysql']['password'] ?? '',
+            ];
+        }
+
+        if (isset($cfg['postgres'])) {
+            $this->remoteConfig['postgres'] = [
+                'host' => $cfg['postgres']['host'] ?? '',
+                'port' => (string) ($cfg['postgres']['port'] ?? 5432),
+                'username' => $cfg['postgres']['username'] ?? '',
+                'password' => $cfg['postgres']['password'] ?? '',
             ];
         }
 

@@ -88,7 +88,7 @@ class BackupSourceIndex extends Component
 
     public function render()
     {
-        $query = BackupSource::query()->with(['mysqlHost', 'mongodbHost', 'filesystemHost']);
+        $query = BackupSource::query()->with(['mysqlHost', 'postgresHost', 'mongodbHost', 'filesystemHost']);
 
         if ($this->filterStatus !== '') {
             $query->where('is_active', $this->filterStatus === 'active');

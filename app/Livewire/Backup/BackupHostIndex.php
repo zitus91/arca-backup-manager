@@ -83,9 +83,9 @@ class BackupHostIndex extends Component
         $hosts = $query->latest()->get();
 
         $sourceCounts = BackupSource::query()
-            ->selectRaw('mysql_host_id, mongodb_host_id, filesystem_host_id')
+            ->selectRaw('mysql_host_id, postgres_host_id, mongodb_host_id, filesystem_host_id')
             ->get()
-            ->flatMap(fn ($s) => array_filter([$s->mysql_host_id, $s->mongodb_host_id, $s->filesystem_host_id]))
+            ->flatMap(fn ($s) => array_filter([$s->mysql_host_id, $s->postgres_host_id, $s->mongodb_host_id, $s->filesystem_host_id]))
             ->countBy();
 
         $hosts->each(fn ($h) => $h->usage_count = (int) ($sourceCounts[$h->id] ?? 0));
