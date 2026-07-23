@@ -11,7 +11,7 @@
             <div class="flex flex-wrap items-end gap-4">
                 <div class="form-control w-44">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-log.filter_job') }}</span></label>
-                    <select wire:model.live="filterJobId" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                    <select wire:model.live="filterJobId" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10 focus:border-primary">
                         <option value="">{{ __('backup-log.all') }}</option>
                         @foreach ($jobs as $job)
                             <option value="{{ $job->id }}">{{ $job->name }}</option>
@@ -20,7 +20,7 @@
                 </div>
                 <div class="form-control w-44">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('backup-log.filter_status') }}</span></label>
-                    <select wire:model.live="filterStatus" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                    <select wire:model.live="filterStatus" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10 focus:border-primary">
                         <option value="">{{ __('backup-log.all') }}</option>
                         <option value="pending">{{ __('backup-log.status_pending') }}</option>
                         <option value="running">{{ __('backup-log.status_running') }}</option>
@@ -141,7 +141,7 @@
     {{-- Detail Modal --}}
     @if ($showDetail && $detailLog)
         <div class="modal modal-open">
-            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-6xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 {{-- Modal Header --}}
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <h3 class="font-bold text-lg">{{ __('backup-log.detail_title') }}</h3>

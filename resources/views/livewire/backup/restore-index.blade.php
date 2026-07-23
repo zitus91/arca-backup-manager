@@ -152,7 +152,7 @@
             <div class="flex flex-wrap items-end gap-4">
                 <div class="form-control w-44">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('restore.filter_job') }}</span></label>
-                    <select wire:model.live="filterJobId" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                    <select wire:model.live="filterJobId" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10 focus:border-primary">
                         <option value="">{{ __('restore.all') }}</option>
                         @foreach ($jobs as $job)
                             <option value="{{ $job->id }}">{{ $job->name }}</option>
@@ -256,7 +256,7 @@
     {{-- Restore Modal --}}
     @if ($showRestoreModal && $selectedBackupLogId)
         <div class="modal modal-open">
-            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-6xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 {{-- Modal Header --}}
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <div class="flex items-center gap-3">
@@ -343,7 +343,7 @@
                                 @if ($restoreTarget === 'known_host')
                                     <div class="form-control">
                                         <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('restore.known_host_select') }}</span></label>
-                                        <select wire:model.live="knownSourceId" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10">
+                                        <select wire:model.live="knownSourceId" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10">
                                             <option value="">— {{ __('restore.known_host_select') }} —</option>
                                             @foreach ($backupSources as $src)
                                                 <option value="{{ $src->id }}">{{ $src->name }}</option>
@@ -902,7 +902,7 @@
     {{-- Detail Modal --}}
     @if ($showDetail && $detailLog)
         <div class="modal modal-open">
-            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-6xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <h3 class="font-bold text-lg">{{ __('restore.detail_title') }}</h3>
                     <button wire:click="closeDetail" class="btn btn-ghost btn-sm btn-square rounded-lg">

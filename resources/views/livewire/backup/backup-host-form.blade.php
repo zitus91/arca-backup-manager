@@ -137,7 +137,7 @@
             </label>
 
             @if ($enable_mysql)
-                <div class="grid grid-cols-2 gap-3 pt-1">
+                <div class="grid grid-cols-4 gap-3 pt-1">
                     <div class="form-control col-span-2 sm:col-span-1">
                         <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mysql_host') }}</span></label>
                         <input type="text" wire:model="mysql_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />
@@ -201,8 +201,8 @@
             </label>
 
             @if ($enable_postgres)
-                <div class="grid grid-cols-2 gap-3 pt-1">
-                    <div class="form-control col-span-2 sm:col-span-1">
+                <div class="grid grid-cols-4 gap-3 pt-1">
+                    <div class="form-control">
                         <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.postgres_host') }}</span></label>
                         <input type="text" wire:model="postgres_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />
                         @error('postgres_host') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
@@ -265,7 +265,7 @@
             </label>
 
             @if ($enable_mongodb)
-                <div class="grid grid-cols-2 gap-3 pt-1">
+                <div class="grid grid-cols-4 gap-3 pt-1">
                     <div class="form-control col-span-2 sm:col-span-1">
                         <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('backup-host.mongodb_host') }}</span></label>
                         <input type="text" wire:model="mongodb_host" class="input input-bordered input-sm rounded-lg bg-base-100 border-base-content/10 font-mono" />

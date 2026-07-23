@@ -20,7 +20,7 @@
                 </div>
                 <div class="form-control w-44">
                     <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50 uppercase tracking-wider">{{ __('audit-log.filter_user') }}</span></label>
-                    <select wire:model.live="filterUserId" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10 focus:border-primary">
+                    <select wire:model.live="filterUserId" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10 focus:border-primary">
                         <option value="">{{ __('audit-log.all') }}</option>
                         @foreach ($users as $user)
                             <option value="{{ $user->id }}">{{ $user->name }}</option>

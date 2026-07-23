@@ -573,7 +573,7 @@
     {{-- MODAL: Edit Job Form --}}
     @if ($showEditForm)
         <div class="modal modal-open">
-            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-6xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <h3 class="font-bold text-lg">{{ __('backup-job.edit_title') }}</h3>
                     <button wire:click="closeEdit" class="btn btn-ghost btn-sm btn-square rounded-lg">
@@ -591,7 +591,7 @@
     {{-- MODAL: Backup Log Detail --}}
     @if ($showLogDetail && $detailLog)
         <div class="modal modal-open">
-            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-6xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <h3 class="font-bold text-lg">{{ __('backup-log.detail_title') }}</h3>
                     <button wire:click="closeLogDetail" class="btn btn-ghost btn-sm btn-square rounded-lg">
@@ -693,7 +693,7 @@
     {{-- MODAL: Restore --}}
     @if ($showRestoreModal && $selectedBackupLogId)
         <div class="modal modal-open">
-            <div class="modal-box max-w-3xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
+            <div class="modal-box max-w-6xl bg-base-100 border border-base-content/10 rounded-2xl p-0">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-content/5">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -757,7 +757,7 @@
                                 @if ($restoreTarget === 'known_host')
                                     <div class="form-control">
                                         <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('restore.known_host_select') }}</span></label>
-                                        <select wire:model.live="knownSourceId" class="select select-bordered select-sm rounded-lg bg-base-200/50 border-base-content/10">
+                                        <select wire:model.live="knownSourceId" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10">
                                             <option value="">— {{ __('restore.known_host_select') }} —</option>
                                             @foreach ($backupSources as $src)
                                                 <option value="{{ $src->id }}">{{ $src->name }}</option>

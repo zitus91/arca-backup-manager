@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Your data, kept safe. Self-hosted.</strong><br>
-  A self-hosted web application to schedule, monitor, and restore backups of MySQL, MongoDB and filesystems.
+  A self-hosted web application to schedule, monitor, and restore backups of MySQL, PostgreSQL, MongoDB and filesystems.
 </p>
 
 <p align="center">
@@ -46,7 +46,7 @@
 
 ## 🎯 Overview
 
-**Arca** is a self-hosted web application built with **Laravel 12** and **Livewire 4** that lets you configure, schedule, monitor, and restore backups of MySQL databases, MongoDB databases, and filesystem directories — from a single, clean UI.
+**Arca** is a self-hosted web application built with **Laravel 12** and **Livewire 4** that lets you configure, schedule, monitor, and restore backups of MySQL databases, PostgreSQL databases, MongoDB databases, and filesystem directories — from a single, clean UI.
 
 All backup and restore operations run in the background via queued jobs. The dashboard updates in real time through **Laravel Reverb** WebSockets, so you always know exactly what is happening.
 
@@ -61,10 +61,11 @@ Sensitive configuration (database credentials, storage keys, SSH details) is enc
 | Engine | Method | Notes |
 |--------|--------|-------|
 | **MySQL** | `mysqldump` | Single transaction, routines, triggers |
+| **PostgreSQL** | `pg_dump` | Full and incremental dumps, checkpoint support |
 | **MongoDB** | `mongodump` | Auth support, custom collections |
 | **Filesystem** | `tar` / `gzip` / `zip` | Exclude patterns, rsync over SSH |
 
-One source can combine all three types in a single backup job.
+One source can combine all four types in a single backup job.
 
 ### SSH Tunnel Support
 
@@ -73,6 +74,7 @@ All source types support an optional **SSH tunnel** (key or password auth via `s
 ### Incremental Backups
 
 - **MySQL** — incremental dumps targeted only at tables modified since the last checkpoint (via `information_schema`)
+- **PostgreSQL** — incremental dumps using WAL checkpoint mechanism with full-dump fallback
 - **MongoDB** — incremental dumps filtered by `ObjectId` timestamp
 - **Filesystem** — only files modified after the previous run (`find -newer`)
 - Configurable cadence: run a full backup every _N_ runs, incrementals in between
@@ -104,7 +106,7 @@ Each job has a configurable retention count. After every successful backup, the 
 - **Granular selection** — restore only databases, only files, or everything from a combined backup
 - **Non-destructive by default** — each database / path is restored under a new name with a `_restored_<timestamp>` suffix
 - **Custom target names** — editable per database or per path before executing
-- **Remote host restore** — restore MySQL or MongoDB to a different server, or push a filesystem backup to a remote host via rsync over SSH
+- **Remote host restore** — restore MySQL, PostgreSQL or MongoDB to a different server, or push a filesystem backup to a remote host via rsync over SSH
 - **Override mode** — optionally drop/overwrite an existing database or directory (requires explicit two-step confirmation with a live disclaimer showing every destructive operation)
 - **Incremental chain restore** — the engine automatically resolves the full backup + all incremental steps and applies them in order
 - Supported archive formats: `.sql`, `.sql.gz`, `.sql.zip`, `.tar.gz`, `.zip`
@@ -169,7 +171,8 @@ Full English and Italian translations for every label, description, validation m
         │  ┌──────────────┐  │
         │  │ Backup       │  │     ┌────────────┐  ┌────────────┐
         │  │  MySQL       │──┼────►│ mysqldump  │  │ SSH Tunnel │
-        │  │  MongoDB     │──┼────►│ mongodump  │  │ (optional) │
+        │  │  PostgreSQL  │──┼────►│ pg_dump    │  │ (optional) │
+        │  │  MongoDB     │──┼────►│ mongodump  │  │           │
         │  │  Filesystem  │──┼────►│ tar/rsync  │  └────────────┘
         │  └──────────────┘  │
         │  ┌──────────────┐  │     ┌────────────┐
@@ -204,6 +207,7 @@ Full English and Italian translations for every label, description, validation m
 | Node.js | 18+ | With npm |
 | SQLite | 3 | Or MySQL 8+ |
 | `mysqldump` | any | Only if backing up MySQL sources |
+| `pg_dump` / `pg_restore` | any | Only if backing up / restoring PostgreSQL sources |
 | `mongodump` / `mongorestore` | any | Only if backing up / restoring MongoDB |
 | `mongosh` | any | Only if using MongoDB override mode |
 | `tar`, `gzip`, `zip` | system | For filesystem archives |
@@ -497,6 +501,7 @@ VITE_REVERB_SCHEME="${REVERB_SCHEME}"
 Go to **Sources** and click **New Source**. A source can include one or more of:
 
 - **MySQL** — host, port, username, password, list of databases. Use the built-in connection test to verify and auto-discover available databases.
+- **PostgreSQL** — host, port, username, password, list of databases. Connection test included.
 - **MongoDB** — host, port, credentials, list of databases. Connection test included.
 - **Filesystem** — one or more directory paths with optional exclude patterns.
 - **SSH Tunnel** — enable to reach sources that are not directly accessible. Supports key-based or password-based authentication.
@@ -543,7 +548,7 @@ All data refreshes automatically via WebSocket when a backup starts or completes
 Go to **Restore** and click **Restore** on any backup log entry. Configure:
 
 1. **What to restore** — databases only, files only, or everything
-2. **Target** — same host or a different remote host (MySQL / MongoDB / SSH)
+2. **Target** — same host or a different remote host (MySQL / PostgreSQL / MongoDB / SSH)
 3. **Target names** — customize the database name or path for each item (default: `original_restored_YYYYMMDD_HHmmss`)
 4. **Override mode** — toggle to overwrite an existing database or directory (requires two-step confirmation with a live disclaimer listing every destructive operation)
 
@@ -575,7 +580,7 @@ php artisan test
 php artisan test --coverage
 ```
 
-Tests use **Pest 3.8** with `RefreshDatabase`, an in-memory SQLite database, and array drivers for cache, session, and queue. Services are mocked; actual external tools (`mysqldump`, `mongodump`, etc.) are never invoked during tests.
+Tests use **Pest 3.8** with `RefreshDatabase`, an in-memory SQLite database, and array drivers for cache, session, and queue. Services are mocked; actual external tools (`mysqldump`, `pg_dump`, `mongodump`, etc.) are never invoked during tests.
 
 Feature tests live in `tests/Feature/Backup/`.
 
@@ -616,6 +621,7 @@ backup-manager/
 │   ├── Services/
 │   │   ├── Backup/
 │   │   │   ├── MysqlBackupService.php
+│   │   │   ├── PostgresBackupService.php
 │   │   │   ├── MongodbBackupService.php
 │   │   │   ├── FilesystemBackupService.php
 │   │   │   ├── S3StorageService.php
@@ -624,6 +630,7 @@ backup-manager/
 │   │   │   └── SshTunnelService.php
 │   │   └── Restore/
 │   │       ├── MysqlRestoreService.php
+│   │       ├── PostgresRestoreService.php
 │   │       ├── MongodbRestoreService.php
 │   │       └── FilesystemRestoreService.php
 │   └── Trait/
