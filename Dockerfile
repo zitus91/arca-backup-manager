@@ -40,7 +40,10 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build \
+# storage/* is excluded via .dockerignore; without these dirs, package:discover fails ("Please provide a valid cache path")
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
+    storage/framework/testing storage/framework/views storage/logs bootstrap/cache \
+    && npm run build \
     && rm -rf node_modules \
     && composer run-script post-autoload-dump \
     && chown -R www-data:www-data storage bootstrap/cache database \
