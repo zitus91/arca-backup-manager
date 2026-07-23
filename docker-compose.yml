@@ -1,5 +1,6 @@
 services:
   php-fpm:
+    image: backup-manager-php:8.3
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,6 +16,7 @@ services:
       - frontend
 
   laravel-scheduler:
+    image: backup-manager-php:8.3
     build:
       context: .
       dockerfile: Dockerfile
@@ -32,6 +34,7 @@ services:
       - backend
 
   laravel-worker:
+    image: backup-manager-php:8.3
     build:
       context: .
       dockerfile: Dockerfile
@@ -49,6 +52,7 @@ services:
       - backend
 
   reverb:
+    image: backup-manager-php:8.3
     build:
       context: .
       dockerfile: Dockerfile
