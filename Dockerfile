@@ -2,10 +2,10 @@ FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
     git curl zip unzip \
-    libzip-dev libpng-dev libonig-dev libxml2-dev libsqlite3-dev \
+    libzip-dev libpng-dev libonig-dev libxml2-dev libsqlite3-dev libicu-dev \
     default-mysql-client \
     openssh-client sshpass rsync \
-    && docker-php-ext-install pdo_mysql pdo_sqlite mbstring zip xml bcmath \
+    && docker-php-ext-install pdo_mysql pdo_sqlite mbstring zip xml bcmath intl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(dpkg --print-architecture) \

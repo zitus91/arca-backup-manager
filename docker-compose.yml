@@ -1,68 +1,108 @@
 services:
   php-fpm:
     image: backup-manager-php:8.3
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup_manager_php
+    container_name: php_fpm_backup
     restart: unless-stopped
-    working_dir: /var/www/html
+    working_dir: /var/www/html/backup
+    environment:
+      APP_DIR: /var/www/html/backup
+      PHP_TEMP_DIR: /tmp/php
+    extra_hosts:
+      - "s3.zitus.it:130.25.167.122"
+    tmpfs:
+      - /tmp
     volumes:
-      - ./storage:/var/www/html/storage
-      - ./database:/var/www/html/database
-      - ./.env:/var/www/html/.env:ro
+      - /var/www/backup/storage:/var/backup
+      - /var/www/backup/app:/var/www/html/backup
+      - /var/www/zitus/sites:/var/www/html/zitus
+      - /var/www/mailcow:/var/www/html/mailcow
+      - /var/www/harrier8:/var/www/html/harrier8
+      - /var/www/backup/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - /var/www/backup/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     networks:
       - backend
       - frontend
+      - harrier8_backend
+      - zitus_backend
+      - garage_internal
 
   laravel-scheduler:
     image: backup-manager-php:8.3
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup_manager_scheduler
+    container_name: laravel_scheduler
     restart: unless-stopped
-    working_dir: /var/www/html
-    command: php artisan schedule:work --verbose --no-interaction
+    working_dir: /var/www/html/backup
+    environment:
+      APP_DIR: /var/www/html/backup
+      PHP_TEMP_DIR: /tmp/php
+    extra_hosts:
+      - "s3.zitus.it:130.25.167.122"
+    tmpfs:
+      - /tmp
+    command: >
+      sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     volumes:
-      - ./storage:/var/www/html/storage
-      - ./database:/var/www/html/database
-      - ./.env:/var/www/html/.env:ro
+      - /var/www/backup/app:/var/www/html/backup
+      - /var/www/zitus/sites:/var/www/html/zitus
+      - /var/www/mailcow:/var/www/html/mailcow
+      - /var/www/harrier8:/var/www/html/harrier8
+      - /var/www/backup/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - /var/www/backup/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     depends_on:
       - php-fpm
     networks:
       - backend
+      - harrier8_backend
+      - zitus_backend
+      - garage_internal
 
   laravel-worker:
     image: backup-manager-php:8.3
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup_manager_worker
+    container_name: laravel_worker
     restart: unless-stopped
-    working_dir: /var/www/html
-    command: php artisan queue:work --verbose --tries=1 --timeout=3600 --sleep=3 --max-time=0 --memory=512
+    working_dir: /var/www/html/backup
+    environment:
+      APP_DIR: /var/www/html/backup
+      PHP_TEMP_DIR: /tmp/php
+    extra_hosts:
+      - "s3.zitus.it:130.25.167.122"
+    tmpfs:
+      - /tmp
+    command: php artisan queue:work --verbose --tries=3 --timeout=3600 --sleep=3 --max-time=3600
     volumes:
-      - ./storage:/var/www/html/storage
-      - ./database:/var/www/html/database
-      - ./.env:/var/www/html/.env:ro
+      - /var/www/backup/app:/var/www/html/backup
+      - /var/www/zitus/sites:/var/www/html/zitus
+      - /var/www/mailcow:/var/www/html/mailcow
+      - /var/www/harrier8:/var/www/html/harrier8
+      - /var/www/backup/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - /var/www/backup/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     depends_on:
       - php-fpm
     networks:
       - backend
+      - harrier8_backend
+      - zitus_backend
+      - garage_internal
 
   reverb:
     image: backup-manager-php:8.3
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: backup_manager_reverb
+    container_name: laravel_reverb
     restart: unless-stopped
-    working_dir: /var/www/html
+    working_dir: /var/www/html/backup
+    environment:
+      APP_DIR: /var/www/html/backup
+      PHP_TEMP_DIR: /tmp/php
+    extra_hosts:
+      - "s3.zitus.it:130.25.167.122"
+    tmpfs:
+      - /tmp
     command: php artisan reverb:start --host=0.0.0.0 --port=8080
     volumes:
-      - ./storage:/var/www/html/storage
-      - ./.env:/var/www/html/.env:ro
+      - /var/www/backup/app:/var/www/html/backup
+      - /var/www/zitus/sites:/var/www/html/zitus
+      - /var/www/mailcow:/var/www/html/mailcow
+      - /var/www/harrier8:/var/www/html/harrier8
+      - /var/www/backup/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - /var/www/backup/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     depends_on:
       - php-fpm
       - redis
@@ -72,48 +112,64 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: backup_manager_redis
+    container_name: redis_backup
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data
+      - /var/www/backup/redis:/data
     networks:
       - backend
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: backup_manager_nginx
+    container_name: nginx_backup
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-8080}:80"
+    extra_hosts:
+      - "s3.zitus.it:130.25.167.122"
     volumes:
-      - ./storage/app/public:/var/www/html/storage/app/public:ro
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - /var/www/backup/app:/var/www/html/backup:ro
+      - /var/www/zitus/sites:/var/www/html/zitus:ro
+      - /var/www/mailcow:/var/www/html/mailcow
+      - /var/www/harrier8:/var/www/html/harrier8
+      - /var/www/backup/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /var/www/backup/nginx/conf.d:/etc/nginx/conf.d:ro
+      - /var/www/backup/nginx/snippets:/etc/nginx/snippets:ro
     depends_on:
       - php-fpm
       - reverb
     networks:
       - frontend
+      - webproxy
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   sqlite-web:
     image: coleifer/sqlite-web
-    container_name: backup_manager_sqlite_web
+    container_name: sqlite_web_gui
     restart: unless-stopped
+    extra_hosts:
+      - "s3.zitus.it:130.25.167.122"
     environment:
-      - SQLITE_DATABASE=database.sqlite
-      - EXTRA_ARGS=-r
+      SQLITE_DATABASE: database.sqlite
+      EXTRA_ARGS: -r
     volumes:
-      - ./database:/data:ro
-    ports:
-      - "${SQLITE_WEB_PORT:-8082}:8080"
+      - /var/www/backup/app/database:/data
     networks:
       - frontend
-
-volumes:
-  redis_data:
+      - webproxy
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
 networks:
   frontend:
     driver: bridge
   backend:
     driver: bridge
+  webproxy:
+    external: true
+  harrier8_backend:
+    external: true
+  zitus_backend:
+    external: true
+  garage_internal:
+    external: true
