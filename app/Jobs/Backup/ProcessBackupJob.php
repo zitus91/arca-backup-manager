@@ -35,6 +35,7 @@ class ProcessBackupJob implements ShouldQueue
     public function __construct(
         public int $backupJobId,
         public int $backupLogId,
+        public bool $forceFull = false,
     ) {}
 
     public function handle(
@@ -64,7 +65,7 @@ class ProcessBackupJob implements ShouldQueue
         $parentLog = null;
         $checkpoint = null;
 
-        if ($backupJob->backup_type === 'incremental') {
+        if ($backupJob->backup_type === 'incremental' && ! $this->forceFull) {
             $resolved = $this->resolveIncrementalState($backupJob);
             $isIncremental = $resolved['is_incremental'];
             $parentLog = $resolved['parent_log'];

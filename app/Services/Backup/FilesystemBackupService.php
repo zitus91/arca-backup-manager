@@ -34,11 +34,7 @@ class FilesystemBackupService
 
         $command = $this->buildCommand($sourcePath, $fullPath, $compression, $excludePatterns);
 
-        $result = Process::timeout(3600)->run($command);
-
-        if (! $result->successful()) {
-            throw new \RuntimeException('Filesystem backup failed: '.$result->errorOutput());
-        }
+        $archiveWarnings = $this->runArchive($command, 'Filesystem backup failed');
 
         $fileCount = $this->countFiles($sourcePath, $excludePatterns);
 
@@ -46,6 +42,7 @@ class FilesystemBackupService
             'source_path' => $sourcePath,
             'exclude_patterns' => $excludePatterns,
             'files_count' => $fileCount,
+            'archive_warnings' => $archiveWarnings,
         ];
 
         return [
@@ -146,12 +143,8 @@ class FilesystemBackupService
             default => 'tar -cf '.escapeshellarg($fullPath).' -T '.escapeshellarg($fileListPath),
         };
 
-        $result = Process::timeout(3600)->run($cmd);
+        $archiveWarnings = $this->runArchive($cmd, 'Incremental filesystem backup failed');
         @unlink($fileListPath);
-
-        if (! $result->successful()) {
-            throw new \RuntimeException('Incremental filesystem backup failed: '.$result->errorOutput());
-        }
 
         return [
             'file_name' => $fileName,
@@ -162,6 +155,7 @@ class FilesystemBackupService
                 'exclude_patterns' => $excludePatterns,
                 'files_count' => count($changedFiles),
                 'incremental' => true,
+                'archive_warnings' => $archiveWarnings,
             ],
             'incremental_checkpoint' => [
                 'type' => 'filesystem',
@@ -240,11 +234,10 @@ class FilesystemBackupService
             default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
         };
 
-        $archiveResult = Process::timeout(3600)->run($archiveCmd);
-        Process::run('rm -rf '.escapeshellarg($localRsyncDir));
-
-        if (! $archiveResult->successful()) {
-            throw new \RuntimeException('SSH incremental backup archiving failed: '.$archiveResult->errorOutput());
+        try {
+            $archiveWarnings = $this->runArchive($archiveCmd, 'SSH incremental backup archiving failed');
+        } finally {
+            Process::run('rm -rf '.escapeshellarg($localRsyncDir));
         }
 
         return [
@@ -258,6 +251,7 @@ class FilesystemBackupService
                 'via_ssh' => true,
                 'incremental' => true,
                 'rsync_warnings' => $rsyncWarnings,
+                'archive_warnings' => $archiveWarnings,
             ],
             'incremental_checkpoint' => [
                 'type' => 'filesystem',
@@ -325,11 +319,10 @@ class FilesystemBackupService
             default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
         };
 
-        $archiveResult = Process::timeout(3600)->run($archiveCmd);
-        Process::run('rm -rf '.escapeshellarg($localRsyncDir));
-
-        if (! $archiveResult->successful()) {
-            throw new \RuntimeException('SSH filesystem backup archiving failed: '.$archiveResult->errorOutput());
+        try {
+            $archiveWarnings = $this->runArchive($archiveCmd, 'SSH filesystem backup archiving failed');
+        } finally {
+            Process::run('rm -rf '.escapeshellarg($localRsyncDir));
         }
 
         $meta = [
@@ -338,6 +331,7 @@ class FilesystemBackupService
             'exclude_patterns' => $excludePatterns,
             'via_ssh' => true,
             'rsync_warnings' => $rsyncWarnings,
+            'archive_warnings' => $archiveWarnings,
         ];
 
         return [
@@ -373,18 +367,38 @@ class FilesystemBackupService
             'zip' => 'cd '.escapeshellarg(dirname($localDir)).' && zip -r '.escapeshellarg($fullPath).' '.escapeshellarg(basename($localDir)),
             default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localDir)).' '.escapeshellarg(basename($localDir)),
         };
-        $res = Process::timeout(3600)->run($archiveCmd);
-        Process::run('rm -rf '.escapeshellarg($localDir));
-        if (! $res->successful()) {
-            throw new \RuntimeException('FTP filesystem backup archiving failed: '.$res->errorOutput());
+        try {
+            $archiveWarnings = $this->runArchive($archiveCmd, 'FTP filesystem backup archiving failed');
+        } finally {
+            Process::run('rm -rf '.escapeshellarg($localDir));
         }
 
         return [
             'file_name' => $fileName,
             'file_path' => $fullPath,
             'file_size' => file_exists($fullPath) ? filesize($fullPath) : 0,
-            'meta' => ['source_path' => $sourcePath, 'exclude_patterns' => $excludePatterns, 'files_count' => $fileCount, 'via_ftp' => true],
+            'meta' => ['source_path' => $sourcePath, 'exclude_patterns' => $excludePatterns, 'files_count' => $fileCount, 'via_ftp' => true, 'archive_warnings' => $archiveWarnings],
         ];
+    }
+
+    /**
+     * Run a tar/zip command. tar exits 1 for warnings such as
+     * "file changed as we read it": the archive is still valid, so those are
+     * returned as warnings instead of aborting the backup.
+     */
+    protected function runArchive(string $cmd, string $errorPrefix): ?string
+    {
+        $result = Process::timeout(3600)->run($cmd);
+
+        if ($result->successful()) {
+            return null;
+        }
+
+        if ($result->exitCode() === 1 && str_contains($cmd, 'tar -c')) {
+            return trim($result->errorOutput());
+        }
+
+        throw new \RuntimeException($errorPrefix.': '.$result->errorOutput());
     }
 
     /**

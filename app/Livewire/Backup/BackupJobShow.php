@@ -209,7 +209,7 @@ class BackupJobShow extends Component
         $this->showEditForm = false;
     }
 
-    public function runNow(): void
+    public function runNow(bool $forceFull = false): void
     {
         $job = BackupJob::with(['source', 'destination'])->findOrFail($this->jobId);
 
@@ -219,9 +219,9 @@ class BackupJobShow extends Component
             'started_at' => now(),
         ]);
 
-        ProcessBackupJob::dispatch($job->id, $log->id);
+        ProcessBackupJob::dispatch($job->id, $log->id, $forceFull);
 
-        AuditLog::record('backup_job_run', "Manual run triggered for job: {$job->name}");
+        AuditLog::record('backup_job_run', 'Manual '.($forceFull ? 'full ' : '')."run triggered for job: {$job->name}");
 
         unset($this->stats, $this->recentLogs, $this->job);
 

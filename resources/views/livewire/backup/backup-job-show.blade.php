@@ -28,17 +28,30 @@
             </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-            <button wire:click="runNow"
+            <button wire:click="runNow(false)"
                     class="btn btn-primary btn-sm gap-2 rounded-xl shadow-lg shadow-primary/20"
-                    wire:loading.attr="disabled" wire:target="runNow">
-                <span wire:loading wire:target="runNow" class="loading loading-spinner loading-xs"></span>
-                <span wire:loading.remove wire:target="runNow">
+                    wire:loading.attr="disabled" wire:target="runNow(false)">
+                <span wire:loading wire:target="runNow(false)" class="loading loading-spinner loading-xs"></span>
+                <span wire:loading.remove wire:target="runNow(false)">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/>
                     </svg>
                 </span>
                 {{ __('backup-job-show.run_now') }}
             </button>
+            @if ($this->job->backup_type === 'incremental')
+                <button wire:click="runNow(true)"
+                        class="btn btn-outline btn-sm gap-2 rounded-xl"
+                        wire:loading.attr="disabled" wire:target="runNow(true)">
+                    <span wire:loading wire:target="runNow(true)" class="loading loading-spinner loading-xs"></span>
+                    <span wire:loading.remove wire:target="runNow(true)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75"/>
+                        </svg>
+                    </span>
+                    {{ __('backup-job-show.run_full_now') }}
+                </button>
+            @endif
         </div>
     </div>
 

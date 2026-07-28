@@ -7,6 +7,7 @@ return [
     'back'               => 'Back to Jobs',
     'edit'               => 'Edit Job',
     'run_now'            => 'Run Now',
+    'run_full_now'       => 'Full Backup',
     'dispatched'         => 'Backup job dispatched successfully.',
     'job_saved'          => 'Job saved successfully.',
 

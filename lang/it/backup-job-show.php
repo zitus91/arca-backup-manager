@@ -7,6 +7,7 @@ return [
     'back'               => 'Torna ai Job',
     'edit'               => 'Modifica Job',
     'run_now'            => 'Esegui Ora',
+    'run_full_now'       => 'Backup Completo',
     'dispatched'         => 'Job di backup avviato con successo.',
     'job_saved'          => 'Job salvato con successo.',
 
