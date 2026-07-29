@@ -1,10 +1,10 @@
 <?php
 
-use App\Console\Commands\RecoverStaleBackupJobs;
 use App\Events\Backup\BackupJobCompleted;
 use App\Models\BackupJob;
 use App\Models\BackupLog;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\File;
 
 it('recovers stale running jobs', function () {
     Event::fake();
@@ -106,4 +106,39 @@ it('accepts custom minutes threshold', function () {
         ->assertSuccessful();
 
     Event::assertDispatched(BackupJobCompleted::class);
+});
+
+it('prunes leftover temp dirs but keeps those of active jobs', function () {
+    Event::fake();
+
+    $job = BackupJob::factory()->create();
+
+    $crashedLog = BackupLog::factory()->create([
+        'backup_job_id' => $job->id,
+        'status' => 'failed',
+        'started_at' => now()->subHours(3),
+    ]);
+    $activeLog = BackupLog::factory()->create([
+        'backup_job_id' => $job->id,
+        'status' => 'running',
+        'started_at' => now()->subMinutes(5),
+    ]);
+
+    $root = storage_path('app/backups/tmp');
+    File::ensureDirectoryExists($root.'/'.$crashedLog->id);
+    File::ensureDirectoryExists($root.'/'.$activeLog->id);
+    File::put($root.'/'.$crashedLog->id.'-package.tar.gz', 'x');
+    $old = now()->subHours(3)->getTimestamp();
+    touch($root.'/'.$crashedLog->id, $old);
+    touch($root.'/'.$crashedLog->id.'-package.tar.gz', $old);
+    touch($root.'/'.$activeLog->id, $old);
+
+    $this->artisan('backup:recover-stale-jobs', ['--minutes' => 70])
+        ->assertSuccessful();
+
+    expect(is_dir($root.'/'.$crashedLog->id))->toBeFalse();
+    expect(is_file($root.'/'.$crashedLog->id.'-package.tar.gz'))->toBeFalse();
+    expect(is_dir($root.'/'.$activeLog->id))->toBeTrue();
+
+    File::deleteDirectory($root.'/'.$activeLog->id);
 });

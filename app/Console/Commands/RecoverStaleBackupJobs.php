@@ -4,14 +4,16 @@ namespace App\Console\Commands;
 
 use App\Events\Backup\BackupJobCompleted;
 use App\Models\BackupLog;
+use App\Models\RestoreLog;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\File;
 
 class RecoverStaleBackupJobs extends Command
 {
     protected $signature = 'backup:recover-stale-jobs
                             {--minutes=70 : Minutes after which a running/pending job is considered stale}';
 
-    protected $description = 'Mark stale running or pending backup jobs as failed (e.g. after a worker crash)';
+    protected $description = 'Mark stale running or pending backup jobs as failed and prune leftover temp files (e.g. after a worker crash)';
 
     public function handle(): int
     {
@@ -25,6 +27,8 @@ class RecoverStaleBackupJobs extends Command
 
         if ($staleLogs->isEmpty()) {
             $this->info('No stale backup jobs found.');
+
+            $this->pruneTempFiles($threshold->getTimestamp());
 
             return self::SUCCESS;
         }
@@ -56,6 +60,44 @@ class RecoverStaleBackupJobs extends Command
 
         $this->info("Recovered {$staleLogs->count()} stale backup job(s).");
 
+        $this->pruneTempFiles($threshold->getTimestamp());
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Remove leftover backup/restore temp files. A job kills its own temp dir in a
+     * finally block, so anything still here belongs to a worker that was killed.
+     */
+    protected function pruneTempFiles(int $threshold): void
+    {
+        $roots = [
+            storage_path('app/backups/tmp') => BackupLog::class,
+            storage_path('app/restores/tmp') => RestoreLog::class,
+        ];
+
+        $pruned = 0;
+
+        foreach ($roots as $root => $model) {
+            foreach (glob($root.'/*') ?: [] as $path) {
+                // Temp dirs are named after the log id: never touch a job still working
+                $logId = (int) strtok(basename($path), '-');
+
+                if ($logId > 0 && $model::whereKey($logId)->whereIn('status', ['running', 'pending'])->exists()) {
+                    continue;
+                }
+
+                if (filemtime($path) > $threshold) {
+                    continue;
+                }
+
+                is_dir($path) ? File::deleteDirectory($path) : File::delete($path);
+                $pruned++;
+            }
+        }
+
+        if ($pruned > 0) {
+            $this->info("Pruned {$pruned} leftover temp file(s)/dir(s).");
+        }
     }
 }

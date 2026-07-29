@@ -76,8 +76,10 @@ return [
     'target_remote_host' => 'Remote Host',
     'target_remote_host_desc' => 'Restore to a different server',
     'target_known_host' => 'Known Host',
-    'target_known_host_desc' => 'Use credentials from an existing backup source',
-    'known_host_select' => 'Select Source',
+    'target_known_host_desc' => 'Use credentials from a registered host',
+    'known_host_select' => 'Select Host',
+    'known_host_required' => 'Select a registered host to restore to.',
+    'known_host_summary' => 'Credentials taken from the selected host',
 
     // Remote config
     'remote_config' => 'Remote Host Configuration',

@@ -3,9 +3,9 @@
 namespace App\Livewire\Backup;
 
 use App\Jobs\Restore\ProcessRestoreJob;
+use App\Models\BackupHost;
 use App\Models\BackupJob;
 use App\Models\BackupLog;
-use App\Models\BackupSource;
 use App\Models\RestoreLog;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -48,7 +48,7 @@ class RestoreIndex extends Component
     // Restore target
     public string $restoreTarget = 'same_host';
 
-    public ?int $knownSourceId = null;
+    public ?int $knownHostId = null;
 
     public array $remoteConfig = [];
 
@@ -181,13 +181,15 @@ class RestoreIndex extends Component
 
         // Initialize restore target and remote config
         $this->restoreTarget = 'same_host';
-        $this->knownSourceId = null;
+        $this->knownHostId = null;
         $this->overrideExisting = false;
+        // ssh is part of every section: without it the job would fall back to the
+        // source host's tunnel when restoring to a manually typed remote host.
         $this->remoteConfig = [
-            'mysql' => ['host' => '', 'port' => '3306', 'username' => '', 'password' => ''],
-            'postgres' => ['host' => '', 'port' => '5432', 'username' => '', 'password' => ''],
-            'mongodb' => ['host' => '', 'port' => '27017', 'username' => '', 'password' => '', 'auth_database' => 'admin'],
-            'filesystem' => ['ssh_host' => '', 'ssh_port' => '22', 'ssh_user' => '', 'ssh_key_path' => ''],
+            'mysql' => ['host' => '', 'port' => '3306', 'username' => '', 'password' => '', 'ssh' => ['enabled' => false]],
+            'postgres' => ['host' => '', 'port' => '5432', 'username' => '', 'password' => '', 'ssh' => ['enabled' => false]],
+            'mongodb' => ['host' => '', 'port' => '27017', 'username' => '', 'password' => '', 'auth_database' => 'admin', 'ssh' => ['enabled' => false]],
+            'filesystem' => ['enabled' => true, 'auth_method' => 'key', 'host' => '', 'port' => '22', 'user' => '', 'key_path' => ''],
         ];
 
         $this->showRestoreModal = true;
@@ -207,7 +209,7 @@ class RestoreIndex extends Component
         $this->customDbNames = [];
         $this->customPaths = [];
         $this->restoreTarget = 'same_host';
-        $this->knownSourceId = null;
+        $this->knownHostId = null;
         $this->remoteConfig = [];
         $this->overrideExisting = false;
         $this->showConfirmation = false;
@@ -230,6 +232,12 @@ class RestoreIndex extends Component
 
         // Validate remote config if remote host is selected
         if (in_array($this->restoreTarget, ['remote_host', 'known_host'])) {
+            if ($this->restoreTarget === 'known_host' && ! $this->knownHostId) {
+                $this->dispatch('notify', type: 'error', message: __('restore.known_host_required'));
+
+                return;
+            }
+
             if ($hasSelectedDb) {
                 $hasMysql = ($this->selectedBackupInfo['has_mysql'] ?? false);
                 $hasPostgres = ($this->selectedBackupInfo['has_postgres'] ?? false);
@@ -253,7 +261,7 @@ class RestoreIndex extends Component
                 }
             }
 
-            if ($hasSelectedFs && empty($this->remoteConfig['filesystem']['ssh_host'])) {
+            if ($hasSelectedFs && empty($this->remoteConfig['filesystem']['host'])) {
                 $this->dispatch('notify', type: 'error', message: __('restore.remote_filesystem_required'));
 
                 return;
@@ -385,67 +393,53 @@ class RestoreIndex extends Component
     }
 
     /**
-     * When a known source is selected, pre-fill remoteConfig from its credentials.
+     * When a registered host is selected, pre-fill remoteConfig from its credentials
+     * (including the ssh tunnel, so hosts only reachable via ssh keep working).
      */
-    public function updatedKnownSourceId(?int $value): void
+    public function updatedKnownHostId(?int $value): void
     {
         if (! $value) {
             return;
         }
 
-        $source = BackupSource::find($value);
-        if (! $source) {
+        $host = BackupHost::find($value);
+        if (! $host) {
             return;
         }
 
-        $cfg = $source->config ?? [];
+        $cfg = $host->config ?? [];
 
-        if (isset($cfg['mysql'])) {
-            $this->remoteConfig['mysql'] = [
-                'host' => $cfg['mysql']['host'] ?? '',
-                'port' => (string) ($cfg['mysql']['port'] ?? 3306),
-                'username' => $cfg['mysql']['username'] ?? '',
-                'password' => $cfg['mysql']['password'] ?? '',
+        foreach (['mysql' => 3306, 'postgres' => 5432, 'mongodb' => 27017] as $type => $defaultPort) {
+            if (! isset($cfg[$type])) {
+                continue;
+            }
+
+            $this->remoteConfig[$type] = [
+                'host' => $cfg[$type]['host'] ?? '',
+                'port' => (string) ($cfg[$type]['port'] ?? $defaultPort),
+                'username' => $cfg[$type]['username'] ?? '',
+                'password' => $cfg[$type]['password'] ?? '',
+                'ssh' => $host->usesSshFor($type) ? $host->sshConfig() : ['enabled' => false],
             ];
+
+            if ($type === 'mongodb') {
+                $this->remoteConfig['mongodb']['auth_database'] = $cfg['mongodb']['auth_database'] ?? 'admin';
+            }
         }
 
-        if (isset($cfg['postgres'])) {
-            $this->remoteConfig['postgres'] = [
-                'host' => $cfg['postgres']['host'] ?? '',
-                'port' => (string) ($cfg['postgres']['port'] ?? 5432),
-                'username' => $cfg['postgres']['username'] ?? '',
-                'password' => $cfg['postgres']['password'] ?? '',
-            ];
-        }
-
-        if (isset($cfg['mongodb'])) {
-            $this->remoteConfig['mongodb'] = [
-                'host' => $cfg['mongodb']['host'] ?? '',
-                'port' => (string) ($cfg['mongodb']['port'] ?? 27017),
-                'username' => $cfg['mongodb']['username'] ?? '',
-                'password' => $cfg['mongodb']['password'] ?? '',
-                'auth_database' => 'admin',
-            ];
-        }
-
-        if (isset($cfg['filesystem'])) {
-            $ssh = $cfg['filesystem']['ssh'] ?? [];
-            $this->remoteConfig['filesystem'] = [
-                'ssh_host' => $ssh['host'] ?? '',
-                'ssh_port' => (string) ($ssh['port'] ?? 22),
-                'ssh_user' => $ssh['user'] ?? '',
-                'ssh_key_path' => $ssh['key_path'] ?? '',
-            ];
+        if ($host->offers('filesystem')) {
+            $ssh = $host->sshConfig();
+            $this->remoteConfig['filesystem'] = array_merge($ssh, ['enabled' => true]);
         }
     }
 
     /**
-     * Reset known source selection when restore target changes.
+     * Reset known host selection when restore target changes.
      */
     public function updatedRestoreTarget(string $value): void
     {
         if ($value !== 'known_host') {
-            $this->knownSourceId = null;
+            $this->knownHostId = null;
         }
     }
 
@@ -516,7 +510,7 @@ class RestoreIndex extends Component
             'jobs' => BackupJob::all(),
             'restoreLogs' => $restoreLogs,
             'detailLog' => $detailLog,
-            'backupSources' => BackupSource::where('is_active', true)->orderBy('name')->get(),
+            'knownHosts' => BackupHost::active()->orderBy('name')->get(),
         ]);
     }
 }

@@ -91,6 +91,10 @@ class ProcessBackupJob implements ShouldQueue
         $tmpDir = storage_path('app/backups/tmp/'.$log->id);
         @mkdir($tmpDir, 0755, true);
 
+        // Package archive lives next to $tmpDir (it cannot be inside the dir it tars),
+        // so it needs its own cleanup in the finally block.
+        $packagePath = null;
+
         try {
             // 2. Execute backup for each enabled source type
             $source = $backupJob->source;
@@ -227,7 +231,7 @@ class ProcessBackupJob implements ShouldQueue
             } else {
                 // Create a tar archive of the entire tmpDir (package with subdirectories)
                 $packageName = \Illuminate\Support\Str::slug($backupJob->source->name).'-'.now()->format('Ymd-His').'.tar.gz';
-                $packagePath = storage_path('app/backups/tmp/'.$packageName);
+                $packagePath = storage_path('app/backups/tmp/'.$log->id.'-'.$packageName);
 
                 $result = Process::timeout(config('backup.process_timeout'))->run([
                     'tar', '-czf', $packagePath, '-C', $tmpDir, '.',
@@ -375,8 +379,12 @@ class ProcessBackupJob implements ShouldQueue
             // Always update next run regardless of cancellation or failure
             $schedulerService->updateNextRun($backupJob);
         } finally {
-            // Cleanup temp directory
+            // Cleanup temp directory and the package archive built beside it
             $this->cleanupTempDir($tmpDir);
+
+            if ($packagePath && is_file($packagePath)) {
+                @unlink($packagePath);
+            }
         }
     }
 

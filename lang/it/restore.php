@@ -76,8 +76,10 @@ return [
     'target_remote_host' => 'Host Remoto',
     'target_remote_host_desc' => 'Ripristina su un server diverso',
     'target_known_host' => 'Host Noto',
-    'target_known_host_desc' => 'Usa le credenziali di una sorgente backup esistente',
-    'known_host_select' => 'Seleziona Sorgente',
+    'target_known_host_desc' => 'Usa le credenziali di un host registrato',
+    'known_host_select' => 'Seleziona Host',
+    'known_host_required' => 'Seleziona un host registrato su cui ripristinare.',
+    'known_host_summary' => 'Credenziali prese dall\'host selezionato',
 
     // Remote config
     'remote_config' => 'Configurazione Host Remoto',

@@ -768,24 +768,28 @@
                             <div class="rounded-xl border border-primary/20 bg-primary/[0.02] p-4 space-y-4">
                                 <p class="text-xs font-semibold text-primary uppercase tracking-wider">{{ __('restore.remote_config') }}</p>
                                 @if ($restoreTarget === 'known_host')
-                                    <div class="form-control">
-                                        <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/50">{{ __('restore.known_host_select') }}</span></label>
-                                        <select wire:model.live="knownSourceId" class="select select-bordered select-sm rounded-lg bg-base-200 border-base-content/10">
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-xs font-medium text-base-content/50">{{ __('restore.known_host_select') }}</label>
+                                        <select wire:model.live="knownHostId" class="select select-sm w-full rounded-lg bg-base-200 border-base-content/10">
                                             <option value="">— {{ __('restore.known_host_select') }} —</option>
-                                            @foreach ($backupSources as $src)
-                                                <option value="{{ $src->id }}">{{ $src->name }}</option>
+                                            @foreach ($knownHosts as $knownHost)
+                                                <option value="{{ $knownHost->id }}">{{ $knownHost->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
+                                    @if ($knownHostId)
+                                        <p class="text-[10px] text-base-content/40">{{ __('restore.known_host_summary') }}</p>
+                                    @endif
                                 @endif
+                                @if ($restoreTarget === 'remote_host')
                                 @if (($selectedBackupInfo['has_mysql'] ?? false) && in_array($restoreType, ['full', 'db_only']))
                                     <div class="space-y-2">
                                         <p class="text-xs font-medium text-base-content/60"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-400 mr-2">MySQL</span>{{ __('restore.remote_mysql_config') }}</p>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.host" class="input input-bordered input-sm rounded-lg" placeholder="192.168.1.100" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.port" class="input input-bordered input-sm rounded-lg" placeholder="3306" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.username" class="input input-bordered input-sm rounded-lg" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</span></label><input type="password" wire:model.live.debounce.500ms="remoteConfig.mysql.password" class="input input-bordered input-sm rounded-lg" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.host" class="input input-sm w-full rounded-lg" placeholder="192.168.1.100" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.port" class="input input-sm w-full rounded-lg" placeholder="3306" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mysql.username" class="input input-sm w-full rounded-lg" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</label><input type="password" wire:model.live.debounce.500ms="remoteConfig.mysql.password" class="input input-sm w-full rounded-lg" /></div>
                                         </div>
                                     </div>
                                 @endif
@@ -793,10 +797,10 @@
                                     <div class="space-y-2">
                                         <p class="text-xs font-medium text-base-content/60"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-cyan-500/10 text-cyan-400 mr-2">PostgreSQL</span>{{ __('restore.remote_postgres_config') }}</p>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.host" class="input input-bordered input-sm rounded-lg" placeholder="192.168.1.100" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.port" class="input input-bordered input-sm rounded-lg" placeholder="5432" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.username" class="input input-bordered input-sm rounded-lg" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</span></label><input type="password" wire:model.live.debounce.500ms="remoteConfig.postgres.password" class="input input-bordered input-sm rounded-lg" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.host" class="input input-sm w-full rounded-lg" placeholder="192.168.1.100" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.port" class="input input-sm w-full rounded-lg" placeholder="5432" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.postgres.username" class="input input-sm w-full rounded-lg" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</label><input type="password" wire:model.live.debounce.500ms="remoteConfig.postgres.password" class="input input-sm w-full rounded-lg" /></div>
                                         </div>
                                     </div>
                                 @endif
@@ -804,11 +808,11 @@
                                     <div class="space-y-2">
                                         <p class="text-xs font-medium text-base-content/60"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-green-500/10 text-green-400 mr-2">MongoDB</span>{{ __('restore.remote_mongodb_config') }}</p>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.host" class="input input-bordered input-sm rounded-lg" placeholder="192.168.1.100" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.port" class="input input-bordered input-sm rounded-lg" placeholder="27017" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.username" class="input input-bordered input-sm rounded-lg" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</span></label><input type="password" wire:model.live.debounce.500ms="remoteConfig.mongodb.password" class="input input-bordered input-sm rounded-lg" /></div>
-                                            <div class="form-control col-span-2"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_auth_database') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.auth_database" class="input input-bordered input-sm rounded-lg" placeholder="admin" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_host') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.host" class="input input-sm w-full rounded-lg" placeholder="192.168.1.100" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_port') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.port" class="input input-sm w-full rounded-lg" placeholder="27017" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_username') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.username" class="input input-sm w-full rounded-lg" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_password') }}</label><input type="password" wire:model.live.debounce.500ms="remoteConfig.mongodb.password" class="input input-sm w-full rounded-lg" /></div>
+                                            <div class="flex flex-col gap-1 col-span-2"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_auth_database') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.mongodb.auth_database" class="input input-sm w-full rounded-lg" placeholder="admin" /></div>
                                         </div>
                                     </div>
                                 @endif
@@ -816,12 +820,13 @@
                                     <div class="space-y-2">
                                         <p class="text-xs font-medium text-base-content/60"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-orange-500/10 text-orange-400 mr-2">SSH</span>{{ __('restore.remote_filesystem_config') }}</p>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_host') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_host" class="input input-bordered input-sm rounded-lg" placeholder="192.168.1.100" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_port') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_port" class="input input-bordered input-sm rounded-lg" placeholder="22" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_user') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_user" class="input input-bordered input-sm rounded-lg" /></div>
-                                            <div class="form-control"><label class="label pb-0.5"><span class="label-text text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_key_path') }}</span></label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.ssh_key_path" class="input input-bordered input-sm rounded-lg" placeholder="/root/.ssh/id_rsa" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_host') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.host" class="input input-sm w-full rounded-lg" placeholder="192.168.1.100" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_port') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.port" class="input input-sm w-full rounded-lg" placeholder="22" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_user') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.user" class="input input-sm w-full rounded-lg" /></div>
+                                            <div class="flex flex-col gap-1"><label class="text-[10px] uppercase text-base-content/40">{{ __('restore.remote_ssh_key_path') }}</label><input type="text" wire:model.live.debounce.500ms="remoteConfig.filesystem.key_path" class="input input-sm w-full rounded-lg" placeholder="/root/.ssh/id_rsa" /></div>
                                         </div>
                                     </div>
+                                @endif
                                 @endif
                             </div>
                         @endif
@@ -842,7 +847,7 @@
                                                         <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}" class="checkbox checkbox-sm checkbox-primary rounded" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
                                                         <span class="text-sm font-mono text-base-content/70">{{ $item['original'] }}</span>
                                                         <span class="text-base-content/30 text-xs">&rarr;</span>
-                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target" class="input input-xs input-bordered rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target" class="input input-xs rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
                                                     </label>
                                                 </div>
                                             @endif
@@ -859,7 +864,7 @@
                                                         <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}" class="checkbox checkbox-sm checkbox-primary rounded" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
                                                         <span class="text-sm font-mono text-base-content/70">{{ $item['original'] }}</span>
                                                         <span class="text-base-content/30 text-xs">&rarr;</span>
-                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target" class="input input-xs input-bordered rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target" class="input input-xs rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
                                                     </label>
                                                 </div>
                                             @endif
@@ -876,7 +881,7 @@
                                                         <input type="checkbox" wire:model.live="selectedDatabases" value="{{ $item['original'] }}" class="checkbox checkbox-sm checkbox-primary rounded" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
                                                         <span class="text-sm font-mono text-base-content/70">{{ $item['original'] }}</span>
                                                         <span class="text-base-content/30 text-xs">&rarr;</span>
-                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target" class="input input-xs input-bordered rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
+                                                        <input type="text" wire:model.live.debounce.300ms="customDbNames.{{ $index }}.target" class="input input-xs rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['files_only']) ? 'disabled' : '' }} />
                                                     </label>
                                                 </div>
                                             @endif
@@ -892,7 +897,7 @@
                                                     <input type="checkbox" wire:model.live="selectedPaths" value="{{ $item['original'] }}" class="checkbox checkbox-sm checkbox-primary rounded" {{ in_array($restoreType, ['db_only']) ? 'disabled' : '' }} />
                                                     <span class="text-xs font-mono text-base-content/70">{{ $item['original'] }}</span>
                                                     <span class="text-base-content/30 text-xs">&rarr;</span>
-                                                    <input type="text" wire:model.live.debounce.300ms="customPaths.{{ $index }}.target" class="input input-xs input-bordered rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['db_only']) ? 'disabled' : '' }} />
+                                                    <input type="text" wire:model.live.debounce.300ms="customPaths.{{ $index }}.target" class="input input-xs rounded-lg font-mono flex-1 text-xs" {{ in_array($restoreType, ['db_only']) ? 'disabled' : '' }} />
                                                 </label>
                                             </div>
                                         @endforeach

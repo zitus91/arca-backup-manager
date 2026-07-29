@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Backup\RestoreIndex;
+use App\Models\BackupHost;
 use App\Models\BackupJob;
 use App\Models\BackupLog;
 use App\Models\RestoreLog;
@@ -85,4 +86,40 @@ it('dispatches restore job and creates restore log', function () {
         'backup_log_id' => $backupLog->id,
         'status' => 'pending',
     ]);
+});
+
+it('prefills remote config from a registered host, ssh tunnel included', function () {
+    $host = BackupHost::factory()->withMysql()->withFilesystem()->create();
+
+    $backupLog = BackupLog::factory()->success()->create([
+        'storage_path' => 'backups/test/backup.sql.gz',
+    ]);
+
+    $component = Livewire::test(RestoreIndex::class)
+        ->call('openRestoreModal', $backupLog->id)
+        ->set('restoreTarget', 'known_host')
+        ->set('knownHostId', $host->id);
+
+    $mysql = $component->get('remoteConfig')['mysql'];
+    expect($mysql['host'])->toBe('127.0.0.1');
+    expect($mysql['username'])->toBe('root');
+    expect($mysql['ssh']['enabled'])->toBeTrue();
+    expect($mysql['ssh']['host'])->toBe($host->config['ssh']['host']);
+
+    // Filesystem section is the ssh config itself: keys must match SshTunnelService
+    $filesystem = $component->get('remoteConfig')['filesystem'];
+    expect($filesystem)->toHaveKeys(['enabled', 'host', 'port', 'user', 'key_path']);
+    expect($filesystem['user'])->toBe('ubuntu');
+});
+
+it('never tunnels through the source host when a remote host is typed manually', function () {
+    $backupLog = BackupLog::factory()->success()->create([
+        'storage_path' => 'backups/test/backup.sql.gz',
+    ]);
+
+    $component = Livewire::test(RestoreIndex::class)
+        ->call('openRestoreModal', $backupLog->id)
+        ->set('restoreTarget', 'remote_host');
+
+    expect($component->get('remoteConfig')['mysql']['ssh'])->toBe(['enabled' => false]);
 });
