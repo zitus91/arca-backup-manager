@@ -30,3 +30,5 @@ docs/*
 WORKFLOW_STATE.md
 .omo/*
 .serena/*
+.opencode/opencode.json
+AGENTS.md

@@ -74,6 +74,10 @@ class MysqlRestoreService
      */
     protected function dropDatabaseIfExists(array $config, string $dbName): void
     {
+        if (! $this->databaseExists($config, $dbName)) {
+            return;
+        }
+
         $cmd = sprintf(
             'mysql --host=%s --port=%s --user=%s --password=%s -e %s',
             escapeshellarg($config['host']),
