@@ -19,6 +19,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 
 class ProcessRestoreJob implements ShouldQueue
 {
@@ -299,10 +300,12 @@ class ProcessRestoreJob implements ShouldQueue
             ));
 
         } catch (\Throwable $e) {
+            $error = $this->describeError($e);
+
             Log::error('Restore failed', [
                 'restore_log_id' => $restoreLog->id,
                 'backup_log_id' => $backupLog->id,
-                'error' => $e->getMessage(),
+                'error' => $error,
             ]);
 
             $restoreLog->update([
@@ -311,18 +314,33 @@ class ProcessRestoreJob implements ShouldQueue
                 'duration_seconds' => $restoreLog->started_at
                     ? now()->diffInSeconds($restoreLog->started_at)
                     : 0,
-                'error_message' => $e->getMessage(),
+                'error_message' => $error,
             ]);
 
             event(new RestoreJobCompleted(
                 restoreLogId: $restoreLog->id,
                 backupJobName: $backupJob->name,
                 status: 'failed',
-                errorMessage: $e->getMessage(),
+                errorMessage: $error,
             ));
         } finally {
             $this->cleanupTempDir($tmpDir);
         }
+    }
+
+    /**
+     * Flatten the exception chain: Flysystem/AWS wrap the useful message (403, bad region,
+     * missing key) in a previous exception, and only the generic wrapper was being stored.
+     */
+    protected function describeError(\Throwable $e): string
+    {
+        $messages = [];
+
+        for ($current = $e; $current !== null; $current = $current->getPrevious()) {
+            $messages[] = trim($current->getMessage());
+        }
+
+        return Str::limit(implode(' — caused by: ', array_unique(array_filter($messages))), 2000);
     }
 
     /**
