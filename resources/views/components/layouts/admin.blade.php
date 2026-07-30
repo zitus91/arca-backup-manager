@@ -208,7 +208,7 @@
     @livewireScripts
 
     {{-- Toast Container for backup events --}}
-    <div id="toast-container" class="toast toast-end toast-bottom z-[100]"></div>
+    <div id="toast-container" class="toast toast-end toast-bottom z-[1100]"></div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -236,15 +236,22 @@
                     });
             }
 
-            document.addEventListener('livewire:initialized', () => {
-                Livewire.on('test-email-result', (params) => {
-                    const p = Array.isArray(params) ? params[0] : params;
-                    if (p.status === 'success') {
-                        showToast('success', '{{ __("backup-job.test_email_toast_title") }}', p.message);
-                    } else {
-                        showToast('error', '{{ __("backup-job.test_email_toast_error_title") }}', p.message);
-                    }
-                });
+        });
+
+        {{-- registered at parse time: livewire:init fires before DOMContentLoaded listeners run --}}
+        document.addEventListener('livewire:init', () => {
+            Livewire.on('notify', (params) => {
+                const p = Array.isArray(params) ? params[0] : params;
+                showToast(p.type, p.message, '');
+            });
+
+            Livewire.on('test-email-result', (params) => {
+                const p = Array.isArray(params) ? params[0] : params;
+                if (p.status === 'success') {
+                    showToast('success', '{{ __("backup-job.test_email_toast_title") }}', p.message);
+                } else {
+                    showToast('error', '{{ __("backup-job.test_email_toast_error_title") }}', p.message);
+                }
             });
         });
 

@@ -261,7 +261,9 @@ class RestoreIndex extends Component
                 }
             }
 
-            if ($hasSelectedFs && empty($this->remoteConfig['filesystem']['host'])) {
+            // only a manually typed host needs an ssh endpoint: a registered host without ssh
+            // restores on the machine running the app (FilesystemRestoreService falls back to local).
+            if ($this->restoreTarget === 'remote_host' && $hasSelectedFs && empty($this->remoteConfig['filesystem']['host'])) {
                 $this->dispatch('notify', type: 'error', message: __('restore.remote_filesystem_required'));
 
                 return;
