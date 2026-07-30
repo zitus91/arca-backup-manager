@@ -41,9 +41,12 @@ class MongodbRestoreService
         $originalDb = $config['database'];
         $restoredDb = $targetDbName ?? ($originalDb.'_restored_'.now()->format('Ymd_His'));
 
-        // 1. If override, drop existing database first
+        // 1. If override, drop existing database first; otherwise refuse to restore into
+        // an existing database (mongorestore would merge collections into live data).
         if ($overrideExisting) {
             $this->dropDatabaseIfExists($config, $restoredDb);
+        } elseif ($this->databaseExists($config, $restoredDb)) {
+            throw new \RuntimeException("Target database '{$restoredDb}' already exists. Choose a different name or enable override.");
         }
 
         // 2. Extract the archive to a temp directory
@@ -80,11 +83,45 @@ class MongodbRestoreService
      */
     protected function dropDatabaseIfExists(array $config, string $dbName): void
     {
+        $result = Process::timeout(30)->run(
+            $this->mongoshCommand($config, 'db.getSiblingDB('.json_encode($dbName).').dropDatabase()')
+        );
+
+        if (! $result->successful()) {
+            throw new \RuntimeException("Failed to drop MongoDB database '{$dbName}': ".$result->errorOutput());
+        }
+    }
+
+    /**
+     * Whether the target database already exists.
+     */
+    protected function databaseExists(array $config, string $dbName): bool
+    {
+        $result = Process::timeout(30)->run(
+            $this->mongoshCommand($config, 'print(db.getMongo().getDBNames().includes('.json_encode($dbName).'))', quiet: true)
+        );
+
+        if (! $result->successful()) {
+            throw new \RuntimeException("Failed to check MongoDB database '{$dbName}': ".$result->errorOutput());
+        }
+
+        return str_contains($result->output(), 'true');
+    }
+
+    /**
+     * Build a mongosh command running a single --eval script.
+     */
+    protected function mongoshCommand(array $config, string $eval, bool $quiet = false): string
+    {
         $parts = [
             'mongosh',
             '--host', escapeshellarg($config['host']),
             '--port', escapeshellarg((string) ($config['port'] ?? 27017)),
         ];
+
+        if ($quiet) {
+            $parts[] = '--quiet';
+        }
 
         if (! empty($config['username'])) {
             $parts[] = '--username '.escapeshellarg($config['username']);
@@ -92,13 +129,9 @@ class MongodbRestoreService
             $parts[] = '--authenticationDatabase '.escapeshellarg($config['auth_database'] ?? 'admin');
         }
 
-        $parts[] = '--eval '.escapeshellarg("db.getSiblingDB('{$dbName}').dropDatabase()");
+        $parts[] = '--eval '.escapeshellarg($eval);
 
-        $result = Process::timeout(30)->run(implode(' ', $parts));
-
-        if (! $result->successful()) {
-            throw new \RuntimeException("Failed to drop MongoDB database '{$dbName}': ".$result->errorOutput());
-        }
+        return implode(' ', $parts);
     }
 
     /**

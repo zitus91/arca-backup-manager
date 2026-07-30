@@ -31,9 +31,14 @@ class FilesystemRestoreService
             return $this->restoreRemote($originalPath, $restoredPath, $archivePath, $overrideExisting, $sshConfig);
         }
 
-        // If override, remove existing directory first
-        if ($overrideExisting && is_dir($restoredPath)) {
-            Process::timeout(300)->run('rm -rf '.escapeshellarg($restoredPath));
+        // If override, remove existing directory first; otherwise refuse to extract on top
+        // of a populated directory (the archive would merge into the existing files).
+        if ($overrideExisting) {
+            if (is_dir($restoredPath)) {
+                Process::timeout(300)->run('rm -rf '.escapeshellarg($restoredPath));
+            }
+        } elseif ($this->isNonEmptyDir($restoredPath)) {
+            throw new \RuntimeException("Target path '{$restoredPath}' already exists and is not empty. Choose a different path or enable override.");
         }
 
         // 1. Create the restored directory
@@ -98,9 +103,19 @@ class FilesystemRestoreService
             $sshCmd = "ssh {$baseSsh} -i {$keyPath}";
         }
 
-        // If override, remove remote directory first
+        // If override, remove remote directory first; otherwise refuse to rsync onto a
+        // populated directory (rsync without --delete would merge into the existing files).
         if ($overrideExisting) {
             Process::timeout(60)->run("{$sshCmd} {$remoteUser} ".escapeshellarg("rm -rf {$targetPath}"));
+        } else {
+            $probe = Process::timeout(30)->run(
+                "{$sshCmd} {$remoteUser} ".escapeshellarg('[ -d '.escapeshellarg($targetPath).' ] && [ -n "$(ls -A '.escapeshellarg($targetPath).')" ] && echo NONEMPTY')
+            );
+
+            if (str_contains($probe->output(), 'NONEMPTY')) {
+                Process::run('rm -rf '.escapeshellarg($tmpDir));
+                throw new \RuntimeException("Target path '{$targetPath}' already exists on the remote host and is not empty. Choose a different path or enable override.");
+            }
         }
 
         // Create remote directory
@@ -137,6 +152,16 @@ class FilesystemRestoreService
      */
     protected function restoreViaFtp(array $config, string $originalPath, string $targetPath, string $archivePath, bool $overrideExisting): array
     {
+        // mirrorUp writes file by file, so without a wipe an existing remote dir ends up merged:
+        // override replaces the directory, otherwise refuse rather than mix into live files.
+        $disk = app(FtpStorageService::class)->disk($config['ftp'] ?? []);
+
+        if ($overrideExisting) {
+            $disk->deleteDirectory($targetPath);
+        } elseif (! empty($disk->allFiles($targetPath))) {
+            throw new \RuntimeException("Target path '{$targetPath}' already exists on the FTP host and is not empty. Choose a different path or enable override.");
+        }
+
         $tmpDir = dirname($archivePath).'/ftp_restore_'.uniqid();
         @mkdir($tmpDir, 0755, true);
 
@@ -161,6 +186,14 @@ class FilesystemRestoreService
             'override_existing' => $overrideExisting,
             'remote' => true,
         ];
+    }
+
+    /**
+     * Whether the path is an existing directory holding at least one entry.
+     */
+    protected function isNonEmptyDir(string $path): bool
+    {
+        return is_dir($path) && (new \FilesystemIterator($path))->valid();
     }
 
     /**

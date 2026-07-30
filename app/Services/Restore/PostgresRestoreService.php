@@ -41,9 +41,12 @@ class PostgresRestoreService
         $originalDb = $config['database'];
         $restoredDb = $targetDbName ?? ($originalDb.'_restored_'.now()->format('Ymd_His'));
 
-        // 1. If override, drop existing database first
+        // 1. If override, drop existing database first; otherwise refuse to import into
+        // an existing database (the import would merge dump tables into live data).
         if ($overrideExisting) {
             $this->dropDatabaseIfExists($config, $restoredDb);
+        } elseif ($this->databaseExists($config, $restoredDb)) {
+            throw new \RuntimeException("Target database '{$restoredDb}' already exists. Choose a different name or enable override.");
         }
 
         // 2. Create the restored database if it doesn't exist
@@ -79,15 +82,22 @@ class PostgresRestoreService
     }
 
     /**
+     * Whether the target database already exists.
+     */
+    protected function databaseExists(array $config, string $dbName): bool
+    {
+        $sql = "SELECT 1 FROM pg_database WHERE datname = '".str_replace("'", "''", $dbName)."'";
+
+        return trim(Process::timeout(30)->run($this->psql($config, 'postgres', $sql, tuplesOnly: true))->output()) === '1';
+    }
+
+    /**
      * Create the target database if it does not exist.
      * PostgreSQL has no "IF NOT EXISTS" for CREATE DATABASE, so guard with a lookup.
      */
     protected function createDatabase(array $config, string $dbName): void
     {
-        $sql = "SELECT 1 FROM pg_database WHERE datname = '{$dbName}'";
-        $exists = Process::timeout(30)->run($this->psql($config, 'postgres', $sql, tuplesOnly: true));
-
-        if (trim($exists->output()) === '1') {
+        if ($this->databaseExists($config, $dbName)) {
             return;
         }
 

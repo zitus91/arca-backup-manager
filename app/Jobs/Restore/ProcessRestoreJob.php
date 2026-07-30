@@ -393,23 +393,8 @@ class ProcessRestoreJob implements ShouldQueue
      */
     protected function downloadFromS3(S3StorageService $s3Service, array $config, string $remotePath, string $localPath): void
     {
-        $diskConfig = [
-            'driver' => 's3',
-            'key' => $config['access_key'],
-            'secret' => $config['secret_key'],
-            'region' => $config['region'],
-            'bucket' => $config['bucket'],
-        ];
+        $stream = $s3Service->disk($config)->readStream($remotePath);
 
-        if (! empty($config['endpoint'])) {
-            $diskConfig['endpoint'] = $config['endpoint'];
-            $diskConfig['use_path_style_endpoint'] = true;
-        }
-
-        config(['filesystems.disks.restore_s3_temp' => $diskConfig]);
-        $disk = \Illuminate\Support\Facades\Storage::disk('restore_s3_temp');
-
-        $stream = $disk->readStream($remotePath);
         if (! $stream) {
             throw new \RuntimeException("Cannot read S3 file: {$remotePath}");
         }
@@ -425,26 +410,8 @@ class ProcessRestoreJob implements ShouldQueue
      */
     protected function downloadFromFtp(FtpStorageService $ftpService, array $config, string $remotePath, string $localPath): void
     {
-        $driver = ! empty($config['ssl']) ? 'sftp' : 'ftp';
+        $stream = $ftpService->disk($config)->readStream($remotePath);
 
-        $diskConfig = [
-            'driver' => $driver,
-            'host' => $config['host'],
-            'port' => $config['port'] ?? 21,
-            'username' => $config['username'],
-            'password' => $config['password'],
-            'root' => $config['root_path'] ?? '/',
-        ];
-
-        if ($driver === 'ftp') {
-            $diskConfig['passive'] = $config['passive'] ?? true;
-            $diskConfig['ssl'] = $config['ssl'] ?? false;
-        }
-
-        config(['filesystems.disks.restore_ftp_temp' => $diskConfig]);
-        $disk = \Illuminate\Support\Facades\Storage::disk('restore_ftp_temp');
-
-        $stream = $disk->readStream($remotePath);
         if (! $stream) {
             throw new \RuntimeException("Cannot read FTP file: {$remotePath}");
         }

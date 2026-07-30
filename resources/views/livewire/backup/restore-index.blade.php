@@ -800,7 +800,7 @@
                                     @if ($restoreTarget === 'remote_host')
                                         {{ __('restore.confirm_target_remote') }}
                                     @elseif ($restoreTarget === 'known_host')
-                                        {{ __('restore.confirm_target_known') }}
+                                        {{ __('restore.confirm_target_known') }}: {{ $knownHosts->firstWhere('id', $knownHostId)?->name ?? '-' }}
                                     @else
                                         {{ __('restore.confirm_target_same') }}
                                     @endif
@@ -817,11 +817,11 @@
                                 <span class="font-medium tabular-nums">{{ $selectedBackupInfo['backup_date'] ?? '-' }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
-                                <span class="text-base-content/50">{{ __('restore.info_source') }}</span>
+                                <span class="text-base-content/50">{{ __('restore.confirm_backup_source') }}</span>
                                 <span class="font-medium">{{ $selectedBackupInfo['source_name'] ?? '-' }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
-                                <span class="text-base-content/50">{{ __('restore.col_destination') }}</span>
+                                <span class="text-base-content/50">{{ __('restore.confirm_backup_storage') }}</span>
                                 <span class="font-medium">{{ $selectedBackupInfo['destination_name'] ?? '-' }}</span>
                             </div>
 

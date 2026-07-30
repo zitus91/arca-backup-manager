@@ -93,6 +93,15 @@ class S3StorageService
     }
 
     /**
+     * Public seam over createDisk so callers (restore, tests) share one disk builder
+     * instead of rebuilding the config and drifting from it.
+     */
+    public function disk(array $config): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return $this->createDisk($config);
+    }
+
+    /**
      * Create a temporary filesystem disk for the S3 config.
      * Uses Storage::build() to avoid Laravel's disk caching.
      */

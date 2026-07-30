@@ -41,9 +41,12 @@ class MysqlRestoreService
         $originalDb = $config['database'];
         $restoredDb = $targetDbName ?? ($originalDb.'_restored_'.now()->format('Ymd_His'));
 
-        // 1. If override, drop existing database first
+        // 1. If override, drop existing database first; otherwise refuse to import into
+        // an existing database (the import would merge dump tables into live data).
         if ($overrideExisting) {
             $this->dropDatabaseIfExists($config, $restoredDb);
+        } elseif ($this->databaseExists($config, $restoredDb)) {
+            throw new \RuntimeException("Target database '{$restoredDb}' already exists. Choose a different name or enable override.");
         }
 
         // 2. Create the restored database if it doesn't exist
@@ -85,6 +88,30 @@ class MysqlRestoreService
         if (! $result->successful()) {
             throw new \RuntimeException("Failed to drop database '{$dbName}': ".$result->errorOutput());
         }
+    }
+
+    /**
+     * Whether the target database already exists.
+     */
+    protected function databaseExists(array $config, string $dbName): bool
+    {
+        // information_schema, not SHOW DATABASES LIKE: `_` is a LIKE wildcard and db names contain it
+        $cmd = sprintf(
+            'mysql --host=%s --port=%s --user=%s --password=%s -N -e %s',
+            escapeshellarg($config['host']),
+            escapeshellarg((string) ($config['port'] ?? 3306)),
+            escapeshellarg($config['username']),
+            escapeshellarg($config['password']),
+            escapeshellarg("SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '".str_replace("'", "''", $dbName)."';")
+        );
+
+        $result = Process::timeout(30)->run($cmd);
+
+        if (! $result->successful()) {
+            throw new \RuntimeException("Failed to check database '{$dbName}': ".$result->errorOutput());
+        }
+
+        return trim($result->output()) === '1';
     }
 
     /**
