@@ -112,15 +112,15 @@
                             {{-- Bar --}}
                             <div class="w-full flex flex-col items-center gap-px flex-1 justify-end">
                                 @if ($day['failed'] > 0)
-                                    <div class="w-full max-w-8 bg-error rounded-t transition-all duration-500 hover:brightness-110 cursor-default"
+                                    <div class="w-full max-w-8 2xl:max-w-14 bg-error rounded-t transition-all duration-500 hover:brightness-110 cursor-default"
                                          style="height: {{ max(4, ($day['failed'] / $maxVal) * 100) }}%"></div>
                                 @endif
                                 @if ($day['success'] > 0)
-                                    <div class="w-full max-w-8 bg-success {{ $day['failed'] > 0 ? '' : 'rounded-t' }} rounded-b transition-all duration-500 hover:brightness-110 cursor-default"
+                                    <div class="w-full max-w-8 2xl:max-w-14 bg-success {{ $day['failed'] > 0 ? '' : 'rounded-t' }} rounded-b transition-all duration-500 hover:brightness-110 cursor-default"
                                          style="height: {{ max(4, ($day['success'] / $maxVal) * 100) }}%"></div>
                                 @endif
                                 @if ($day['success'] === 0 && $day['failed'] === 0)
-                                    <div class="w-full max-w-8 bg-base-content/5 rounded h-1"></div>
+                                    <div class="w-full max-w-8 2xl:max-w-14 bg-base-content/5 rounded h-1"></div>
                                 @endif
                             </div>
                             {{-- Label --}}
@@ -179,13 +179,16 @@
                 {{ __('backup-dashboard.no_jobs') }}
             </div>
         @else
-            <div class="divide-y divide-base-content/5 rounded-2xl border border-base-content/5 bg-base-100 overflow-hidden">
+            {{-- full-width layout: a single column would stretch name and timestamp
+                 to opposite screen edges, so split into two columns on wide viewports.
+                 gap-px over the container background draws the separators. --}}
+            <div class="grid 2xl:grid-cols-2 gap-px bg-base-content/5 rounded-2xl border border-base-content/5 overflow-hidden">
                 @foreach ($this->jobsHealth as $job)
                     @php
                         $lastLog = $job->latestLog;
                         $status = $lastLog?->status ?? 'unknown';
                     @endphp
-                    <a href="{{ route('backup.jobs.show', $job) }}" class="flex items-center gap-4 px-4 py-3 hover:bg-base-200/40 transition-colors group {{ !$job->is_active ? 'opacity-50' : '' }}">
+                    <a href="{{ route('backup.jobs.show', $job) }}" class="flex items-center gap-4 px-4 py-3 bg-base-100 hover:bg-base-200/40 transition-colors group {{ !$job->is_active ? 'opacity-50' : '' }}">
                         <div class="flex-shrink-0">
                             @if ($status === 'running')
                                 <span class="relative flex h-2.5 w-2.5">
@@ -257,7 +260,7 @@
                                         <span class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider {{ $typeIcons[$storage['type']] ?? 'text-base-content/50' }} bg-current/10">
                                             {{ $storage['type'] }}
                                         </span>
-                                        <span class="text-xs font-medium truncate max-w-32">{{ $storage['name'] }}</span>
+                                        <span class="text-xs font-medium truncate max-w-32 2xl:max-w-none">{{ $storage['name'] }}</span>
                                     </div>
                                     <span class="text-[11px] text-base-content/50 tabular-nums">{{ $this->formatBytes($storage['bytes']) }}</span>
                                 </div>
@@ -314,8 +317,8 @@
                                             {{ __('backup-dashboard.status_' . $log->status) }}
                                         </span>
                                     </td>
-                                    <td class="text-xs font-medium max-w-40 truncate">{{ $log->job->name ?? '-' }}</td>
-                                    <td class="text-[11px] text-base-content/50 max-w-28 truncate">{{ $log->job->source->name ?? '-' }}</td>
+                                    <td class="text-xs font-medium max-w-40 2xl:max-w-none truncate">{{ $log->job->name ?? '-' }}</td>
+                                    <td class="text-[11px] text-base-content/50 max-w-28 2xl:max-w-none truncate">{{ $log->job->source->name ?? '-' }}</td>
                                     <td class="text-[11px] text-base-content/50 tabular-nums">{{ $log->formatted_size }}</td>
                                     <td class="text-[11px] text-base-content/50 tabular-nums">{{ $log->formatted_duration }}</td>
                                     <td class="text-[11px] text-base-content/40 tabular-nums whitespace-nowrap pr-2">

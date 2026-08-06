@@ -114,6 +114,9 @@ class S3StorageService
             'region' => $config['region'] ?: 'us-east-1',
             'bucket' => $config['bucket'],
             'throw' => true,
+            // without this the SDK buffers the whole object into php://temp, which spills
+            // to /tmp on the app server and fills the disk on multi-GB archives.
+            'stream_reads' => true,
         ];
 
         if (! empty($config['endpoint'])) {
