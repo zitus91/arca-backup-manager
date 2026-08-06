@@ -229,9 +229,9 @@ class FilesystemBackupService
         $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $archiveCmd = match ($compression) {
-            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
-            'zip' => 'cd '.escapeshellarg(dirname($localRsyncDir)).' && zip -r '.escapeshellarg($fullPath).' '.escapeshellarg(basename($localRsyncDir)),
-            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
+            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg($localRsyncDir).' .',
+            'zip' => 'cd '.escapeshellarg($localRsyncDir).' && zip -r '.escapeshellarg($fullPath).' .',
+            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg($localRsyncDir).' .',
         };
 
         try {
@@ -314,13 +314,13 @@ class FilesystemBackupService
         $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $archiveCmd = match ($compression) {
-            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
-            'zip' => 'cd '.escapeshellarg(dirname($localRsyncDir)).' && zip -r '.escapeshellarg($fullPath).' '.escapeshellarg(basename($localRsyncDir)),
-            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localRsyncDir)).' '.escapeshellarg(basename($localRsyncDir)),
+            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg($localRsyncDir).' .',
+            'zip' => 'cd '.escapeshellarg($localRsyncDir).' && zip -r '.escapeshellarg($fullPath).' .',
+            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg($localRsyncDir).' .',
         };
 
         try {
-            $archiveWarnings = $this->runArchive($archiveCmd, 'SSH filesystem backup archiving failed');
+            $archiveWarnings = $this->runArchive($archiveCmd, 'SSH backup archiving failed');
         } finally {
             Process::run('rm -rf '.escapeshellarg($localRsyncDir));
         }
@@ -363,9 +363,9 @@ class FilesystemBackupService
         $fullPath = rtrim($outputPath, '/').'/'.$fileName;
 
         $archiveCmd = match ($compression) {
-            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localDir)).' '.escapeshellarg(basename($localDir)),
-            'zip' => 'cd '.escapeshellarg(dirname($localDir)).' && zip -r '.escapeshellarg($fullPath).' '.escapeshellarg(basename($localDir)),
-            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg(dirname($localDir)).' '.escapeshellarg(basename($localDir)),
+            'gzip' => 'tar -czf '.escapeshellarg($fullPath).' -C '.escapeshellarg($localDir).' .',
+            'zip' => 'cd '.escapeshellarg($localDir).' && zip -r '.escapeshellarg($fullPath).' .',
+            default => 'tar -cf '.escapeshellarg($fullPath).' -C '.escapeshellarg($localDir).' .',
         };
         try {
             $archiveWarnings = $this->runArchive($archiveCmd, 'FTP filesystem backup archiving failed');

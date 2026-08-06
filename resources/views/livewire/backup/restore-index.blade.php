@@ -141,6 +141,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if ($restoreLogs->hasPages())
+                    <div class="mt-3">
+                        {{ $restoreLogs->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     @endif

@@ -498,8 +498,7 @@ class RestoreIndex extends Component
         // Restore history
         $restoreLogs = RestoreLog::with(['backupLog.job.source', 'backupLog.job.destination', 'user'])
             ->latest()
-            ->limit(20)
-            ->get();
+            ->paginate(5, pageName: 'restorePage');
 
         $detailLog = null;
         if ($this->detailRestoreLogId) {
