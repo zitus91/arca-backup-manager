@@ -411,16 +411,15 @@ class ProcessRestoreJob implements ShouldQueue
      */
     protected function downloadFromS3(S3StorageService $s3Service, array $config, string $remotePath, string $localPath): void
     {
-        $stream = $s3Service->disk($config)->readStream($remotePath);
-
-        if (! $stream) {
-            throw new \RuntimeException("Cannot read S3 file: {$remotePath}");
-        }
-
-        $localFile = fopen($localPath, 'w');
-        stream_copy_to_stream($stream, $localFile);
-        fclose($localFile);
-        fclose($stream);
+        // Not readStream(): Guzzle's curl handler ignores the SDK's `stream` option and always
+        // writes the body into a sink, defaulting to php://temp — which spills to sys_temp_dir
+        // (a tmpfs in our containers) and fills it on multi-GB archives. SaveAs points curl's
+        // sink straight at the destination file, so nothing is buffered.
+        $s3Service->disk($config)->getClient()->getObject([
+            'Bucket' => $config['bucket'],
+            'Key' => $remotePath,
+            'SaveAs' => $localPath,
+        ]);
     }
 
     /**

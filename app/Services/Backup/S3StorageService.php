@@ -72,19 +72,16 @@ class S3StorageService
             abort(404, "File not found: {$remotePath}");
         }
 
-        $stream = $disk->readStream($remotePath);
-
-        if (! $stream) {
-            abort(500, "Cannot read file: {$remotePath}");
-        }
-
         $size = $disk->size($remotePath);
 
-        return response()->stream(function () use ($stream) {
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
+        // Not readStream(): it buffers the whole object into php://temp (see downloadFromS3
+        // in ProcessRestoreJob). Sinking straight to php://output keeps memory and temp flat.
+        return response()->stream(function () use ($disk, $config, $remotePath) {
+            $disk->getClient()->getObject([
+                'Bucket' => $config['bucket'],
+                'Key' => $remotePath,
+                '@http' => ['sink' => fopen('php://output', 'w')],
+            ]);
         }, 200, [
             'Content-Type' => 'application/octet-stream',
             'Content-Length' => $size,
@@ -96,7 +93,7 @@ class S3StorageService
      * Public seam over createDisk so callers (restore, tests) share one disk builder
      * instead of rebuilding the config and drifting from it.
      */
-    public function disk(array $config): \Illuminate\Contracts\Filesystem\Filesystem
+    public function disk(array $config): \Illuminate\Filesystem\AwsS3V3Adapter
     {
         return $this->createDisk($config);
     }
@@ -105,7 +102,7 @@ class S3StorageService
      * Create a temporary filesystem disk for the S3 config.
      * Uses Storage::build() to avoid Laravel's disk caching.
      */
-    protected function createDisk(array $config): \Illuminate\Contracts\Filesystem\Filesystem
+    protected function createDisk(array $config): \Illuminate\Filesystem\AwsS3V3Adapter
     {
         $diskConfig = [
             'driver' => 's3',
@@ -114,9 +111,6 @@ class S3StorageService
             'region' => $config['region'] ?: 'us-east-1',
             'bucket' => $config['bucket'],
             'throw' => true,
-            // without this the SDK buffers the whole object into php://temp, which spills
-            // to /tmp on the app server and fills the disk on multi-GB archives.
-            'stream_reads' => true,
         ];
 
         if (! empty($config['endpoint'])) {
