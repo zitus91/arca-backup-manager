@@ -320,3 +320,78 @@ it('still restores a legacy multi-type package backup', function () {
     File::deleteDirectory($root);
     File::deleteDirectory($build);
 });
+
+it('fails the job instead of storing an empty dump', function () {
+    $root = sys_get_temp_dir().'/art_dest_'.uniqid();
+    $tmp = sys_get_temp_dir().'/art_tmp_'.uniqid();
+
+    $host = BackupHost::factory()->withMysql()->create();
+    $source = BackupSource::factory()->create([
+        'mysql_host_id' => $host->id,
+        'config' => ['mysql' => ['databases' => ['shop']]],
+    ]);
+    $job = BackupJob::factory()->create([
+        'backup_source_id' => $source->id,
+        'backup_storage_destination_id' => localDestination($root)->id,
+    ]);
+    $log = BackupLog::factory()->pending()->create(['backup_job_id' => $job->id, 'started_at' => now()]);
+
+    // What a failing mysqldump piped into gzip leaves behind: a valid, empty 20-byte archive.
+    File::ensureDirectoryExists($tmp);
+    $emptyGzip = $tmp.'/mysql_shop_20260812_100000.sql.gz';
+    File::put($emptyGzip, gzencode(''));
+    expect(filesize($emptyGzip))->toBe(20);
+
+    $mysql = \Mockery::mock(MysqlBackupService::class);
+    $mysql->shouldReceive('dump')->once()->andReturn([
+        'file_name' => basename($emptyGzip),
+        'file_path' => $emptyGzip,
+        'file_size' => 20,
+        'meta' => [],
+    ]);
+
+    runBackup($job, $log, $mysql);
+
+    $log->refresh();
+    expect($log->status)->toBe('failed');
+    expect($log->error_message)->toContain('empty');
+    expect(File::exists($root) ? File::allFiles($root) : [])->toBeEmpty();
+
+    File::deleteDirectory($root);
+    File::deleteDirectory($tmp);
+});
+
+it('still accepts an incremental run that found no changes', function () {
+    $root = sys_get_temp_dir().'/art_dest_'.uniqid();
+    $tmp = sys_get_temp_dir().'/art_tmp_'.uniqid();
+
+    $host = BackupHost::factory()->withMysql()->create();
+    $source = BackupSource::factory()->create([
+        'mysql_host_id' => $host->id,
+        'config' => ['mysql' => ['databases' => ['shop']]],
+    ]);
+    $job = BackupJob::factory()->create([
+        'backup_source_id' => $source->id,
+        'backup_storage_destination_id' => localDestination($root)->id,
+        'backup_type' => 'incremental',
+    ]);
+    BackupLog::factory()->success()->create([
+        'backup_job_id' => $job->id,
+        'is_full' => true,
+        'started_at' => now()->subDay(),
+    ]);
+    $log = BackupLog::factory()->pending()->create(['backup_job_id' => $job->id, 'started_at' => now()]);
+
+    $marker = fakeDump($tmp, 'mysql_incr_shop_20260812_100000.sql', '-- incremental: no changes');
+    $marker['meta'] = ['incremental' => true, 'no_changes' => true];
+
+    $mysql = \Mockery::mock(MysqlBackupService::class);
+    $mysql->shouldReceive('incrementalDump')->once()->andReturn($marker);
+
+    runBackup($job, $log, $mysql);
+
+    expect($log->refresh()->status)->toBe('success');
+
+    File::deleteDirectory($root);
+    File::deleteDirectory($tmp);
+});

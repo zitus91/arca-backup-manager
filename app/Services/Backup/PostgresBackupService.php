@@ -75,7 +75,9 @@ class PostgresBackupService
             $cmd .= ' > '.escapeshellarg($fullPath);
         }
 
-        $result = Process::timeout(3600)->run($cmd);
+        // See MysqlBackupService: without pipefail the pipeline reports gzip's exit
+        // code and a failed pg_dump is recorded as a successful empty backup.
+        $result = Process::timeout(3600)->run(['bash', '-o', 'pipefail', '-c', $cmd]);
 
         if (! $result->successful()) {
             throw new \RuntimeException('pg_dump failed: '.$result->errorOutput());

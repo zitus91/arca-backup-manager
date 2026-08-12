@@ -473,6 +473,8 @@ class ProcessBackupJob implements ShouldQueue
      */
     protected function buildArtifact(string $type, string $key, array $result): array
     {
+        $this->assertArtifactHasContent($result, $type, $key);
+
         return [
             'type' => $type,
             'key' => $key,
@@ -481,6 +483,68 @@ class ProcessBackupJob implements ShouldQueue
             'file_size' => $result['file_size'] ?? 0,
             'meta' => $result['meta'] ?? null,
         ];
+    }
+
+    /**
+     * Refuse to publish a dump that holds nothing.
+     *
+     * An empty archive restores as an empty database without ever reporting an error,
+     * which is the worst way for a backup to fail. Incremental runs that genuinely found
+     * no changes declare it in their meta and are allowed through.
+     */
+    protected function assertArtifactHasContent(array $result, string $type, string $key): void
+    {
+        if ($result['meta']['no_changes'] ?? false) {
+            return;
+        }
+
+        $path = $result['file_path'];
+
+        if (! is_file($path)) {
+            throw new \RuntimeException("Backup produced no file for {$type} '{$key}'.");
+        }
+
+        // Only the first byte is read, so the check costs the same on a 1 KB and a 50 GB archive.
+        $hasContent = match (true) {
+            str_ends_with($path, '.gz') => $this->gzipHasContent($path),
+            str_ends_with($path, '.zip') => $this->zipHasContent($path),
+            default => filesize($path) > 0,
+        };
+
+        if (! $hasContent) {
+            throw new \RuntimeException(
+                "Backup for {$type} '{$key}' is empty: the dump command produced no output. ".
+                'Check the credentials and that the database exists.'
+            );
+        }
+    }
+
+    protected function gzipHasContent(string $path): bool
+    {
+        $handle = gzopen($path, 'rb');
+
+        if ($handle === false) {
+            return false;
+        }
+
+        $firstByte = gzread($handle, 1);
+        gzclose($handle);
+
+        return $firstByte !== '' && $firstByte !== false;
+    }
+
+    protected function zipHasContent(string $path): bool
+    {
+        $zip = new \ZipArchive;
+
+        if ($zip->open($path) !== true) {
+            return false;
+        }
+
+        $size = $zip->numFiles > 0 ? ($zip->statIndex(0)['size'] ?? 0) : 0;
+        $zip->close();
+
+        return $size > 0;
     }
 
     /**

@@ -38,9 +38,7 @@ it('processes a backup job successfully', function () {
     // Mock services
     $mockMysql = \Mockery::mock(MysqlBackupService::class);
     $mockMysql->shouldReceive('dump')->once()->andReturn([
-        'file_name' => 'backup.sql.gz',
-        'file_path' => '/tmp/backup.sql.gz',
-        'file_size' => 1024,
+        ...fakeDumpFile('backup.sql.gz', 1024),
         'meta' => ['tables_dumped' => 10],
     ]);
 
@@ -133,9 +131,7 @@ it('updates next_run_at after execution', function () {
 
     $mockMysql = \Mockery::mock(MysqlBackupService::class);
     $mockMysql->shouldReceive('dump')->andReturn([
-        'file_name' => 'backup.sql.gz',
-        'file_path' => '/tmp/backup.sql.gz',
-        'file_size' => 1024,
+        ...fakeDumpFile('backup.sql.gz', 1024),
         'meta' => [],
     ]);
 

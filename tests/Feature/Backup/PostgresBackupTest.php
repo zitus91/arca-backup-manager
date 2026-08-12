@@ -34,9 +34,7 @@ it('processes a postgres backup job successfully', function () {
 
     $mockPostgres = \Mockery::mock(PostgresBackupService::class);
     $mockPostgres->shouldReceive('dump')->once()->andReturn([
-        'file_name' => 'postgres_appdb_20260722_120000.sql.gz',
-        'file_path' => '/tmp/postgres/postgres_appdb_20260722_120000.sql.gz',
-        'file_size' => 2048,
+        ...fakeDumpFile('postgres_appdb_20260722_120000.sql.gz'),
         'meta' => ['tables_dumped' => 15],
     ]);
 
@@ -98,9 +96,7 @@ it('processes an incremental postgres backup', function () {
 
     $mockPostgres = \Mockery::mock(PostgresBackupService::class);
     $mockPostgres->shouldReceive('incrementalDump')->once()->andReturn([
-        'file_name' => 'postgres_appdb_incr_20260722_130000.sql.gz',
-        'file_path' => '/tmp/postgres/postgres_appdb_incr_20260722_130000.sql.gz',
-        'file_size' => 512,
+        ...fakeDumpFile('postgres_appdb_incr_20260722_130000.sql.gz', 512),
         'meta' => ['tables_dumped' => 3],
         'incremental_checkpoint' => ['timestamp' => '2026-07-22 13:00:00'],
     ]);

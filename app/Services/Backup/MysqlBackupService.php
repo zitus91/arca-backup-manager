@@ -72,9 +72,11 @@ class MysqlBackupService
         $since = $checkpoint['timestamp'] ?? null;
         $changedTables = $this->getChangedTables($config, $since);
 
-        // If no tables changed, create an empty marker file
+        // If no tables changed, create an empty marker file. It holds plain text, so it
+        // must not claim a .gz/.zip extension: the restore picks its decompressor from
+        // the file name and would fail trying to gunzip it.
         if (empty($changedTables)) {
-            $fileName = $this->generateFileName($config['database'], $compression, true);
+            $fileName = $this->generateFileName($config['database'], 'none', true);
             $fullPath = rtrim($outputPath, '/').'/'.$fileName;
             file_put_contents($fullPath, '-- incremental: no changes since '.($since ?? 'unknown'));
 
@@ -165,7 +167,9 @@ class MysqlBackupService
             $cmd .= ' > '.escapeshellarg($fullPath);
         }
 
-        $result = Process::timeout(3600)->run($cmd);
+        // Through a plain shell the pipeline reports gzip's exit code, so a failing
+        // mysqldump looked successful and left a 20-byte empty gzip behind.
+        $result = Process::timeout(3600)->run(['bash', '-o', 'pipefail', '-c', $cmd]);
 
         if (! $result->successful()) {
             throw new \RuntimeException('mysqldump failed: '.$result->errorOutput());
