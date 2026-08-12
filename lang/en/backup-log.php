@@ -23,6 +23,7 @@ return [
     'detail_file' => 'File Name',
     'detail_path' => 'Storage Path',
     'detail_error' => 'Error Message',
+    'detail_artifacts' => 'Backup contents',
     'detail_meta' => 'Metadata',
     'close' => 'Close',
     'status_pending' => 'Pending',

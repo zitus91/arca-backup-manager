@@ -90,26 +90,12 @@ class ProcessRestoreJob implements ShouldQueue
             foreach ($backupChain as $chainIndex => $chainLog) {
                 $isFirstInChain = $chainIndex === 0;
 
-                // Download this backup file
                 $chainTmpDir = $tmpDir.'/chain_'.$chainLog->id;
                 @mkdir($chainTmpDir, 0755, true);
 
-                $localFilePath = $this->downloadBackupFile(
-                    $destination,
-                    $chainLog,
-                    $chainTmpDir,
-                    $s3Service,
-                    $ftpService,
-                );
-
-                // Determine if it's a multi-type package archive
-                $isPackage = $this->isPackageArchive($chainLog, $sourceConfig);
-
-                if ($isPackage) {
-                    $extractedDir = $chainTmpDir.'/extracted';
-                    @mkdir($extractedDir, 0755, true);
-                    $this->extractPackage($localFilePath, $extractedDir);
-                }
+                // Resolves a single dump on demand and downloads only that one, so a
+                // db_only restore never pulls the filesystem archives.
+                $fetch = $this->artifactFetcher($chainLog, $destination, $chainTmpDir, $sourceConfig, $s3Service, $ftpService);
 
                 // For incremental restores after the first (full): always override
                 // because we're applying deltas on top of the base
@@ -144,7 +130,7 @@ class ProcessRestoreJob implements ShouldQueue
                         // Get custom target name if specified
                         $targetDbName = $customNames['databases'][$db] ?? null;
 
-                        $dumpFile = $this->findMysqlDump($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+                        $dumpFile = $fetch('mysql', $db);
 
                         if ($dumpFile) {
                             $r = $mysqlRestore->restore($singleConf, $dumpFile, $targetDbName, $stepOverride);
@@ -181,7 +167,7 @@ class ProcessRestoreJob implements ShouldQueue
                         // Get custom target name if specified
                         $targetDbName = $customNames['databases'][$db] ?? null;
 
-                        $dumpFile = $this->findPostgresDump($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+                        $dumpFile = $fetch('postgres', $db);
 
                         if ($dumpFile) {
                             $r = $postgresRestore->restore($singleConf, $dumpFile, $targetDbName, $stepOverride);
@@ -218,7 +204,7 @@ class ProcessRestoreJob implements ShouldQueue
                         // Get custom target name if specified
                         $targetDbName = $customNames['databases'][$db] ?? null;
 
-                        $archiveFile = $this->findMongoArchive($isPackage ? $extractedDir : $chainTmpDir, $db, $isPackage);
+                        $archiveFile = $fetch('mongodb', $db);
 
                         if ($archiveFile) {
                             $r = $mongodbRestore->restore($singleConf, $archiveFile, $targetDbName, $stepOverride);
@@ -261,7 +247,7 @@ class ProcessRestoreJob implements ShouldQueue
                         // Get custom target path if specified
                         $targetPath = $customNames['paths'][$path] ?? null;
 
-                        $archiveFile = $this->findFilesystemArchive($isPackage ? $extractedDir : $chainTmpDir, basename($path), $isPackage);
+                        $archiveFile = $fetch('filesystem', $path);
 
                         if ($archiveFile) {
                             $r = $filesystemRestore->restore($singleConf, $archiveFile, $targetPath, $stepOverride);
@@ -379,18 +365,109 @@ class ProcessRestoreJob implements ShouldQueue
     }
 
     /**
-     * Download the backup file from the storage destination.
+     * Build a resolver that returns the local path of one dump, downloading it on demand.
+     *
+     * Backups taken after the artifact split store every dump as its own object and list
+     * them in meta.artifacts, so only the requested one is fetched. Older backups are a
+     * single object (possibly a multi-type package): those are downloaded and extracted
+     * once, lazily, on the first lookup.
+     *
+     * @return \Closure(string, string): ?string (type, database name or path) => local path
      */
-    protected function downloadBackupFile(
-        $destination,
+    protected function artifactFetcher(
         BackupLog $backupLog,
+        $destination,
         string $tmpDir,
+        array $sourceConfig,
         S3StorageService $s3Service,
         FtpStorageService $ftpService,
-    ): string {
+    ): \Closure {
+        $artifacts = $backupLog->meta['artifacts'] ?? null;
+
+        if (! empty($artifacts)) {
+            return function (string $type, string $key) use ($artifacts, $destination, $tmpDir, $s3Service, $ftpService): ?string {
+                $artifact = $this->matchArtifact($artifacts, $type, $key);
+
+                if (! $artifact) {
+                    return null;
+                }
+
+                $localPath = $tmpDir.'/'.$type.'-'.basename($artifact['file_name']);
+                $this->downloadObject($destination, $artifact['storage_path'], $localPath, $s3Service, $ftpService);
+
+                return $localPath;
+            };
+        }
+
+        $legacyDir = null;
+        $isPackage = null;
+
+        return function (string $type, string $key) use (&$legacyDir, &$isPackage, $backupLog, $destination, $tmpDir, $sourceConfig, $s3Service, $ftpService): ?string {
+            if ($legacyDir === null) {
+                [$legacyDir, $isPackage] = $this->prepareLegacyBackup($backupLog, $destination, $tmpDir, $sourceConfig, $s3Service, $ftpService);
+            }
+
+            return $this->findLegacyFile($legacyDir, $isPackage, $type, $key);
+        };
+    }
+
+    /**
+     * Pick the artifact for a database name / filesystem path. Falls back to the only
+     * artifact of that type when the key does not match (source renamed after the backup),
+     * but never guesses between several candidates.
+     */
+    protected function matchArtifact(array $artifacts, string $type, string $key): ?array
+    {
+        $ofType = array_values(array_filter($artifacts, fn ($a) => ($a['type'] ?? null) === $type && ! empty($a['storage_path'])));
+
+        foreach ($ofType as $artifact) {
+            if (($artifact['key'] ?? null) === $key) {
+                return $artifact;
+            }
+        }
+
+        return count($ofType) === 1 ? $ofType[0] : null;
+    }
+
+    /**
+     * Download the single object of a pre-split backup and extract it when it is a
+     * multi-type package. Returns [directory to search, is package].
+     */
+    protected function prepareLegacyBackup(
+        BackupLog $backupLog,
+        $destination,
+        string $tmpDir,
+        array $sourceConfig,
+        S3StorageService $s3Service,
+        FtpStorageService $ftpService,
+    ): array {
         $remotePath = $backupLog->storage_path;
-        $fileName = $backupLog->file_name ?? basename($remotePath);
-        $localPath = $tmpDir.'/'.$fileName;
+        $localPath = $tmpDir.'/'.($backupLog->file_name ?? basename($remotePath));
+
+        $this->downloadObject($destination, $remotePath, $localPath, $s3Service, $ftpService);
+
+        if (! $this->isPackageArchive($backupLog, $sourceConfig)) {
+            return [$tmpDir, false];
+        }
+
+        $extractedDir = $tmpDir.'/extracted';
+        @mkdir($extractedDir, 0755, true);
+        $this->extractPackage($localPath, $extractedDir);
+
+        return [$extractedDir, true];
+    }
+
+    /**
+     * Download one remote object to a local path.
+     */
+    protected function downloadObject(
+        $destination,
+        string $remotePath,
+        string $localPath,
+        S3StorageService $s3Service,
+        FtpStorageService $ftpService,
+    ): void {
+        @mkdir(dirname($localPath), 0755, true);
 
         match ($destination->type) {
             's3' => $this->downloadFromS3($s3Service, $destination->config, $remotePath, $localPath),
@@ -402,8 +479,6 @@ class ProcessRestoreJob implements ShouldQueue
         if (! file_exists($localPath)) {
             throw new \RuntimeException("Failed to download backup file to: {$localPath}");
         }
-
-        return $localPath;
     }
 
     /**
@@ -455,10 +530,22 @@ class ProcessRestoreJob implements ShouldQueue
     }
 
     /**
-     * Check if the backup is a multi-type package archive.
+     * Whether a pre-split backup is a multi-type package archive.
+     *
+     * The backup job wrote meta.files only for packages, so that key is an exact marker.
+     * Without it (very old logs) fall back to counting the source's configured types —
+     * note this reads today's config, which is why the marker is preferred.
      */
     protected function isPackageArchive(BackupLog $backupLog, array $sourceConfig): bool
     {
+        if (isset($backupLog->meta['files'])) {
+            return true;
+        }
+
+        if (isset($backupLog->meta['database']) || isset($backupLog->meta['source_path'])) {
+            return false;
+        }
+
         $types = array_intersect(array_keys($sourceConfig), ['mysql', 'postgres', 'mongodb', 'filesystem']);
 
         return count($types) > 1;
@@ -485,122 +572,41 @@ class ProcessRestoreJob implements ShouldQueue
     }
 
     /**
-     * Find the MySQL dump file in the extracted directory.
+     * Locate the dump for one database / path inside a pre-split backup.
+     *
+     * Incremental dumps carry an _incr prefix, so both spellings are matched: picking the
+     * wrong file here used to restore one database's dump into another. When no pattern
+     * matches, the single-candidate fallback only fires if there is exactly one file to
+     * choose from — guessing between several is what corrupted restores.
      */
-    protected function findMysqlDump(string $dir, string $dbName, bool $isPackage): ?string
+    protected function findLegacyFile(string $dir, bool $isPackage, string $type, string $key): ?string
     {
-        // In package: look under mysql/ subdirectory
-        $searchDir = $isPackage ? $dir.'/mysql' : $dir;
+        $searchDir = $isPackage ? $dir.'/'.$type : $dir;
 
         if (! is_dir($searchDir)) {
             return null;
         }
 
-        // Find any mysql dump file matching this database
-        $patterns = [
-            "mysql_{$dbName}_*.sql.gz",
-            "mysql_{$dbName}_*.sql.zip",
-            "mysql_{$dbName}_*.sql",
-        ];
+        // Filesystem archives are named after the path's basename, plus a transport
+        // suffix (_ssh, _incr, _ssh_incr) that the trailing wildcard absorbs.
+        $name = $type === 'filesystem' ? basename(rtrim($key, '/')) : $key;
+        $prefix = $type === 'filesystem' ? 'fs' : $type;
 
-        foreach ($patterns as $pattern) {
+        foreach (["{$prefix}_{$name}_*", "{$prefix}_incr_{$name}_*"] as $pattern) {
             $files = glob("{$searchDir}/{$pattern}");
             if (! empty($files)) {
+                sort($files);
+
                 return $files[0];
             }
         }
 
-        // Fallback: any sql file in the directory
-        $files = glob("{$searchDir}/*.sql*");
+        $candidates = array_values(array_filter(
+            glob("{$searchDir}/*") ?: [],
+            fn ($f) => is_file($f) && ! str_starts_with(basename($f), '.'),
+        ));
 
-        return ! empty($files) ? $files[0] : null;
-    }
-
-    /**
-     * Find the MongoDB archive file in the extracted directory.
-     */
-    protected function findPostgresDump(string $dir, string $dbName, bool $isPackage): ?string
-    {
-        // In package: look under postgres/ subdirectory
-        $searchDir = $isPackage ? $dir.'/postgres' : $dir;
-
-        if (! is_dir($searchDir)) {
-            return null;
-        }
-
-        // Find any postgres dump file matching this database
-        $patterns = [
-            "postgres_{$dbName}_*.sql.gz",
-            "postgres_{$dbName}_*.sql.zip",
-            "postgres_{$dbName}_*.sql",
-        ];
-
-        foreach ($patterns as $pattern) {
-            $files = glob("{$searchDir}/{$pattern}");
-            if (! empty($files)) {
-                return $files[0];
-            }
-        }
-
-        // Fallback: any sql file in the directory
-        $files = glob("{$searchDir}/*.sql*");
-
-        return ! empty($files) ? $files[0] : null;
-    }
-
-    protected function findMongoArchive(string $dir, string $dbName, bool $isPackage): ?string
-    {
-        $searchDir = $isPackage ? $dir.'/mongodb' : $dir;
-
-        if (! is_dir($searchDir)) {
-            return null;
-        }
-
-        $patterns = [
-            "mongodb_{$dbName}_*.tar.gz",
-            "mongodb_{$dbName}_*.zip",
-            "mongodb_{$dbName}_*.tar",
-        ];
-
-        foreach ($patterns as $pattern) {
-            $files = glob("{$searchDir}/{$pattern}");
-            if (! empty($files)) {
-                return $files[0];
-            }
-        }
-
-        $files = glob("{$searchDir}/*");
-
-        return ! empty($files) ? $files[0] : null;
-    }
-
-    /**
-     * Find the filesystem archive file in the extracted directory.
-     */
-    protected function findFilesystemArchive(string $dir, string $sourceName, bool $isPackage): ?string
-    {
-        $searchDir = $isPackage ? $dir.'/filesystem' : $dir;
-
-        if (! is_dir($searchDir)) {
-            return null;
-        }
-
-        $patterns = [
-            "fs_{$sourceName}_*.tar.gz",
-            "fs_{$sourceName}_*.zip",
-            "fs_{$sourceName}_*.tar",
-        ];
-
-        foreach ($patterns as $pattern) {
-            $files = glob("{$searchDir}/{$pattern}");
-            if (! empty($files)) {
-                return $files[0];
-            }
-        }
-
-        $files = glob("{$searchDir}/*");
-
-        return ! empty($files) ? $files[0] : null;
+        return count($candidates) === 1 ? $candidates[0] : null;
     }
 
     /**

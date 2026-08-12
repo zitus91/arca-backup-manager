@@ -663,6 +663,23 @@
                             <p class="text-sm text-error/80">{{ $detailLog->error_message }}</p>
                         </div>
                     @endif
+                    @if ($detailLog->meta['artifacts'] ?? false)
+                        <div>
+                            <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-2">{{ __('backup-log.detail_artifacts') }}</p>
+                            <ul class="divide-y divide-base-content/5 rounded-xl border border-base-content/5">
+                                @foreach ($detailLog->meta['artifacts'] as $i => $artifact)
+                                    <li class="flex items-center justify-between gap-3 px-4 py-2">
+                                        <span class="min-w-0">
+                                            <span class="badge badge-ghost badge-sm">{{ $artifact['type'] }}</span>
+                                            <span class="text-sm break-all">{{ $artifact['key'] }}</span>
+                                        </span>
+                                        <a href="{{ route('backup.logs.download', ['log' => $detailLog, 'artifact' => $i]) }}"
+                                           class="btn btn-ghost btn-xs rounded-lg shrink-0" target="_blank">{{ __('backup-log.download') }}</a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
                     @if ($detailLog->meta)
                         <div>
                             <p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-2">{{ __('backup-log.detail_meta') }}</p>

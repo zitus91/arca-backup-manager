@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\BackupLog;
 use App\Services\Backup\FtpStorageService;
 use App\Services\Backup\S3StorageService;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BackupLogDownloadController extends Controller
 {
     public function __invoke(
+        Request $request,
         BackupLog $log,
         S3StorageService $s3Service,
         FtpStorageService $ftpService,
@@ -30,8 +32,14 @@ class BackupLogDownloadController extends Controller
         }
 
         $config = $destination->config;
-        $remotePath = $log->storage_path;
-        $fileName = $log->file_name ?? basename($remotePath);
+
+        // A backup holds one object per database / path: ?artifact=N picks which one.
+        // Without it, the first artifact is served (also the whole file for older backups).
+        $artifacts = $log->meta['artifacts'] ?? [];
+        $artifact = $artifacts[(int) $request->query('artifact', 0)] ?? null;
+
+        $remotePath = $artifact['storage_path'] ?? $log->storage_path;
+        $fileName = $artifact['file_name'] ?? ($log->file_name ?? basename($remotePath));
 
         return match ($destination->type) {
             's3' => $s3Service->download($config, $remotePath, $fileName),
