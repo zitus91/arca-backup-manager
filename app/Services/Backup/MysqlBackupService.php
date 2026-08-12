@@ -129,7 +129,7 @@ class MysqlBackupService
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
-            MysqlClientOptions::sslFlags($config),
+            MysqlClient::sslFlags($config),
             escapeshellarg(
                 'SELECT TABLE_NAME FROM information_schema.TABLES '
                 ."WHERE TABLE_SCHEMA = '{$config['database']}' "
@@ -211,7 +211,7 @@ class MysqlBackupService
             '--port='.escapeshellarg((string) ($config['port'] ?? 3306)),
             '--user='.escapeshellarg($config['username']),
             '--password='.escapeshellarg($config['password']),
-            MysqlClientOptions::sslFlags($config),
+            MysqlClient::sslFlags($config),
             '--single-transaction',
             '--routines',
             '--triggers',

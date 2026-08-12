@@ -4,6 +4,7 @@ namespace App\Livewire\Backup;
 
 use App\Models\AuditLog;
 use App\Models\BackupHost;
+use App\Services\Backup\MysqlClient;
 use App\Services\Backup\SshTunnelService;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -486,16 +487,13 @@ class BackupHostForm extends Component
 
         try {
             $run = function (string $host, int $port): void {
-                $pdo = new \PDO(
-                    "mysql:host={$host};port={$port}",
-                    $this->mysql_user,
-                    $this->mysql_password,
-                    [\PDO::ATTR_TIMEOUT => 5, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
-                );
-                $stmt = $pdo->query('SHOW DATABASES');
-                $allDatabases = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-                $systemDbs = ['information_schema', 'mysql', 'performance_schema', 'sys'];
-                $this->mysql_available_databases = array_values(array_diff($allDatabases, $systemDbs));
+                $this->mysql_available_databases = MysqlClient::listDatabases([
+                    'host' => $host,
+                    'port' => $port,
+                    'username' => $this->mysql_user,
+                    'password' => $this->mysql_password,
+                    'ssl' => $this->mysql_ssl,
+                ]);
             };
 
             $sshConfig = $this->mysql_use_ssh ? $this->sshConfigArrayForTest() : null;

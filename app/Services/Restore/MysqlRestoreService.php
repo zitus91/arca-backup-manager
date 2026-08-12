@@ -2,7 +2,7 @@
 
 namespace App\Services\Restore;
 
-use App\Services\Backup\MysqlClientOptions;
+use App\Services\Backup\MysqlClient;
 use App\Services\Backup\SshTunnelService;
 use Illuminate\Support\Facades\Process;
 
@@ -85,7 +85,7 @@ class MysqlRestoreService
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
-            MysqlClientOptions::sslFlags($config),
+            MysqlClient::sslFlags($config),
             escapeshellarg("DROP DATABASE IF EXISTS `{$dbName}`;")
         );
 
@@ -108,7 +108,7 @@ class MysqlRestoreService
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
-            MysqlClientOptions::sslFlags($config),
+            MysqlClient::sslFlags($config),
             escapeshellarg("SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '".str_replace("'", "''", $dbName)."';")
         );
 
@@ -132,7 +132,7 @@ class MysqlRestoreService
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
-            MysqlClientOptions::sslFlags($config),
+            MysqlClient::sslFlags($config),
             escapeshellarg("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
         );
 
@@ -154,7 +154,7 @@ class MysqlRestoreService
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
-            MysqlClientOptions::sslFlags($config),
+            MysqlClient::sslFlags($config),
             escapeshellarg($dbName)
         );
 
