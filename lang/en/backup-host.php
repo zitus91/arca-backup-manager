@@ -59,6 +59,8 @@ return [
     'mongodb_port' => 'MongoDB Port',
     'mongodb_user' => 'MongoDB User',
     'mongodb_password' => 'MongoDB Password',
+    'mysql_ssl' => 'TLS connection',
+    'mysql_ssl_hint' => 'Enable only if the MySQL server accepts TLS. The certificate is not verified.',
     'use_ssh_tunnel' => 'Use SSH tunnel',
     'use_ssh_tunnel_hint' => 'Disable if this database is directly reachable and the host\'s SSH is only used for other services (e.g. filesystem).',
     'test_connection' => 'Test connection',

@@ -4,6 +4,7 @@ namespace App\Livewire\Backup;
 
 use App\Models\BackupHost;
 use App\Models\BackupSource;
+use App\Services\Backup\MysqlClient;
 use App\Services\Backup\SshTunnelService;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -266,16 +267,11 @@ class BackupSourceForm extends Component
 
         try {
             $run = function (string $connHost, int $connPort) use ($mysql): void {
-                $pdo = new \PDO(
-                    "mysql:host={$connHost};port={$connPort}",
-                    $mysql['username'] ?? ($mysql['user'] ?? 'root'),
-                    $mysql['password'] ?? '',
-                    [\PDO::ATTR_TIMEOUT => 5, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
-                );
-                $stmt = $pdo->query('SHOW DATABASES');
-                $allDatabases = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-                $systemDbs = ['information_schema', 'mysql', 'performance_schema', 'sys'];
-                $this->mysql_available_databases = array_values(array_diff($allDatabases, $systemDbs));
+                $this->mysql_available_databases = MysqlClient::listDatabases(array_merge($mysql, [
+                    'host' => $connHost,
+                    'port' => $connPort,
+                    'username' => $mysql['username'] ?? ($mysql['user'] ?? 'root'),
+                ]));
             };
 
             $sshConfig = $host->sshConfig();
