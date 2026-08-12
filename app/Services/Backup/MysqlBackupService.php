@@ -124,11 +124,12 @@ class MysqlBackupService
         }
 
         $cmd = sprintf(
-            'mysql --host=%s --port=%s --user=%s --password=%s -N -e %s',
+            'mysql --host=%s --port=%s --user=%s --password=%s %s -N -e %s',
             escapeshellarg($config['host']),
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
+            MysqlClientOptions::sslFlags($config),
             escapeshellarg(
                 'SELECT TABLE_NAME FROM information_schema.TABLES '
                 ."WHERE TABLE_SCHEMA = '{$config['database']}' "
@@ -210,6 +211,7 @@ class MysqlBackupService
             '--port='.escapeshellarg((string) ($config['port'] ?? 3306)),
             '--user='.escapeshellarg($config['username']),
             '--password='.escapeshellarg($config['password']),
+            MysqlClientOptions::sslFlags($config),
             '--single-transaction',
             '--routines',
             '--triggers',

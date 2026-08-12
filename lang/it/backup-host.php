@@ -59,6 +59,8 @@ return [
     'mongodb_port' => 'Porta MongoDB',
     'mongodb_user' => 'Utente MongoDB',
     'mongodb_password' => 'Password MongoDB',
+    'mysql_ssl' => 'Connessione TLS',
+    'mysql_ssl_hint' => 'Attiva solo se il server MySQL accetta TLS. Il certificato non viene verificato.',
     'use_ssh_tunnel' => 'Usa tunnel SSH',
     'use_ssh_tunnel_hint' => 'Disabilita se questo database è raggiungibile direttamente e l\'SSH dell\'host serve solo per altri servizi (es. filesystem).',
     'test_connection' => 'Prova connessione',

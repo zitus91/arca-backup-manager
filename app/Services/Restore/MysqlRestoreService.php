@@ -2,6 +2,7 @@
 
 namespace App\Services\Restore;
 
+use App\Services\Backup\MysqlClientOptions;
 use App\Services\Backup\SshTunnelService;
 use Illuminate\Support\Facades\Process;
 
@@ -79,11 +80,12 @@ class MysqlRestoreService
         }
 
         $cmd = sprintf(
-            'mysql --host=%s --port=%s --user=%s --password=%s -e %s',
+            'mysql --host=%s --port=%s --user=%s --password=%s %s -e %s',
             escapeshellarg($config['host']),
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
+            MysqlClientOptions::sslFlags($config),
             escapeshellarg("DROP DATABASE IF EXISTS `{$dbName}`;")
         );
 
@@ -101,11 +103,12 @@ class MysqlRestoreService
     {
         // information_schema, not SHOW DATABASES LIKE: `_` is a LIKE wildcard and db names contain it
         $cmd = sprintf(
-            'mysql --host=%s --port=%s --user=%s --password=%s -N -e %s',
+            'mysql --host=%s --port=%s --user=%s --password=%s %s -N -e %s',
             escapeshellarg($config['host']),
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
+            MysqlClientOptions::sslFlags($config),
             escapeshellarg("SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '".str_replace("'", "''", $dbName)."';")
         );
 
@@ -124,11 +127,12 @@ class MysqlRestoreService
     protected function createDatabase(array $config, string $dbName): void
     {
         $cmd = sprintf(
-            'mysql --host=%s --port=%s --user=%s --password=%s -e %s',
+            'mysql --host=%s --port=%s --user=%s --password=%s %s -e %s',
             escapeshellarg($config['host']),
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
+            MysqlClientOptions::sslFlags($config),
             escapeshellarg("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
         );
 
@@ -145,11 +149,12 @@ class MysqlRestoreService
     protected function buildRestoreCommand(array $config, string $dbName, string $filePath): string
     {
         $mysqlCmd = sprintf(
-            'mysql --host=%s --port=%s --user=%s --password=%s %s',
+            'mysql --host=%s --port=%s --user=%s --password=%s %s %s',
             escapeshellarg($config['host']),
             escapeshellarg((string) ($config['port'] ?? 3306)),
             escapeshellarg($config['username']),
             escapeshellarg($config['password']),
+            MysqlClientOptions::sslFlags($config),
             escapeshellarg($dbName)
         );
 

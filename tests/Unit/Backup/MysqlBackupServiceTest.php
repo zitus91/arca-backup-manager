@@ -134,3 +134,40 @@ it('fails instead of writing an empty archive when the dump command fails', func
         @rmdir($tmpDir);
     }
 });
+
+it('disables TLS by default and enables it only when the host asks for it', function (bool $ssl, string $expected) {
+    Process::fake(['*' => Process::result(output: '', errorOutput: '', exitCode: 0)]);
+
+    $tmpDir = sys_get_temp_dir().'/backup_ssl_'.uniqid();
+    @mkdir($tmpDir, 0755, true);
+
+    $config = [
+        'host' => '127.0.0.1',
+        'port' => 3306,
+        'database' => 'testdb',
+        'username' => 'root',
+        'password' => 'secret',
+    ];
+
+    if ($ssl) {
+        $config['ssl'] = true;
+    }
+
+    try {
+        (new MysqlBackupService)->dump($config, $tmpDir, 'none');
+
+        Process::assertRan(function ($process) use ($expected) {
+            $cmd = is_array($process->command) ? implode(' ', $process->command) : $process->command;
+
+            return str_contains($cmd, $expected);
+        });
+    } finally {
+        @array_map('unlink', glob("$tmpDir/*"));
+        @rmdir($tmpDir);
+    }
+})->with([
+    // The bundled MariaDB client requires TLS unless told otherwise, which is what
+    // broke every backup against a server without it.
+    'plaintext by default' => [false, '--skip-ssl'],
+    'TLS when enabled' => [true, '--ssl --skip-ssl-verify-server-cert'],
+]);

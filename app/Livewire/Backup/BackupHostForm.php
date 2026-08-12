@@ -56,6 +56,8 @@ class BackupHostForm extends Component
 
     public bool $mysql_use_ssh = true;
 
+    public bool $mysql_ssl = false;
+
     // PostgreSQL service
     public bool $enable_postgres = false;
 
@@ -146,6 +148,7 @@ class BackupHostForm extends Component
                 $this->mysql_user = $mysql['username'] ?? ($mysql['user'] ?? 'root');
                 $this->mysql_password = $mysql['password'] ?? '';
                 $this->mysql_use_ssh = $mysql['use_ssh'] ?? true;
+                $this->mysql_ssl = $mysql['ssl'] ?? false;
             }
 
             $this->enable_postgres = isset($cfg['postgres']);
@@ -288,6 +291,7 @@ class BackupHostForm extends Component
                 'username' => $this->mysql_user,
                 'password' => $this->mysql_password,
                 'use_ssh' => $this->mysql_use_ssh,
+                'ssl' => $this->mysql_ssl,
             ];
         }
 
