@@ -22,7 +22,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Process;
 
 class ProcessBackupJob implements ShouldQueue
 {
@@ -91,17 +90,13 @@ class ProcessBackupJob implements ShouldQueue
         $tmpDir = storage_path('app/backups/tmp/'.$log->id);
         @mkdir($tmpDir, 0755, true);
 
-        // Package archive lives next to $tmpDir (it cannot be inside the dir it tars),
-        // so it needs its own cleanup in the finally block.
-        $packagePath = null;
-
         try {
             // 2. Execute backup for each enabled source type
             $source = $backupJob->source;
             $sourceConfig = $source->config;
             $results = [];
             $totalSize = 0;
-            $fileNames = [];
+            $artifacts = [];
             $incrementalCheckpoints = [];
             $processedTypes = [];
 
@@ -124,7 +119,7 @@ class ProcessBackupJob implements ShouldQueue
 
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
-                    $fileNames[] = 'mysql/'.($r['file_name'] ?? 'dump');
+                    $artifacts[] = $this->buildArtifact('mysql', $db, $r);
                     if (isset($r['incremental_checkpoint'])) {
                         $incrementalCheckpoints['mysql'][$db] = $r['incremental_checkpoint'];
                     }
@@ -150,7 +145,7 @@ class ProcessBackupJob implements ShouldQueue
 
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
-                    $fileNames[] = 'postgres/'.($r['file_name'] ?? 'dump');
+                    $artifacts[] = $this->buildArtifact('postgres', $db, $r);
                     if (isset($r['incremental_checkpoint'])) {
                         $incrementalCheckpoints['postgres'][$db] = $r['incremental_checkpoint'];
                     }
@@ -176,7 +171,7 @@ class ProcessBackupJob implements ShouldQueue
 
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
-                    $fileNames[] = 'mongodb/'.($r['file_name'] ?? 'dump');
+                    $artifacts[] = $this->buildArtifact('mongodb', $db, $r);
                     if (isset($r['incremental_checkpoint'])) {
                         $incrementalCheckpoints['mongodb'][$db] = $r['incremental_checkpoint'];
                     }
@@ -209,7 +204,7 @@ class ProcessBackupJob implements ShouldQueue
 
                     $results[] = $r;
                     $totalSize += $r['file_size'] ?? 0;
-                    $fileNames[] = 'filesystem/'.($r['file_name'] ?? 'archive');
+                    $artifacts[] = $this->buildArtifact('filesystem', $path, $r);
                     if (isset($r['incremental_checkpoint'])) {
                         $incrementalCheckpoints['filesystem'][$path] = $r['incremental_checkpoint'];
                     }
@@ -220,74 +215,55 @@ class ProcessBackupJob implements ShouldQueue
                 throw new \RuntimeException('No source types configured for this backup source.');
             }
 
-            // Cancellation checkpoint: after source dumps, before packaging/upload
+            // Cancellation checkpoint: after source dumps, before the potentially long upload
             if ($log->fresh()->status === 'cancelled') {
                 return;
             }
 
-            // Use first result for single-type sources, or create package archive for multi-type
-            if (count($results) === 1) {
-                $result = $results[0];
-            } else {
-                // Create a tar archive of the entire tmpDir (package with subdirectories)
-                $packageName = \Illuminate\Support\Str::slug($backupJob->source->name).'-'.now()->format('Ymd-His').'.tar.gz';
-                $packagePath = storage_path('app/backups/tmp/'.$log->id.'-'.$packageName);
+            // 3. Upload every dump as its own object under {type}/. Database dumps and
+            // filesystem archives stay independent, so a restore downloads only what it
+            // needs instead of pulling one package that holds everything.
+            foreach ($artifacts as $i => $artifact) {
+                $remotePath = $this->buildRemotePath($backupJob, $artifact['type'].'/'.$artifact['file_name']);
 
-                $result = Process::timeout(config('backup.process_timeout'))->run([
-                    'tar', '-czf', $packagePath, '-C', $tmpDir, '.',
-                ]);
+                match ($backupJob->destination->type) {
+                    's3' => $s3Service->upload(
+                        $backupJob->destination->config,
+                        $artifact['file_path'],
+                        $remotePath,
+                    ),
+                    'ftp' => $ftpService->upload(
+                        $backupJob->destination->config,
+                        $artifact['file_path'],
+                        $remotePath,
+                    ),
+                    'local' => $this->uploadLocal(
+                        $backupJob->destination->config,
+                        $artifact['file_path'],
+                        $remotePath,
+                    ),
+                    default => throw new \RuntimeException("Unknown destination type: {$backupJob->destination->type}"),
+                };
 
-                if (! $result->successful()) {
-                    throw new \RuntimeException('Failed to create backup package archive: '.$result->errorOutput());
-                }
-
-                $result = [
-                    'file_path' => $packagePath,
-                    'file_name' => $packageName,
-                    'file_size' => filesize($packagePath),
-                    'meta' => [
-                        'types' => $processedTypes,
-                        'files' => $fileNames,
-                    ],
-                ];
+                $artifacts[$i]['storage_path'] = $remotePath;
+                // The local tmp path is gone after cleanup: never persist it.
+                unset($artifacts[$i]['file_path']);
             }
 
-            // Cancellation checkpoint: before potentially long upload
-            if ($log->fresh()->status === 'cancelled') {
-                return;
-            }
-
-            // 3. Upload to destination
-            $remotePath = $this->buildRemotePath($backupJob, $result['file_name']);
-
-            match ($backupJob->destination->type) {
-                's3' => $s3Service->upload(
-                    $backupJob->destination->config,
-                    $result['file_path'],
-                    $remotePath,
-                ),
-                'ftp' => $ftpService->upload(
-                    $backupJob->destination->config,
-                    $result['file_path'],
-                    $remotePath,
-                ),
-                'local' => $this->uploadLocal(
-                    $backupJob->destination->config,
-                    $result['file_path'],
-                    $remotePath,
-                ),
-                default => throw new \RuntimeException("Unknown destination type: {$backupJob->destination->type}"),
-            };
-
-            // 4. Update log with success
+            // 4. Update log with success. file_name/storage_path keep pointing at the
+            // first artifact so listings, downloads and retention queries keep working;
+            // meta.artifacts is the authoritative content list.
             $log->update([
                 'status' => 'success',
                 'finished_at' => now(),
                 'duration_seconds' => now()->diffInSeconds($log->started_at),
-                'file_name' => $result['file_name'],
-                'file_size_bytes' => $result['file_size'],
-                'storage_path' => $remotePath,
-                'meta' => $result['meta'] ?? null,
+                'file_name' => $artifacts[0]['file_name'],
+                'file_size_bytes' => $totalSize,
+                'storage_path' => $artifacts[0]['storage_path'],
+                'meta' => [
+                    'types' => $processedTypes,
+                    'artifacts' => array_values($artifacts),
+                ],
                 'incremental_checkpoint' => ! empty($incrementalCheckpoints) ? $incrementalCheckpoints : null,
             ]);
 
@@ -317,10 +293,11 @@ class ProcessBackupJob implements ShouldQueue
                 null,
                 [
                     'log_id' => $log->id,
-                    'file_name' => $result['file_name'],
-                    'file_size_bytes' => $result['file_size'],
+                    'file_name' => $log->file_name,
+                    'file_size_bytes' => $totalSize,
                     'duration_seconds' => $log->duration_seconds,
-                    'storage_path' => $remotePath,
+                    'storage_path' => $log->storage_path,
+                    'artifacts_count' => count($artifacts),
                     'is_incremental' => $isIncremental,
                 ],
             );
@@ -379,12 +356,7 @@ class ProcessBackupJob implements ShouldQueue
             // Always update next run regardless of cancellation or failure
             $schedulerService->updateNextRun($backupJob);
         } finally {
-            // Cleanup temp directory and the package archive built beside it
             $this->cleanupTempDir($tmpDir);
-
-            if ($packagePath && is_file($packagePath)) {
-                @unlink($packagePath);
-            }
         }
     }
 
@@ -495,6 +467,34 @@ class ProcessBackupJob implements ShouldQueue
     }
 
     /**
+     * Describe one dump as a restorable artifact. 'key' is the database name or the
+     * filesystem path it came from: the restore matches on it instead of guessing
+     * from file names.
+     */
+    protected function buildArtifact(string $type, string $key, array $result): array
+    {
+        return [
+            'type' => $type,
+            'key' => $key,
+            'file_name' => $result['file_name'],
+            'file_path' => $result['file_path'],
+            'file_size' => $result['file_size'] ?? 0,
+            'meta' => $result['meta'] ?? null,
+        ];
+    }
+
+    /**
+     * Every remote object belonging to a backup log: the artifact list for backups
+     * taken after the split, the single package path for older ones.
+     */
+    public static function storagePathsFor(BackupLog $log): array
+    {
+        $paths = array_filter(array_column($log->meta['artifacts'] ?? [], 'storage_path'));
+
+        return ! empty($paths) ? $paths : array_filter([$log->storage_path]);
+    }
+
+    /**
      * Build the remote storage path.
      */
     protected function buildRemotePath(BackupJob $job, string $fileName): string
@@ -588,19 +588,23 @@ class ProcessBackupJob implements ShouldQueue
      */
     protected function deleteBackupFile(BackupJob $job, BackupLog $log, S3StorageService $s3Service, FtpStorageService $ftpService): void
     {
-        try {
-            match ($job->destination->type) {
-                's3' => $s3Service->delete($job->destination->config, $log->storage_path),
-                'ftp' => $ftpService->delete($job->destination->config, $log->storage_path),
-                'local' => @unlink($log->storage_path),
-                default => null,
-            };
-        } catch (\Throwable $e) {
-            Log::warning('Failed to delete old backup', [
-                'log_id' => $log->id,
-                'path' => $log->storage_path,
-                'error' => $e->getMessage(),
-            ]);
+        // A backup is several objects now, so retention has to delete each one or the
+        // destination keeps filling up with orphans.
+        foreach (self::storagePathsFor($log) as $path) {
+            try {
+                match ($job->destination->type) {
+                    's3' => $s3Service->delete($job->destination->config, $path),
+                    'ftp' => $ftpService->delete($job->destination->config, $path),
+                    'local' => @unlink(rtrim($job->destination->config['path'] ?? '', '/').'/'.$path),
+                    default => null,
+                };
+            } catch (\Throwable $e) {
+                Log::warning('Failed to delete old backup', [
+                    'log_id' => $log->id,
+                    'path' => $path,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $log->update(['storage_path' => null]);

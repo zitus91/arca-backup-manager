@@ -23,6 +23,7 @@ return [
     'detail_file' => 'Nome File',
     'detail_path' => 'Percorso Storage',
     'detail_error' => 'Messaggio di Errore',
+    'detail_artifacts' => 'Contenuto del backup',
     'detail_meta' => 'Metadati',
     'close' => 'Chiudi',
     'status_pending' => 'In Attesa',
